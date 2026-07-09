@@ -1,59 +1,61 @@
-'use client';
+import Link from "next/link";
+import type { ReactNode } from "react";
+import WamaLogo from "./WamaLogo";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
-import WamaLogo from './WamaLogo';
+type WamaShellProps = {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+};
 
 const navItems = [
-  { href: '/app', label: 'Módulos' },
-  { href: '/app/operacion', label: 'Operación' },
-  { href: '/app/clientes', label: 'Clientes / sedes' },
-  { href: '/app/usuarios', label: 'Usuarios' },
-  { href: '/app/reportes', label: 'Reportes' },
-  { href: '/onboarding', label: 'Configurar cliente' },
+  { href: "/app", label: "Dashboard" },
+  { href: "/modulos", label: "Módulos" },
+  { href: "/operacion", label: "Operación" },
+  { href: "/sales-hub", label: "Sales Hub" },
+  { href: "/clientes", label: "Clientes / sedes" },
+  { href: "/usuarios", label: "Usuarios" },
+  { href: "/reportes", label: "Reportes" },
 ];
 
-export default function WamaAppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
-  const pathname = usePathname();
-
+export default function WamaShell({ children, title, subtitle }: WamaShellProps) {
   return (
-    <main className="app-shell">
-      <aside className="app-sidebar">
-        <Link href="/app" className="sidebar-logo-link">
-          <WamaLogo variant="dark" size="sm" />
-        </Link>
-        <nav className="sidebar-nav">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link key={item.href} href={item.href} className={active ? 'nav-item active' : 'nav-item'}>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+    <div className="wama-app-shell">
+      <aside className="wama-sidebar">
+        <div className="wama-sidebar-logo">
+          <WamaLogo type="horizontal" variant="dark" size="sm" />
+        </div>
+
+        <nav className="wama-sidebar-nav">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="wama-sidebar-link">
+              {item.label}
+            </Link>
+          ))}
         </nav>
-        <div className="sidebar-box">
+
+        <div className="wama-sidebar-footer">
           <span className="sidebar-box-label">Demo comercial</span>
           <strong>Empresa Cliente</strong>
           <p>Datos genéricos, listos para presentar.</p>
         </div>
       </aside>
 
-      <section className="app-main">
-        <header className="app-header">
+      <main className="wama-app-main">
+        <section className="wama-app-hero">
           <div>
-            <p className="section-kicker">Centro de control WAMA</p>
+            <p className="eyebrow">Centro de control WAMA</p>
             <h1>{title}</h1>
-            {subtitle && <p>{subtitle}</p>}
+            {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <div className="app-header-actions">
-            <Link href="/onboarding" className="btn-secondary">Configurar cliente</Link>
-            <Link href="/app/operacion" className="btn-primary">Nueva alerta</Link>
+
+          <div className="wama-hero-logo">
+            <WamaLogo type="isotipo" variant="light" size="md" />
           </div>
-        </header>
+        </section>
+
         {children}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }

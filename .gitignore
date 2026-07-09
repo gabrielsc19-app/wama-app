@@ -9,16 +9,17 @@ node_modules
 out
 build
 dist
-
-# Production
 .vercel
 
-# Local environment variables
+# Environment variables
 .env
 .env.local
+.env.development
+.env.production
 .env.development.local
 .env.test.local
 .env.production.local
+.env*.local
 
 # Logs
 npm-debug.log*
@@ -39,16 +40,9 @@ Thumbs.db
 # Supabase / local temp
 .supabase
 
-# Misc
-coverage
-# Misc
-coverage
-
-# Archivos sensibles / cargas masivas
+# Sensitive files / bulk uploads
 usuarios_pumay.csv
 *.csv
-.env.local
-.env
-.env*.local
-.env.production
-.env.development
+
+# Misc
+coverage

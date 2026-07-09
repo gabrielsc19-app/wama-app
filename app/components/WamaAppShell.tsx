@@ -1,57 +1,69 @@
-'use client';
+import type { ReactNode } from "react";
+import Link from "next/link";
+import WamaLogo from "./WamaLogo";
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
-import WamaLogo from './WamaLogo';
+type WamaAppShellProps = {
+  children: ReactNode;
+  title: string;
+  subtitle?: string;
+};
 
 const navItems = [
-  { href: '/app', label: 'Módulos' },
-  { href: '/app/operacion', label: 'Operación' },
-  { href: '/app/clientes', label: 'Clientes / sedes' },
-  { href: '/app/usuarios', label: 'Usuarios' },
-  { href: '/app/reportes', label: 'Reportes' },
-  { href: '/onboarding', label: 'Configurar cliente' },
+  { label: "Inicio", href: "/app" },
+  { label: "Módulos", href: "/modulos" },
+  { label: "Operación", href: "/operacion" },
+  { label: "Sales Hub", href: "/sales-hub" },
+  { label: "Clientes", href: "/clientes" },
+  { label: "Usuarios", href: "/usuarios" },
+  { label: "Reportes", href: "/reportes" },
+  { label: "Configurar cliente", href: "/onboarding/sales-hub" },
 ];
 
-export default function WamaAppShell({ children, title, subtitle }: { children: ReactNode; title: string; subtitle?: string }) {
-  const pathname = usePathname();
-
+export default function WamaAppShell({
+  children,
+  title,
+  subtitle,
+}: WamaAppShellProps) {
   return (
-    <main className="app-shell">
-      <aside className="app-sidebar">
-        <Link href="/app" className="sidebar-logo-link">
-          <WamaLogo variant="dark" size="sm" />
-        </Link>
-        <nav className="sidebar-nav">
-          {navItems.map((item) => {
-            const active = pathname === item.href;
-            return (
-              <Link key={item.href} href={item.href} className={active ? 'nav-item active' : 'nav-item'}>
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
+    <main className="wama-app-layout">
+      <aside className="wama-sidebar">
+        <div className="wama-sidebar-logo">
+          <WamaLogo type="horizontal" variant="dark" size="sm" />
+        </div>
+
+        <nav className="wama-sidebar-nav">
+          {navItems.map((item) => (
+            <Link key={item.href} href={item.href} className="wama-sidebar-link">
+              {item.label}
+            </Link>
+          ))}
         </nav>
-        <div className="sidebar-box">
+
+        <div className="wama-sidebar-box">
           <span className="sidebar-box-label">Demo comercial</span>
-          <strong>Empresa Cliente</strong>
-          <p>Datos genéricos, listos para presentar.</p>
+          <strong>WAMA operativo</strong>
+          <p>Datos genéricos para venta y demostración.</p>
         </div>
       </aside>
 
-      <section className="app-main">
-        <header className="app-header">
+      <section className="wama-content">
+        <header className="wama-content-header">
           <div>
-            <p className="section-kicker">Centro de control WAMA</p>
+            <p className="eyebrow">Centro de control</p>
             <h1>{title}</h1>
-            {subtitle && <p>{subtitle}</p>}
+            {subtitle ? <p>{subtitle}</p> : null}
           </div>
-          <div className="app-header-actions">
-            <Link href="/onboarding" className="btn-secondary">Configurar cliente</Link>
-            <Link href="/app/operacion" className="btn-primary">Nueva alerta</Link>
+
+          <div className="wama-header-actions">
+            <Link href="/onboarding/sales-hub" className="btn-secondary">
+              Configurar cliente
+            </Link>
+            <Link href="/operacion" className="btn-primary">
+              Nuevo caso
+            </Link>
           </div>
         </header>
+
         {children}
       </section>
     </main>

@@ -1,86 +1,153 @@
 type WamaLogoProps = {
   variant?: "dark" | "light";
+  type?: "principal" | "horizontal" | "isotipo";
   size?: "sm" | "md" | "lg";
-  showTagline?: boolean;
+  className?: string;
 };
+
+const sizes = {
+  sm: { mark: 30, word: 18, tagline: 7, gap: 9 },
+  md: { mark: 42, word: 24, tagline: 8, gap: 12 },
+  lg: { mark: 72, word: 44, tagline: 10, gap: 18 },
+};
+
+function Mark({
+  size,
+  primary,
+  accent,
+}: {
+  size: number;
+  primary: string;
+  accent: string;
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 120 120"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-label="WAMA"
+      style={{ display: "block", flexShrink: 0 }}
+    >
+      <path
+        d="M25 17H95V61L60 102L25 61V17Z"
+        stroke={primary}
+        strokeWidth="4.5"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M35 78L49 47L60 67L71 47L85 78"
+        stroke={primary}
+        strokeWidth="7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M52 59H68L62 67H58L52 59Z"
+        fill={accent}
+      />
+    </svg>
+  );
+}
 
 export default function WamaLogo({
   variant = "dark",
+  type = "horizontal",
   size = "md",
-  showTagline = true,
+  className = "",
 }: WamaLogoProps) {
-  const isDark = variant === "dark";
+  const s = sizes[size];
+  const primary = variant === "dark" ? "#F5F6F7" : "#0B0C0E";
+  const accent = "#00E5D6";
 
-  const sizes = {
-    sm: {
-      mark: 38,
-      word: "text-lg",
-      tagline: "text-[9px]",
-      gap: "gap-2",
-    },
-    md: {
-      mark: 54,
-      word: "text-2xl",
-      tagline: "text-[10px]",
-      gap: "gap-3",
-    },
-    lg: {
-      mark: 82,
-      word: "text-4xl",
-      tagline: "text-xs",
-      gap: "gap-4",
-    },
-  };
+  if (type === "isotipo") {
+    return (
+      <span className={className} style={{ display: "inline-flex", alignItems: "center" }}>
+        <Mark size={s.mark} primary={primary} accent={accent} />
+      </span>
+    );
+  }
 
-  const current = sizes[size];
-
-  return (
-    <div className={`flex items-center ${current.gap}`}>
-      <div
-        className="relative flex shrink-0 items-center justify-center"
-        style={{ width: current.mark, height: current.mark }}
+  if (type === "principal") {
+    return (
+      <span
+        className={className}
+        style={{
+          display: "inline-flex",
+          flexDirection: "column",
+          alignItems: "center",
+          textAlign: "center",
+          gap: 14,
+          lineHeight: 1,
+        }}
       >
-        <div
-          className={`absolute inset-0 rounded-xl border-2 ${
-            isDark ? "border-[#0B0C0E]" : "border-[#F5F6F7]"
-          }`}
-        />
-
-        <div
-          className={`absolute h-[45%] w-[54%] rotate-45 border-b-2 border-r-2 ${
-            isDark ? "border-[#0B0C0E]" : "border-[#F5F6F7]"
-          }`}
-          style={{ bottom: "8%", left: "23%" }}
-        />
-
-        <div
-          className={`absolute text-[22px] font-black leading-none ${
-            isDark ? "text-[#0B0C0E]" : "text-[#F5F6F7]"
-          }`}
-        >
-          W
-        </div>
-
-        <div className="absolute h-2 w-7 rounded-full bg-[#00E5D6]" />
-      </div>
-
-      <div className="leading-none">
-        <p
-          className={`${current.word} font-black tracking-[0.45em] ${
-            isDark ? "text-[#0B0C0E]" : "text-[#F5F6F7]"
-          }`}
+        <Mark size={s.mark * 1.25} primary={primary} accent={accent} />
+        <span
+          style={{
+            color: primary,
+            fontSize: s.word,
+            letterSpacing: "0.32em",
+            fontWeight: 300,
+            fontFamily: "Arial, Helvetica, sans-serif",
+          }}
         >
           WAMA
-        </p>
+        </span>
+        <span
+          style={{
+            color: accent,
+            fontSize: s.tagline,
+            letterSpacing: "0.42em",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            fontFamily: "Arial, Helvetica, sans-serif",
+          }}
+        >
+          WARN AND MANAGE
+        </span>
+      </span>
+    );
+  }
 
-        {showTagline && (
-          <p
-            className={`mt-2 ${current.tagline} font-black uppercase tracking-[0.35em] text-[#00E5D6]`}
-          >
-            Warn and manage
-          </p>
-        )}
-      </div>
-    </div>
+  return (
+    <span
+      className={className}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: s.gap,
+        lineHeight: 1,
+      }}
+    >
+      <Mark size={s.mark} primary={primary} accent={accent} />
+      <span style={{ display: "inline-flex", flexDirection: "column", gap: 6 }}>
+        <span
+          style={{
+            color: primary,
+            fontSize: s.word,
+            letterSpacing: "0.32em",
+            fontWeight: 300,
+            fontFamily: "Arial, Helvetica, sans-serif",
+            whiteSpace: "nowrap",
+          }}
+        >
+          WAMA
+        </span>
+        <span
+          style={{
+            color: accent,
+            fontSize: s.tagline,
+            letterSpacing: "0.34em",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            fontFamily: "Arial, Helvetica, sans-serif",
+            whiteSpace: "nowrap",
+          }}
+        >
+          WARN AND MANAGE
+        </span>
+      </span>
+    </span>
   );
 }

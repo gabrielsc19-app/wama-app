@@ -1,10 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "WAMA | Servicios digitales por módulos",
-  description:
-    "WAMA permite activar módulos digitales para alertas, tareas, comunicaciones, comercial, contabilidad y reportes.",
+  title: 'WAMA | Plataforma operativa modular',
+  description: 'WAMA permite gestionar alertas, tareas, comunicaciones, clientes, reportes y módulos de negocio en una sola plataforma.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

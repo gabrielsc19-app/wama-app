@@ -1,83 +1,87 @@
 import Link from "next/link";
 import WamaLogo from "../components/WamaLogo";
 
-const metrics = [
-  ["Alertas abiertas", "18", "3 críticas"],
-  ["Tareas del día", "42", "12 pendientes"],
-  ["SLA operativo", "91%", "+7% vs semana"],
-  ["Costo mensual", "USD 40", "4 módulos activos"],
+const modules = [
+  {
+    label: "Operación",
+    title: "Operación WAMA",
+    subtitle: "Gestión diaria de alertas, casos y tareas",
+    description:
+      "Administra alertas, solicitudes, responsables, evidencias, estados y seguimiento operacional.",
+    href: "/operacion",
+    accent: "#00E5D6",
+  },
+  {
+    label: "Finanzas",
+    title: "Cuentas por pagar",
+    subtitle: "Conciliación y control financiero",
+    description:
+      "Carga documentos, cruza pagos, controla pendientes y genera reportes de gestión financiera.",
+    href: "/finanzas",
+    accent: "#F2A900",
+  },
+  {
+    label: "Sales Hub",
+    title: "Sales Hub",
+    subtitle: "CRM comercial y pipeline de negocios",
+    description:
+      "Gestiona target accounts, contactos, deals, propuestas, actividades y cierre de oportunidades.",
+    href: "/sales-hub",
+    accent: "#FF684F",
+  },
 ];
 
-const work = [
-  ["Aseo", "Baño nivel -1 requiere revisión", "En proceso"],
-  ["Mantención", "Falla luminaria pasillo central", "Nuevo"],
-  ["Comercial", "Cliente candidato pasó a propuesta", "Propuesta"],
-  ["Contabilidad", "22 documentos pendientes de conciliación", "Revisión"],
-];
-
-export default function WamaAppDemo() {
+export default function AppPortalPage() {
   return (
-    <main className="app-shell">
-      <aside className="app-sidebar">
-        <WamaLogo variant="light" size="sm" />
-        <nav className="app-nav">
-          <Link href="/app" className="active">Dashboard <span>●</span></Link>
-          <a>Alertas</a>
-          <a>Tareas</a>
-          <a>Comunicaciones</a>
-          <a>Clientes / sedes</a>
-          <a>Reportes</a>
-          <a>Módulos</a>
-          <Link href="/">Volver al sitio</Link>
-        </nav>
-      </aside>
-
-      <section className="app-main">
-        <div className="app-hero">
-          <div>
-            <span className="eyebrow">Dashboard WAMA</span>
-            <h1>Centro operativo</h1>
-            <p>Vista demo para operación, tareas, comunicaciones, seguimiento comercial, contabilidad y reportes.</p>
+    <main className="module-portal">
+      <section className="module-hero">
+        <div>
+          <div className="module-hero-logo">
+            <WamaLogo type="horizontal" variant="dark" size="md" />
           </div>
-          <div className="app-toolbar">
-            <input className="search-input" placeholder="Buscar alerta, tarea o sede..." />
-            <button className="btn btn--primary">Nuevo registro →</button>
-          </div>
+
+          <p className="eyebrow">Portal de módulos</p>
+
+          <h1>Selecciona tu módulo de trabajo</h1>
+
+          <p className="hero-copy">
+            WAMA opera como software modular: cada empresa activa los módulos que necesita y mantiene
+            separada la información operativa, comercial y financiera.
+          </p>
         </div>
 
-        <div className="metrics-grid">
-          {metrics.map(([label, value, sub]) => (
-            <div key={label} className="metric-card">
-              <span>{label}</span>
-              <strong>{value}</strong>
-              <small>{sub}</small>
-            </div>
-          ))}
-        </div>
+        <aside className="session-card">
+          <span>Sesión activa</span>
+          <strong>Empresa demo</strong>
+          <p>Rol: owner</p>
+          <Link href="/" className="btn-dark">
+            Volver al sitio
+          </Link>
+        </aside>
+      </section>
 
-        <div className="app-grid">
-          <section className="app-card">
-            <h2>Actividad operativa</h2>
-            <div className="work-list">
-              {work.map(([area, title, status]) => (
-                <article key={title} className="work-item">
-                  <div><strong>{area}</strong><p>{title}</p></div>
-                  <span className="status-pill">{status}</span>
-                </article>
-              ))}
-            </div>
-          </section>
+      <section className="module-stage">
+        {modules.map((module, index) => (
+          <article key={module.title} className={`module-card module-card-${index + 1}`}>
+            <div className="module-card-top">
+              <div className="module-icon" style={{ background: module.accent }}>
+                {index + 1}
+              </div>
 
-          <section className="app-card">
-            <h2>Timeline</h2>
-            <div className="timeline">
-              <div className="timeline-item"><strong>Alerta tomada</strong><span>Equipo Aseo · hace 12 min</span></div>
-              <div className="timeline-item"><strong>Tarea creada</strong><span>Supervisor Operaciones · hace 28 min</span></div>
-              <div className="timeline-item"><strong>Conciliación actualizada</strong><span>Contabilidad · hace 1 h</span></div>
-              <div className="timeline-item"><strong>Propuesta enviada</strong><span>Comercial · ayer</span></div>
+              <span className="module-pill">{module.label}</span>
             </div>
-          </section>
-        </div>
+
+            <div className="module-line" style={{ background: module.accent }} />
+
+            <h2>{module.title}</h2>
+            <h3>{module.subtitle}</h3>
+            <p>{module.description}</p>
+
+            <Link href={module.href} className="btn-dark">
+              Abrir módulo →
+            </Link>
+          </article>
+        ))}
       </section>
     </main>
   );
