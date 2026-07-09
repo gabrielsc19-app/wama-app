@@ -22,19 +22,22 @@ export default function WamaShell({ children }: WamaShellProps) {
             <a href="/modulos" className="hover:text-[#F5F6F7]">
               Módulos
             </a>
+
             <a href="/modulos/sales-hub" className="hover:text-[#F5F6F7]">
               Sales Hub
             </a>
+
             <a href="/operacion" className="hover:text-[#F5F6F7]">
               Operación
             </a>
+
             <a href="/finanzas" className="hover:text-[#F5F6F7]">
               Finanzas
             </a>
           </nav>
 
-          <WamaButton href="/app" variant="secondary">
-            Entrar al software
+          <WamaButton href="/trial" variant="secondary">
+            Prueba gratis
           </WamaButton>
         </div>
       </header>

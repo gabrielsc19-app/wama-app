@@ -55,8 +55,8 @@ export default function HomePage() {
           <div className="mt-9 flex flex-col gap-4 sm:flex-row">
             <WamaButton href="/modulos">Ver módulos</WamaButton>
 
-            <WamaButton href="/app" variant="secondary">
-              Entrar al software
+            <WamaButton href="/trial" variant="secondary">
+              Probar gratis 14 días
             </WamaButton>
           </div>
         </div>
