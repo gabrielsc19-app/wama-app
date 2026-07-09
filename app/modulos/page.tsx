@@ -1,106 +1,116 @@
-import Link from "next/link";
-import WamaLogo from "../components/WamaLogo";
+import WamaShell from "../../src/components/brand/WamaShell";
+import WamaButton from "../../src/components/brand/WamaButton";
+import WamaCard from "../../src/components/brand/WamaCard";
 
 const modules = [
   {
-    area: "Operaciones",
-    price: "USD 10 / cada 10 usuarios",
-    title: "Operación",
-    problem: "Alertas, tareas y requerimientos se pierden entre WhatsApp, llamadas y correos.",
-    result: "Un centro operativo con responsables, estados, evidencia, timeline y reportes.",
-    items: ["Generar casos", "Asignar responsables", "Tomar y cerrar", "Evidencia", "SLA y reportes"],
-    href: "/modulos/operacion",
-    cta: "Ver cómo funciona",
-    secondary: "Solicitar demo",
+    name: "Operación",
+    category: "Gestión operativa",
+    status: "Disponible",
+    description:
+      "Administra alertas, casos, responsables, evidencias, estados, SLA y reportes operativos en una sola plataforma.",
+    features: [
+      "Alertas y casos",
+      "Responsables por área",
+      "Evidencia fotográfica",
+      "SLA y trazabilidad",
+    ],
+    href: "/operacion",
   },
   {
-    area: "Comercial",
-    price: "USD 10 / cada 10 usuarios",
-    title: "Sales Hub",
-    problem: "Los prospectos, oportunidades y seguimientos comerciales quedan dispersos.",
-    result: "Pipeline por etapas, cuentas objetivo, contactos, deals, actividades y dashboard UF.",
-    items: ["Target accounts", "Contactos", "Deals", "Pipeline", "Dashboard comercial"],
+    name: "Sales Hub",
+    category: "Gestión comercial",
+    status: "En implementación",
+    description:
+      "Ordena target accounts, contactos, deals, propuestas, actividades y pipeline comercial desde el primer contacto hasta el cierre.",
+    features: [
+      "Target accounts",
+      "Contactos comerciales",
+      "Deals y pipeline",
+      "Dashboard comercial",
+    ],
     href: "/modulos/sales-hub",
-    cta: "Ver cómo funciona",
-    secondary: "Activar modelo",
   },
   {
-    area: "Contabilidad",
-    price: "USD 10 / cada 10 usuarios",
-    title: "Finanzas / Cuentas por pagar",
-    problem: "Facturas, pagos y cartolas se revisan manualmente, con alto riesgo de pendientes.",
-    result: "Control de documentos, conciliación, pendientes, pagos y panel financiero.",
-    items: ["Carga documentos", "Cartola", "Conciliación", "Pendientes", "Dashboard financiero"],
-    href: "/modulos/finanzas",
-    cta: "Ver cómo funciona",
-    secondary: "Solicitar demo",
+    name: "Finanzas",
+    category: "Cuentas por pagar",
+    status: "Base funcional",
+    description:
+      "Controla documentos, cartolas, conciliación bancaria, pagos pendientes y reportes financieros para tomar mejores decisiones.",
+    features: [
+      "Carga de documentos",
+      "Cartola bancaria",
+      "Conciliación",
+      "Dashboard financiero",
+    ],
+    href: "/finanzas",
   },
 ];
 
-export default function ModulosPage() {
+export default function ModulesPage() {
   return (
-    <main className="wama-marketing-page">
-      <section className="marketing-hero">
-        <div className="marketing-container">
-          <WamaLogo type="horizontal" variant="dark" size="sm" />
-
-          <p className="eyebrow">Catálogo modular</p>
-          <h1>Elige los módulos que resuelven el problema real de tu empresa.</h1>
-          <p className="marketing-copy">
-            WAMA guía la venta mostrando qué hace cada módulo, qué datos necesita y qué panel genera.
-            Después de activar un módulo, el cliente carga su negocio por formulario o plantilla.
-          </p>
-
-          <div className="hero-actions">
-            <Link href="/onboarding/sales-hub" className="btn-primary">
-              Crear modelo Sales Hub
-            </Link>
-            <Link href="/app" className="btn-outline-dark">
-              Ver portal de trabajo
-            </Link>
+    <WamaShell>
+      <section className="mx-auto max-w-7xl px-6 py-20">
+        <div className="max-w-3xl">
+          <div className="mb-6 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
+            Catálogo modular
           </div>
+
+          <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-7xl">
+            Activa solo los módulos que tu empresa necesita.
+          </h1>
+
+          <p className="mt-6 text-lg leading-8 text-[#C4C7CC]">
+            WAMA funciona como una plataforma modular. Puedes comenzar con
+            operación, ventas o finanzas, y luego escalar hacia una visión
+            ejecutiva completa de la empresa.
+          </p>
         </div>
-      </section>
 
-      <section className="modules-section">
-        <div className="modules-grid">
+        <div className="mt-14 grid gap-6 lg:grid-cols-3">
           {modules.map((module) => (
-            <article className="module-sales-card" key={module.title}>
-              <div className="module-card-header">
-                <span>{module.area}</span>
-                <strong>{module.price}</strong>
+            <WamaCard key={module.name} className="flex flex-col p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#00E5D6]">
+                    {module.category}
+                  </p>
+
+                  <h2 className="mt-4 text-3xl font-black text-[#F5F6F7]">
+                    {module.name}
+                  </h2>
+                </div>
+
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-semibold text-[#C4C7CC]">
+                  {module.status}
+                </span>
               </div>
 
-              <h2>{module.title}</h2>
+              <p className="mt-5 min-h-[120px] text-sm leading-7 text-[#C4C7CC]">
+                {module.description}
+              </p>
 
-              <div className="module-info-box">
-                <h3>Problema que resuelve</h3>
-                <p>{module.problem}</p>
-              </div>
-
-              <div className="module-info-box cyan">
-                <h3>Resultado esperado</h3>
-                <p>{module.result}</p>
-              </div>
-
-              <ul className="module-bullets">
-                {module.items.map((item) => (
-                  <li key={item}>{item}</li>
+              <div className="mt-6 grid gap-3">
+                {module.features.map((feature) => (
+                  <div
+                    key={feature}
+                    className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3 text-sm text-[#F5F6F7]"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-[#00E5D6]" />
+                    {feature}
+                  </div>
                 ))}
-              </ul>
-
-              <div className="module-card-actions">
-                <Link href={module.href} className="btn-dark">
-                  {module.cta}
-                </Link>
-                <Link href="/onboarding/sales-hub" className="btn-light">
-                  {module.secondary}
-                </Link>
               </div>
-            </article>
+
+              <div className="mt-8">
+                <WamaButton href={module.href} variant="secondary">
+                  Ver módulo
+                </WamaButton>
+              </div>
+            </WamaCard>
           ))}
         </div>
       </section>
-    </main>
+    </WamaShell>
   );
 }
