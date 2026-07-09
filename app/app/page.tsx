@@ -1,88 +1,135 @@
-import Link from "next/link";
-import WamaLogo from "../components/WamaLogo";
+import WamaShell from "../../src/components/brand/WamaShell";
+import WamaButton from "../../src/components/brand/WamaButton";
+import WamaCard from "../../src/components/brand/WamaCard";
 
 const modules = [
   {
-    label: "Operación",
-    title: "Operación WAMA",
-    subtitle: "Gestión diaria de alertas, casos y tareas",
+    name: "Operación",
     description:
-      "Administra alertas, solicitudes, responsables, evidencias, estados y seguimiento operacional.",
+      "Alertas, casos, responsables, evidencias, SLA y reportes operativos.",
     href: "/operacion",
-    accent: "#00E5D6",
+    status: "Activo",
+    metric: "18",
+    metricLabel: "alertas abiertas",
   },
   {
-    label: "Finanzas",
-    title: "Cuentas por pagar",
-    subtitle: "Conciliación y control financiero",
+    name: "Sales Hub",
     description:
-      "Carga documentos, cruza pagos, controla pendientes y genera reportes de gestión financiera.",
-    href: "/finanzas",
-    accent: "#F2A900",
-  },
-  {
-    label: "Sales Hub",
-    title: "Sales Hub",
-    subtitle: "CRM comercial y pipeline de negocios",
-    description:
-      "Gestiona target accounts, contactos, deals, propuestas, actividades y cierre de oportunidades.",
+      "Target accounts, contactos, deals, pipeline, propuestas y actividades.",
     href: "/sales-hub",
-    accent: "#FF684F",
+    status: "Demo funcional",
+    metric: "$128M",
+    metricLabel: "pipeline comercial",
+  },
+  {
+    name: "Finanzas",
+    description:
+      "Documentos, cartola, conciliación, pendientes y dashboard financiero.",
+    href: "/finanzas",
+    status: "Base funcional",
+    metric: "42",
+    metricLabel: "documentos pendientes",
+  },
+];
+
+const shortcuts = [
+  {
+    title: "Clientes",
+    href: "/clientes",
+    description: "Empresas, contactos y cuentas asociadas.",
+  },
+  {
+    title: "Usuarios",
+    href: "/usuarios",
+    description: "Roles, accesos y equipo interno.",
+  },
+  {
+    title: "Reportes",
+    href: "/reportes",
+    description: "Vista ejecutiva consolidada.",
   },
 ];
 
 export default function AppPortalPage() {
   return (
-    <main className="module-portal">
-      <section className="module-hero">
-        <div>
-          <div className="module-hero-logo">
-            <WamaLogo type="horizontal" variant="dark" size="md" />
-          </div>
-
-          <p className="eyebrow">Portal de módulos</p>
-
-          <h1>Selecciona tu módulo de trabajo</h1>
-
-          <p className="hero-copy">
-            WAMA opera como software modular: cada empresa activa los módulos que necesita y mantiene
-            separada la información operativa, comercial y financiera.
-          </p>
-        </div>
-
-        <aside className="session-card">
-          <span>Sesión activa</span>
-          <strong>Empresa demo</strong>
-          <p>Rol: owner</p>
-          <Link href="/" className="btn-dark">
-            Volver al sitio
-          </Link>
-        </aside>
-      </section>
-
-      <section className="module-stage">
-        {modules.map((module, index) => (
-          <article key={module.title} className={`module-card module-card-${index + 1}`}>
-            <div className="module-card-top">
-              <div className="module-icon" style={{ background: module.accent }}>
-                {index + 1}
-              </div>
-
-              <span className="module-pill">{module.label}</span>
+    <WamaShell>
+      <section className="mx-auto max-w-7xl px-6 py-14">
+        <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div>
+            <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
+              Portal interno
             </div>
 
-            <div className="module-line" style={{ background: module.accent }} />
+            <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-6xl">
+              Selecciona tu módulo de trabajo.
+            </h1>
 
-            <h2>{module.title}</h2>
-            <h3>{module.subtitle}</h3>
-            <p>{module.description}</p>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
+              WAMA separa la información por módulos para mantener orden,
+              trazabilidad y foco operativo, comercial y financiero.
+            </p>
+          </div>
 
-            <Link href={module.href} className="btn-dark">
-              Abrir módulo →
-            </Link>
-          </article>
-        ))}
+          <WamaButton href="/" variant="secondary">
+            Volver al sitio
+          </WamaButton>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-3">
+          {modules.map((module) => (
+            <WamaCard key={module.name} className="p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <span className="rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-3 py-1 text-xs font-bold text-[#00E5D6]">
+                    {module.status}
+                  </span>
+
+                  <h2 className="mt-5 text-3xl font-black text-[#F5F6F7]">
+                    {module.name}
+                  </h2>
+                </div>
+
+                <div className="text-right">
+                  <strong className="block text-3xl font-black text-[#F5F6F7]">
+                    {module.metric}
+                  </strong>
+                  <span className="text-xs text-[#C4C7CC]">
+                    {module.metricLabel}
+                  </span>
+                </div>
+              </div>
+
+              <p className="mt-5 min-h-[84px] text-sm leading-7 text-[#C4C7CC]">
+                {module.description}
+              </p>
+
+              <div className="mt-7">
+                <WamaButton href={module.href}>Abrir módulo</WamaButton>
+              </div>
+            </WamaCard>
+          ))}
+        </div>
+
+        <div className="mt-8 grid gap-5 md:grid-cols-3">
+          {shortcuts.map((shortcut) => (
+            <WamaCard key={shortcut.title} className="p-6">
+              <h3 className="text-2xl font-black text-[#F5F6F7]">
+                {shortcut.title}
+              </h3>
+
+              <p className="mt-3 min-h-[56px] text-sm leading-7 text-[#C4C7CC]">
+                {shortcut.description}
+              </p>
+
+              <div className="mt-5">
+                <WamaButton href={shortcut.href} variant="secondary">
+                  Abrir
+                </WamaButton>
+              </div>
+            </WamaCard>
+          ))}
+        </div>
       </section>
-    </main>
+    </WamaShell>
   );
 }

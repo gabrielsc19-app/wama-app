@@ -1,78 +1,179 @@
-"use client";
+import WamaShell from "../../src/components/brand/WamaShell";
+import WamaButton from "../../src/components/brand/WamaButton";
+import WamaCard from "../../src/components/brand/WamaCard";
 
-import { useState } from "react";
-import WamaAppShell from "../components/WamaAppShell";
-
-type CaseRow = {
-  id: number;
-  title: string;
-  location: string;
-  area: string;
-  priority: string;
-  status: string;
-  history: string[];
-};
-
-const initialCases: CaseRow[] = [
-  { id: 1, title: "Filtración en pasillo principal", location: "Sucursal Centro", area: "Mantención", priority: "Alta", status: "Nuevo", history: ["Caso creado", "Mantención notificada"] },
-  { id: 2, title: "Reposición de señalética", location: "Sucursal Norte", area: "Operaciones", priority: "Media", status: "En proceso", history: ["Caso creado", "Operaciones tomó el caso"] },
-  { id: 3, title: "Revisión cierre de bodega", location: "Sucursal Costanera", area: "Seguridad", priority: "Media", status: "Cerrado", history: ["Caso creado", "Seguridad validó cierre", "Caso cerrado"] },
+const kpis = [
+  {
+    label: "Alertas abiertas",
+    value: "18",
+    detail: "Casos en seguimiento",
+  },
+  {
+    label: "SLA cumplimiento",
+    value: "94%",
+    detail: "Promedio últimos 30 días",
+  },
+  {
+    label: "Casos críticos",
+    value: "3",
+    detail: "Requieren atención",
+  },
+  {
+    label: "Evidencias",
+    value: "126",
+    detail: "Fotos y respaldos",
+  },
 ];
 
-export default function OperacionPage() {
-  const [cases, setCases] = useState(initialCases);
-  const [title, setTitle] = useState("");
-  const [location, setLocation] = useState("Sucursal Centro");
-  const [area, setArea] = useState("Mantención");
-  const [priority, setPriority] = useState("Media");
+const cases = [
+  {
+    title: "Filtración en zona común",
+    area: "Mantención",
+    status: "En proceso",
+    responsible: "Equipo operativo",
+    priority: "Alta",
+  },
+  {
+    title: "Solicitud de apoyo en local",
+    area: "Seguridad",
+    status: "Asignado",
+    responsible: "Supervisor turno",
+    priority: "Media",
+  },
+  {
+    title: "Revisión de limpieza programada",
+    area: "Aseo",
+    status: "Pendiente",
+    responsible: "Coordinación",
+    priority: "Baja",
+  },
+];
 
-  function addCase() {
-    if (!title.trim()) return;
-    setCases((current) => [
-      { id: Date.now(), title: title.trim(), location, area, priority, status: "Nuevo", history: ["Caso creado", `${area} notificada`] },
-      ...current,
-    ]);
-    setTitle("");
-  }
+const flows = [
+  "Crear alerta o caso",
+  "Asignar responsable",
+  "Agregar evidencia",
+  "Controlar SLA",
+  "Cerrar con trazabilidad",
+];
 
-  function changeStatus(id: number, status: string) {
-    setCases((current) => current.map((item) => item.id === id ? { ...item, status, history: [...item.history, `Estado actualizado a ${status}`] } : item));
-  }
-
+export default function OperationPage() {
   return (
-    <WamaAppShell title="Operación" subtitle="Crea, asigna, toma y cierra alertas operativas con trazabilidad tipo FixLoop.">
-      <section className="app-grid">
-        <div className="panel">
-          <h2>Crear alerta</h2>
-          <div className="form-grid two">
-            <div className="field"><label>Título</label><input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: Falla de acceso principal" /></div>
-            <div className="field"><label>Ubicación</label><select value={location} onChange={(e) => setLocation(e.target.value)}><option>Sucursal Centro</option><option>Sucursal Norte</option><option>Sucursal Costanera</option></select></div>
-            <div className="field"><label>Área responsable</label><select value={area} onChange={(e) => setArea(e.target.value)}><option>Mantención</option><option>Operaciones</option><option>Seguridad</option><option>Aseo</option><option>Comercial</option></select></div>
-            <div className="field"><label>Prioridad</label><select value={priority} onChange={(e) => setPriority(e.target.value)}><option>Baja</option><option>Media</option><option>Alta</option><option>Crítica</option></select></div>
+    <WamaShell>
+      <section className="mx-auto max-w-7xl px-6 py-14">
+        <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+          <div>
+            <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
+              Módulo Operación
+            </div>
+
+            <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-6xl">
+              Alertas, casos y responsables en una sola vista.
+            </h1>
+
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
+              Controla la gestión diaria con alertas operativas, asignación de
+              responsables, evidencia, SLA y reportes ejecutivos.
+            </p>
           </div>
-          <button className="btn-primary" style={{ marginTop: 14 }} onClick={addCase}>Crear alerta</button>
+
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <WamaButton href="/app" variant="secondary">
+              Volver al portal
+            </WamaButton>
+
+            <WamaButton href="/reportes">Ver reportes</WamaButton>
+          </div>
         </div>
 
-        <div className="panel">
-          <h2>Casos operativos</h2>
-          <div className="rows-list">
-            {cases.map((item) => (
-              <div key={item.id} className="alert-row">
-                <div>
-                  <div className="row-title">{item.title}</div>
-                  <div className="row-meta">{item.location} · {item.area} · {item.priority}</div>
-                  <div className="timeline-mini">{item.history.join(" → ")}</div>
-                </div>
-                <div className="row-actions">
-                  <span className="badge cyan">{item.status}</span>
-                  {item.status !== "En proceso" && <button className="btn-ghost" onClick={() => changeStatus(item.id, "En proceso")}>Tomar</button>}
-                  {item.status !== "Cerrado" && <button className="btn-ghost" onClick={() => changeStatus(item.id, "Cerrado")}>Cerrar</button>}
-                </div>
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          {kpis.map((kpi) => (
+            <WamaCard key={kpi.label} className="p-6">
+              <p className="text-sm text-[#C4C7CC]">{kpi.label}</p>
+
+              <strong className="mt-3 block text-4xl font-black text-[#F5F6F7]">
+                {kpi.value}
+              </strong>
+
+              <p className="mt-3 text-sm text-[#C4C7CC]">{kpi.detail}</p>
+            </WamaCard>
+          ))}
+        </div>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <WamaCard className="p-6">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
+                  Casos activos
+                </p>
+
+                <h2 className="mt-2 text-2xl font-black text-[#F5F6F7]">
+                  Seguimiento operativo
+                </h2>
               </div>
-            ))}
-          </div>
+
+              <span className="rounded-full bg-[#00E5D6]/15 px-3 py-1 text-xs font-bold text-[#00E5D6]">
+                DEMO
+              </span>
+            </div>
+
+            <div className="grid gap-4">
+              {cases.map((item) => (
+                <div
+                  key={item.title}
+                  className="grid gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 lg:grid-cols-[1fr_auto]"
+                >
+                  <div>
+                    <h3 className="font-bold text-[#F5F6F7]">{item.title}</h3>
+
+                    <p className="mt-1 text-sm text-[#C4C7CC]">
+                      {item.area} · {item.responsible}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                    <span className="rounded-full border border-white/10 px-3 py-2 text-xs text-[#C4C7CC]">
+                      {item.priority}
+                    </span>
+
+                    <span className="rounded-full bg-[#00E5D6]/15 px-3 py-2 text-xs font-bold text-[#00E5D6]">
+                      {item.status}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </WamaCard>
+
+          <WamaCard className="p-6">
+            <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
+              Flujo WAMA
+            </p>
+
+            <h2 className="mt-2 text-2xl font-black text-[#F5F6F7]">
+              Gestión con trazabilidad
+            </h2>
+
+            <div className="mt-6 grid gap-3">
+              {flows.map((flow, index) => (
+                <div
+                  key={flow}
+                  className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6]">
+                    {index + 1}
+                  </span>
+
+                  <span className="text-sm font-semibold text-[#F5F6F7]">
+                    {flow}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </WamaCard>
         </div>
       </section>
-    </WamaAppShell>
+    </WamaShell>
   );
 }
