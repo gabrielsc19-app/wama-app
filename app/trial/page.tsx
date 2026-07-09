@@ -58,7 +58,7 @@ export default function TrialPage() {
     localStorage.setItem("wamaTrialCompany", JSON.stringify(trialData));
 
     if (selectedModule === "Sales Hub") {
-      router.push("/sales-hub");
+      router.push("/acceso/sales-hub");
       return;
     }
 
@@ -129,6 +129,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Nombre de empresa
                 </label>
+
                 <input
                   value={companyName}
                   onChange={(event) => setCompanyName(event.target.value)}
@@ -142,6 +143,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   RUT empresa
                 </label>
+
                 <input
                   value={companyRut}
                   onChange={(event) => setCompanyRut(event.target.value)}
@@ -154,6 +156,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Rubro
                 </label>
+
                 <input
                   value={industry}
                   onChange={(event) => setIndustry(event.target.value)}
@@ -166,6 +169,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Responsable
                 </label>
+
                 <input
                   value={contactName}
                   onChange={(event) => setContactName(event.target.value)}
@@ -178,6 +182,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Correo
                 </label>
+
                 <input
                   type="email"
                   value={contactEmail}
@@ -191,6 +196,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Teléfono
                 </label>
+
                 <input
                   value={contactPhone}
                   onChange={(event) => setContactPhone(event.target.value)}
@@ -203,6 +209,7 @@ export default function TrialPage() {
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Módulo inicial
                 </label>
+
                 <select
                   value={selectedModule}
                   onChange={(event) => setSelectedModule(event.target.value)}
@@ -221,9 +228,11 @@ export default function TrialPage() {
 
                 <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-[#00E5D6]/35 bg-[#00E5D6]/5 px-4 py-4 text-sm text-[#C4C7CC]">
                   <span>Subir logo PNG, JPG o SVG</span>
+
                   <span className="rounded-full bg-[#00E5D6]/15 px-3 py-1 text-xs font-bold text-[#00E5D6]">
                     Elegir archivo
                   </span>
+
                   <input
                     type="file"
                     accept="image/png,image/jpeg,image/svg+xml"
@@ -237,7 +246,7 @@ export default function TrialPage() {
                 type="submit"
                 className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-semibold text-[#0B0C0E] transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,229,214,0.35)]"
               >
-                Crear prueba gratis
+                Activar prueba gratis
               </button>
             </form>
           </WamaCard>
@@ -265,9 +274,11 @@ export default function TrialPage() {
                   <p className="text-sm text-[#C4C7CC]">
                     Vista previa del portal
                   </p>
+
                   <h3 className="text-2xl font-black text-[#F5F6F7]">
                     {companyName || "Empresa demo"}
                   </h3>
+
                   <p className="mt-1 text-sm font-semibold text-[#00E5D6]">
                     {selectedModule} by WAMA · Prueba gratis 14 días
                   </p>
@@ -275,7 +286,7 @@ export default function TrialPage() {
               </div>
 
               <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-5 py-4 text-sm text-[#F5F6F7]">
-                Al crear la prueba, estos datos se usarán para personalizar el
+                Al activar la prueba, estos datos se usarán para personalizar el
                 portal del cliente.
               </div>
             </div>
