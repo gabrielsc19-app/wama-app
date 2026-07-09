@@ -1,6 +1,24 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import WamaShell from "../../src/components/brand/WamaShell";
 import WamaButton from "../../src/components/brand/WamaButton";
 import WamaCard from "../../src/components/brand/WamaCard";
+
+type TrialCompany = {
+  companyName: string;
+  companyRut?: string;
+  industry?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  selectedModule?: string;
+  companyLogo?: string | null;
+  status?: string;
+  trialStartedAt?: string;
+  trialEndsAt?: string;
+  trialDaysRemaining?: number;
+};
 
 const kpis = [
   {
@@ -108,20 +126,64 @@ const pipelineStages = [
   },
 ];
 
+function getRemainingDays(trialEndsAt?: string) {
+  if (!trialEndsAt) return 14;
+
+  const today = new Date();
+  const endDate = new Date(trialEndsAt);
+  const diff = endDate.getTime() - today.getTime();
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+  return Math.max(days, 0);
+}
+
 export default function SalesHubPage() {
+  const [trialCompany, setTrialCompany] = useState<TrialCompany>({
+    companyName: "Empresa Demo",
+    companyLogo: null,
+    status: "trial",
+    trialDaysRemaining: 14,
+  });
+
+  useEffect(() => {
+    const storedTrial = localStorage.getItem("wamaTrialCompany");
+
+    if (!storedTrial) return;
+
+    try {
+      const parsedTrial = JSON.parse(storedTrial) as TrialCompany;
+      setTrialCompany(parsedTrial);
+    } catch {
+      localStorage.removeItem("wamaTrialCompany");
+    }
+  }, []);
+
+  const remainingDays = getRemainingDays(trialCompany.trialEndsAt);
+  const companyInitial = trialCompany.companyName
+    ? trialCompany.companyName.slice(0, 1).toUpperCase()
+    : "E";
+
   return (
     <WamaShell>
       <section className="mx-auto max-w-7xl px-6 py-14">
         <WamaCard className="mb-8 p-6">
           <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
             <div className="flex items-center gap-5">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-2xl font-black text-[#00E5D6]">
-                E
+              <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-2xl font-black text-[#00E5D6]">
+                {trialCompany.companyLogo ? (
+                  <img
+                    src={trialCompany.companyLogo}
+                    alt={`Logo ${trialCompany.companyName}`}
+                    className="h-full w-full object-contain p-2"
+                  />
+                ) : (
+                  companyInitial
+                )}
               </div>
 
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                  Empresa Demo
+                  {trialCompany.companyName || "Empresa Demo"}
                 </p>
 
                 <h1 className="mt-1 text-3xl font-black text-[#F5F6F7] md:text-4xl">
@@ -131,6 +193,13 @@ export default function SalesHubPage() {
                 <p className="mt-2 text-sm text-[#C4C7CC]">
                   Portal comercial personalizado para la empresa cliente.
                 </p>
+
+                {(trialCompany.industry || trialCompany.companyRut) && (
+                  <p className="mt-2 text-xs text-[#C4C7CC]/80">
+                    {trialCompany.industry || "Rubro no informado"} ·{" "}
+                    {trialCompany.companyRut || "RUT no informado"}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -140,7 +209,7 @@ export default function SalesHubPage() {
                   Trial activo
                 </p>
                 <p className="mt-1 text-sm font-bold text-[#F5F6F7]">
-                  14 días restantes
+                  {remainingDays} días restantes
                 </p>
               </div>
 
@@ -171,8 +240,8 @@ export default function SalesHubPage() {
               Onboarding
             </WamaButton>
 
-            <WamaButton href="/modulos/sales-hub" variant="secondary">
-              Página comercial
+            <WamaButton href="/trial" variant="secondary">
+              Editar empresa
             </WamaButton>
           </div>
         </div>
@@ -340,8 +409,8 @@ export default function SalesHubPage() {
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[#C4C7CC]">
                 La empresa puede usar Sales Hub durante 14 días. Al finalizar la
                 prueba, el acceso completo requiere activar una licencia mensual
-                o anual. En esta versión, la activación se gestiona comercialmente
-                mediante factura, transferencia o link de pago.
+                o anual. En esta versión, la activación se gestiona
+                comercialmente mediante factura, transferencia o link de pago.
               </p>
             </div>
 

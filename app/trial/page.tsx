@@ -1,15 +1,22 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import WamaShell from "../../src/components/brand/WamaShell";
-import WamaButton from "../../src/components/brand/WamaButton";
 import WamaCard from "../../src/components/brand/WamaCard";
 
 const modules = ["Sales Hub", "Operación", "Finanzas"];
 
 export default function TrialPage() {
+  const router = useRouter();
+
   const [companyLogo, setCompanyLogo] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState("Empresa demo");
+  const [companyRut, setCompanyRut] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [contactName, setContactName] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
   const [selectedModule, setSelectedModule] = useState("Sales Hub");
 
   function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -17,8 +24,55 @@ export default function TrialPage() {
 
     if (!file) return;
 
-    const imageUrl = URL.createObjectURL(file);
-    setCompanyLogo(imageUrl);
+    const reader = new FileReader();
+
+    reader.onloadend = () => {
+      setCompanyLogo(reader.result as string);
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  function handleCreateTrial(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const today = new Date();
+    const trialEndsAt = new Date(today);
+    trialEndsAt.setDate(today.getDate() + 14);
+
+    const trialData = {
+      companyName: companyName || "Empresa demo",
+      companyRut,
+      industry,
+      contactName,
+      contactEmail,
+      contactPhone,
+      selectedModule,
+      companyLogo,
+      status: "trial",
+      trialStartedAt: today.toISOString(),
+      trialEndsAt: trialEndsAt.toISOString(),
+      trialDaysRemaining: 14,
+    };
+
+    localStorage.setItem("wamaTrialCompany", JSON.stringify(trialData));
+
+    if (selectedModule === "Sales Hub") {
+      router.push("/sales-hub");
+      return;
+    }
+
+    if (selectedModule === "Operación") {
+      router.push("/operacion");
+      return;
+    }
+
+    if (selectedModule === "Finanzas") {
+      router.push("/finanzas");
+      return;
+    }
+
+    router.push("/app");
   }
 
   return (
@@ -70,7 +124,7 @@ export default function TrialPage() {
               </h2>
             </div>
 
-            <form className="grid gap-5">
+            <form className="grid gap-5" onSubmit={handleCreateTrial}>
               <div className="grid gap-2">
                 <label className="text-sm font-semibold text-[#F5F6F7]">
                   Nombre de empresa
@@ -78,8 +132,9 @@ export default function TrialPage() {
                 <input
                   value={companyName}
                   onChange={(event) => setCompanyName(event.target.value)}
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="Ej: Empresa Demo SpA"
+                  required
                 />
               </div>
 
@@ -88,7 +143,9 @@ export default function TrialPage() {
                   RUT empresa
                 </label>
                 <input
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  value={companyRut}
+                  onChange={(event) => setCompanyRut(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="Ej: 76.123.456-7"
                 />
               </div>
@@ -98,7 +155,9 @@ export default function TrialPage() {
                   Rubro
                 </label>
                 <input
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  value={industry}
+                  onChange={(event) => setIndustry(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="Ej: Retail, inmobiliaria, servicios, industrial"
                 />
               </div>
@@ -108,7 +167,9 @@ export default function TrialPage() {
                   Responsable
                 </label>
                 <input
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  value={contactName}
+                  onChange={(event) => setContactName(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="Nombre del contacto principal"
                 />
               </div>
@@ -119,7 +180,9 @@ export default function TrialPage() {
                 </label>
                 <input
                   type="email"
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  value={contactEmail}
+                  onChange={(event) => setContactEmail(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="correo@empresa.cl"
                 />
               </div>
@@ -129,7 +192,9 @@ export default function TrialPage() {
                   Teléfono
                 </label>
                 <input
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                  value={contactPhone}
+                  onChange={(event) => setContactPhone(event.target.value)}
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
                   placeholder="+56 9 1234 5678"
                 />
               </div>
@@ -141,7 +206,7 @@ export default function TrialPage() {
                 <select
                   value={selectedModule}
                   onChange={(event) => setSelectedModule(event.target.value)}
-                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none ring-0 focus:border-[#00E5D6]/60"
+                  className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none focus:border-[#00E5D6]/60"
                 >
                   {modules.map((module) => (
                     <option key={module}>{module}</option>
@@ -168,9 +233,12 @@ export default function TrialPage() {
                 </label>
               </div>
 
-              <WamaButton href="/onboarding/sales-hub">
+              <button
+                type="submit"
+                className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-semibold text-[#0B0C0E] transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,229,214,0.35)]"
+              >
                 Crear prueba gratis
-              </WamaButton>
+              </button>
             </form>
           </WamaCard>
         </div>
@@ -207,7 +275,8 @@ export default function TrialPage() {
               </div>
 
               <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-5 py-4 text-sm text-[#F5F6F7]">
-                El cliente verá su empresa configurada dentro del portal.
+                Al crear la prueba, estos datos se usarán para personalizar el
+                portal del cliente.
               </div>
             </div>
           </WamaCard>
