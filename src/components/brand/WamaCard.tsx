@@ -1,22 +1,14 @@
-import { ReactNode } from "react";
-
 type WamaCardProps = {
-  children: ReactNode;
+  children: React.ReactNode;
   className?: string;
 };
 
 export default function WamaCard({ children, className = "" }: WamaCardProps) {
   return (
     <div
-      className={`
-        rounded-3xl border border-white/10
-        bg-white/[0.035]
-        shadow-[0_20px_80px_rgba(0,0,0,0.35)]
-        backdrop-blur-xl
-        ${className}
-      `}
+      className={`wama-card-motion rounded-[2rem] border border-white/10 bg-white/[0.035] shadow-[0_24px_80px_rgba(0,0,0,0.20)] ${className}`}
     >
-      {children}
+      <div className="relative z-10">{children}</div>
     </div>
   );
 }

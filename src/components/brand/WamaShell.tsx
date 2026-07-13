@@ -3,8 +3,15 @@ import WamaLogo from "./WamaLogo";
 
 export default function WamaShell({ children }: { children: React.ReactNode }) {
   return (
-    <main className="min-h-screen bg-[#0B0C0E] text-[#F5F6F7]">
-      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0C0E]/90 backdrop-blur-xl">
+    <main className="relative min-h-screen overflow-hidden bg-[#0B0C0E] text-[#F5F6F7]">
+      <div className="pointer-events-none fixed inset-0 z-0">
+        <div className="wama-hero-grid absolute inset-0 opacity-40" />
+        <div className="wama-orb wama-glow left-[12%] top-[12%] h-72 w-72 bg-[#00E5D6]/12" />
+        <div className="wama-orb wama-glow right-[8%] top-[30%] h-80 w-80 bg-[#00E5D6]/10" />
+        <div className="wama-orb bottom-[10%] left-[35%] h-72 w-72 bg-white/5" />
+      </div>
+
+      <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0C0E]/86 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center">
             <WamaLogo />
@@ -26,14 +33,14 @@ export default function WamaShell({ children }: { children: React.ReactNode }) {
 
           <Link
             href="/trial"
-            className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:shadow-[0_0_28px_rgba(0,229,214,0.35)]"
+            className="wama-button-motion rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:shadow-[0_0_28px_rgba(0,229,214,0.35)]"
           >
             Prueba gratis
           </Link>
         </div>
       </header>
 
-      {children}
+      <div className="relative z-10">{children}</div>
     </main>
   );
 }

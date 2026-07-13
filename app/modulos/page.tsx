@@ -49,10 +49,9 @@ export default function ModulesPage() {
   return (
     <WamaShell>
       <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(0,229,214,0.20),transparent_45%)]" />
         <div className="relative mx-auto max-w-7xl px-6 py-20">
           <div className="mb-14 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
-            <div>
+            <div className="wama-fade-up">
               <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
                 Módulos WAMA
               </div>
@@ -79,9 +78,9 @@ export default function ModulesPage() {
             {journey.map((item, index) => (
               <div
                 key={item}
-                className="group rounded-3xl border border-white/10 bg-white/[0.035] p-5 transition duration-300 hover:-translate-y-1 hover:border-[#00E5D6]/35 hover:bg-[#00E5D6]/5"
+                className="wama-card-motion rounded-3xl border border-white/10 bg-white/[0.035] p-5"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6] transition group-hover:scale-110">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6]">
                   {index + 1}
                 </span>
                 <p className="mt-4 text-sm font-bold text-[#F5F6F7]">{item}</p>
@@ -90,14 +89,12 @@ export default function ModulesPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
-            {modules.map((module, index) => (
+            {modules.map((module) => (
               <article
                 key={module.name}
-                className="group relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#111318] p-7 shadow-[0_24px_80px_rgba(0,0,0,0.24)] transition duration-300 hover:-translate-y-2 hover:border-[#00E5D6]/40 hover:shadow-[0_28px_90px_rgba(0,229,214,0.12)]"
+                className="wama-card-motion rounded-[2rem] border border-white/10 bg-[#111318] p-7 shadow-[0_24px_80px_rgba(0,0,0,0.24)]"
               >
-                <div className="absolute inset-0 opacity-0 transition duration-500 group-hover:opacity-100 bg-[radial-gradient(circle_at_50%_0%,rgba(0,229,214,0.16),transparent_55%)]" />
-
-                <div className="relative">
+                <div className="relative z-10">
                   <div className="mb-7 flex items-start justify-between gap-4">
                     <div>
                       <p className="text-sm font-black uppercase tracking-[0.25em] text-[#00E5D6]">
@@ -131,7 +128,7 @@ export default function ModulesPage() {
 
                     <div className="h-2 overflow-hidden rounded-full bg-white/10">
                       <div
-                        className="h-2 animate-[wamaModuleGrow_1.2s_ease-out] rounded-full bg-[#00E5D6]"
+                        className="wama-progress-fill h-2 rounded-full bg-[#00E5D6]"
                         style={{ width: module.score }}
                       />
                     </div>
@@ -141,7 +138,7 @@ export default function ModulesPage() {
                     {module.metrics.map((item) => (
                       <div
                         key={item}
-                        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-[#F5F6F7] transition group-hover:border-[#00E5D6]/20"
+                        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-[#F5F6F7]"
                       >
                         <span className="h-2 w-2 rounded-full bg-[#00E5D6]" />
                         {item}
@@ -171,9 +168,8 @@ export default function ModulesPage() {
                 </h2>
 
                 <p className="mt-5 text-base leading-7 text-[#C4C7CC]">
-                  La navegación debe ser simple: el usuario entra a su portal,
-                  ve sus módulos activos y trabaja. Sin perderse en menús
-                  innecesarios.
+                  El usuario entra a su portal, ve sus módulos activos y trabaja
+                  sin perderse en menús innecesarios.
                 </p>
               </div>
 
@@ -181,7 +177,7 @@ export default function ModulesPage() {
                 {modules.map((module, index) => (
                   <div
                     key={module.name}
-                    className="animate-[wamaFloatSoft_4s_ease-in-out_infinite] rounded-3xl border border-white/10 bg-white/[0.04] p-5"
+                    className="wama-float rounded-3xl border border-white/10 bg-white/[0.04] p-5"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
@@ -208,18 +204,6 @@ export default function ModulesPage() {
               </div>
             </div>
           </div>
-
-          <style>{`
-            @keyframes wamaModuleGrow {
-              from { width: 0; opacity: 0.4; }
-              to { opacity: 1; }
-            }
-
-            @keyframes wamaFloatSoft {
-              0%, 100% { transform: translateY(0); }
-              50% { transform: translateY(-6px); }
-            }
-          `}</style>
         </div>
       </section>
     </WamaShell>

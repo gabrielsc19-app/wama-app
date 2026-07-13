@@ -31,3 +31,183 @@ a {
 button {
   font-family: inherit;
 }
+/* ================================
+   WAMA MOTION SYSTEM
+   ================================ */
+
+@keyframes wamaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wamaFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes wamaGlow {
+  0%, 100% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes wamaLine {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes wamaGrowWidth {
+  from {
+    width: 0;
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes wamaPulseSoft {
+  0%, 100% {
+    box-shadow: 0 0 0 rgba(0, 229, 214, 0);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(0, 229, 214, 0.22);
+  }
+}
+
+.wama-fade-up {
+  animation: wamaFadeUp 0.7s ease-out both;
+}
+
+.wama-float {
+  animation: wamaFloat 5s ease-in-out infinite;
+}
+
+.wama-glow {
+  animation: wamaGlow 5s ease-in-out infinite;
+}
+
+.wama-pulse-soft {
+  animation: wamaPulseSoft 2.8s ease-in-out infinite;
+}
+
+.wama-card-motion {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 240ms ease,
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    background 240ms ease;
+}
+
+.wama-card-motion::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(0, 229, 214, 0.14), transparent 45%),
+    linear-gradient(120deg, transparent, rgba(255,255,255,0.05), transparent);
+  opacity: 0;
+  transition: opacity 260ms ease;
+  pointer-events: none;
+}
+
+.wama-card-motion:hover {
+  transform: translateY(-6px);
+  border-color: rgba(0, 229, 214, 0.38);
+  box-shadow: 0 28px 90px rgba(0, 229, 214, 0.10);
+}
+
+.wama-card-motion:hover::before {
+  opacity: 1;
+}
+
+.wama-button-motion {
+  position: relative;
+  overflow: hidden;
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease,
+    background 200ms ease;
+}
+
+.wama-button-motion:hover {
+  transform: translateY(-2px);
+}
+
+.wama-button-motion::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -80%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255,255,255,0.35),
+    transparent
+  );
+  transform: skewX(-20deg);
+  opacity: 0;
+}
+
+.wama-button-motion:hover::after {
+  opacity: 1;
+  animation: wamaLine 0.85s ease;
+}
+
+.wama-hero-grid {
+  background-image:
+    linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(circle at center, black, transparent 72%);
+}
+
+.wama-orb {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  pointer-events: none;
+}
+
+.wama-progress-fill {
+  animation: wamaGrowWidth 1.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wama-fade-up,
+  .wama-float,
+  .wama-glow,
+  .wama-pulse-soft,
+  .wama-progress-fill {
+    animation: none;
+  }
+
+  .wama-card-motion,
+  .wama-button-motion {
+    transition: none;
+  }
+}
