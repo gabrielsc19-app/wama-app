@@ -8,11 +8,14 @@ type ModuleLandingProps = {
   subtitle: string;
   description: string;
   primaryCta?: string;
+  secondaryCta?: string;
+  secondaryHref?: string;
   accentLabel: string;
   selfServiceTitle: string;
   selfServiceDescription: string;
-  aiTitle: string;
-  aiDescription: string;
+  guideTitle: string;
+  guideDescription: string;
+  guidePrompts: string[];
   features: string[];
   workflow: string[];
   metrics: {
@@ -34,9 +37,14 @@ export default function WamaModuleLanding({
   subtitle,
   description,
   primaryCta = "Activar prueba gratis",
+  secondaryCta = "Acceso portal",
+  secondaryHref = "/login",
   accentLabel,
   selfServiceTitle,
   selfServiceDescription,
+  guideTitle,
+  guideDescription,
+  guidePrompts,
   features,
   workflow,
   metrics,
@@ -67,8 +75,8 @@ export default function WamaModuleLanding({
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <WamaButton href="/trial">{primaryCta}</WamaButton>
 
-                <WamaButton href="/login" variant="secondary">
-                  Acceso portal
+                <WamaButton href={secondaryHref} variant="secondary">
+                  {secondaryCta}
                 </WamaButton>
               </div>
             </div>
@@ -169,47 +177,45 @@ export default function WamaModuleLanding({
             </WamaCard>
 
             <WamaCard className="p-7">
-              <div className="flex h-full flex-col justify-between">
-                <div>
-                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                    WAMA te acompaña
-                  </p>
+              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
+                Asistente WAMA
+              </p>
 
-                  <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
-                    Activa, carga tus datos y comienza a trabajar.
-                  </h2>
+              <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
+                {guideTitle}
+              </h2>
 
-                  <p className="mt-5 text-base leading-8 text-[#C4C7CC]">
-                    El asistente te guía durante la prueba: qué datos cargar,
-                    qué módulo activar y cómo avanzar dentro del portal.
-                  </p>
+              <p className="mt-5 text-base leading-8 text-[#C4C7CC]">
+                {guideDescription}
+              </p>
+
+              <div className="mt-8 rounded-[2rem] border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-5">
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">
+                    W
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-black text-[#F5F6F7]">
+                      Hola, soy WAMA.
+                    </p>
+
+                    <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
+                      Puedo acompañarte a configurar, resolver dudas y avanzar
+                      dentro del módulo.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="mt-8 rounded-[2rem] border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-5">
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">
-                      W
+                <div className="mt-5 grid gap-3">
+                  {guidePrompts.map((prompt) => (
+                    <div
+                      key={prompt}
+                      className="rounded-2xl border border-white/10 bg-[#0B0C0E]/70 p-4 text-sm font-semibold text-[#F5F6F7]"
+                    >
+                      {prompt}
                     </div>
-
-                    <div>
-                      <p className="text-sm font-black text-[#F5F6F7]">
-                        Hola, soy WAMA.
-                      </p>
-
-                      <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
-                        Te ayudo a configurar tu prueba gratis y a entender qué
-                        necesitas para comenzar.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mt-5 grid gap-3">
-                    <WamaButton href="/trial">Comenzar prueba gratis</WamaButton>
-
-                    <WamaButton href="/modulos" variant="secondary">
-                      Explorar módulos
-                    </WamaButton>
-                  </div>
+                  ))}
                 </div>
               </div>
             </WamaCard>

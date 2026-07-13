@@ -7,11 +7,19 @@ export default function FinanceModulePage() {
       title="Ordena documentos, pagos y conciliación."
       subtitle="Control financiero simple para reducir pendientes y errores."
       description="Finanzas WAMA permite cargar documentos, validar cartolas, controlar pagos pendientes, revisar conciliación y generar reportes claros para la toma de decisiones."
+      primaryCta="Activar Finanzas"
+      secondaryCta="Hablar con WAMA"
+      secondaryHref="/trial"
       accentLabel="Control financiero"
       selfServiceTitle="El equipo puede cargar y validar información financiera."
       selfServiceDescription="La empresa puede subir documentos, revisar pendientes, marcar pagos, validar información y mantener control de su flujo financiero sin depender de archivos dispersos."
-      aiTitle="IA para detectar pendientes y resumir riesgos."
-      aiDescription="El Asistente WAMA puede ayudar a identificar documentos sin validar, pagos pendientes, inconsistencias y prioridades financieras antes del cierre semanal."
+      guideTitle="Te ayudo a detectar pendientes."
+      guideDescription="En Finanzas, WAMA acompaña al equipo para identificar documentos sin validar, pagos pendientes, diferencias de cartola y prioridades de cierre."
+      guidePrompts={[
+        "¿Qué documentos están pendientes?",
+        "¿Qué pagos faltan por validar?",
+        "¿Dónde hay diferencias de conciliación?",
+      ]}
       features={[
         "Carga de documentos",
         "Control de pendientes",

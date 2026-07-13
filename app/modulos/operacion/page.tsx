@@ -7,11 +7,19 @@ export default function OperationModulePage() {
       title="Controla alertas, casos y responsables."
       subtitle="Gestión operativa diaria con trazabilidad y evidencia."
       description="Operación WAMA permite registrar alertas, asignar responsables, controlar SLA, adjuntar evidencias y mantener visibilidad sobre lo que ocurre en terreno."
+      primaryCta="Activar Operación"
+      secondaryCta="Hablar con WAMA"
+      secondaryHref="/trial"
       accentLabel="Control operativo"
       selfServiceTitle="Cada equipo puede gestionar sus propios casos."
       selfServiceDescription="Los usuarios pueden reportar, asignar, responder y cerrar casos desde su portal. La empresa mantiene trazabilidad sin depender de planillas, mensajes sueltos o reportes manuales."
-      aiTitle="IA para priorizar alertas y resolver más rápido."
-      aiDescription="El Asistente WAMA puede ayudar a identificar casos vencidos, sugerir responsables, resumir evidencia y orientar al equipo sobre qué revisar primero."
+      guideTitle="Te ayudo a resolver y priorizar."
+      guideDescription="En Operación, WAMA funciona como apoyo para revisar alertas, detectar casos atrasados, orientar responsables y ordenar prioridades."
+      guidePrompts={[
+        "¿Qué casos están fuera de plazo?",
+        "¿Quién debe tomar esta alerta?",
+        "¿Qué debería revisar primero el equipo?",
+      ]}
       features={[
         "Alertas y casos",
         "Responsables por área",
