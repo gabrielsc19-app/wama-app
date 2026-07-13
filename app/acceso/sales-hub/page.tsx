@@ -71,9 +71,8 @@ export default function SalesHubAccessPage() {
 
           <p className="mt-6 text-lg leading-8 text-[#C4C7CC]">
             La empresa ya fue configurada para comenzar una prueba gratuita de
-            14 días. Ahora puedes acceder al software, revisar el canvas inicial
-            del módulo y luego entrar al CRM para cargar negocios, contactos y
-            oportunidades comerciales.
+            14 días. Para ingresar al software, el usuario administrador debe
+            acceder por la pantalla de login con el correo registrado.
           </p>
         </div>
 
@@ -110,13 +109,13 @@ export default function SalesHubAccessPage() {
 
             <div className="rounded-3xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-6 py-5 text-left">
               <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                Estado de licencia
+                Estado
               </p>
               <p className="mt-2 text-2xl font-black text-[#F5F6F7]">
                 Trial activo
               </p>
               <p className="mt-1 text-sm text-[#C4C7CC]">
-                {remainingDays} días restantes para activar licencia.
+                {remainingDays} días restantes.
               </p>
             </div>
           </div>
@@ -129,12 +128,12 @@ export default function SalesHubAccessPage() {
             </div>
 
             <h3 className="text-2xl font-black text-[#F5F6F7]">
-              Configuración inicial
+              Ingreso seguro
             </h3>
 
             <p className="mt-4 text-sm leading-7 text-[#C4C7CC]">
-              Revisa los datos de empresa, usuarios, pipeline comercial y
-              estructura base del módulo antes de entrar al CRM.
+              El cliente entra al portal contratado desde la pantalla de login
+              con su correo administrador.
             </p>
           </WamaCard>
 
@@ -144,12 +143,12 @@ export default function SalesHubAccessPage() {
             </div>
 
             <h3 className="text-2xl font-black text-[#F5F6F7]">
-              Canvas del módulo
+              Cambio de clave
             </h3>
 
             <p className="mt-4 text-sm leading-7 text-[#C4C7CC]">
-              Usa el canvas para ordenar cuentas objetivo, contactos, deals,
-              responsables y etapas comerciales.
+              En el primer ingreso, el usuario debe cambiar su clave provisoria
+              antes de entrar al software.
             </p>
           </WamaCard>
 
@@ -159,27 +158,25 @@ export default function SalesHubAccessPage() {
             </div>
 
             <h3 className="text-2xl font-black text-[#F5F6F7]">
-              CRM operativo
+              Acceso al módulo
             </h3>
 
             <p className="mt-4 text-sm leading-7 text-[#C4C7CC]">
-              Entra al Sales Hub para cargar negocios, revisar pipeline,
-              gestionar actividades y avanzar oportunidades.
+              Luego del login, WAMA redirige al módulo contratado: Sales Hub,
+              Operación o Finanzas.
             </p>
           </WamaCard>
         </div>
 
         <div className="mx-auto mt-10 flex max-w-5xl flex-col justify-center gap-4 sm:flex-row">
-          <WamaButton href="/onboarding/sales-hub">
-            Acceder al canvas de configuración
-          </WamaButton>
+          <WamaButton href="/login">Entrar al software</WamaButton>
 
-          <WamaButton href="/sales-hub" variant="secondary">
-            Entrar directo al CRM
+          <WamaButton href="/onboarding/sales-hub" variant="secondary">
+            Revisar canvas
           </WamaButton>
 
           <WamaButton href="/licencia" variant="secondary">
-            Ver licencia
+            Ver plan
           </WamaButton>
         </div>
 
@@ -196,13 +193,12 @@ export default function SalesHubAccessPage() {
 
               <p className="mt-3 max-w-3xl text-sm leading-7 text-[#C4C7CC]">
                 Durante este periodo, el cliente puede probar el módulo
-                seleccionado. Al finalizar la prueba, deberá activar una
-                licencia para mantener acceso completo al CRM, datos, pipeline y
-                funcionalidades del módulo.
+                seleccionado. Al finalizar la prueba, deberá activar una licencia
+                para mantener acceso completo al CRM y sus datos.
               </p>
             </div>
 
-            <WamaButton href="/licencia">Activar licencia</WamaButton>
+            <WamaButton href="/login">Entrar al software</WamaButton>
           </div>
         </WamaCard>
       </section>

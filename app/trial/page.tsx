@@ -94,7 +94,6 @@ export default function TrialPage() {
       extraUsersBlockPriceUsd: 10,
 
       adminEmail: contactEmail,
-      temporaryPassword: "WamaTrial2026!",
       mustChangePassword: true,
     };
 
@@ -104,7 +103,7 @@ export default function TrialPage() {
         name: contactName || "Administrador trial",
         email: contactEmail || "admin@empresa.cl",
         role: "Administrador",
-        status: "Activo",
+        status: "Invitado",
         temporaryPassword: "WamaTrial2026!",
         mustChangePassword: true,
       },
@@ -253,7 +252,7 @@ export default function TrialPage() {
                         setWhatCompanySells(event.target.value)
                       }
                       className="min-h-[108px] w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                      placeholder="Ej: Servicios de mantenimiento, arriendo de espacios, productos, software, proyectos, asesorías..."
+                      placeholder="Ej: servicios, productos, arriendos, proyectos, software, asesorías..."
                       required
                     />
                   </Field>
@@ -398,10 +397,12 @@ export default function TrialPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-5 py-4 text-sm text-[#F5F6F7]">
-                    Usuario admin: {contactEmail || "correo@empresa.cl"}
+                  <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-5 py-4 text-sm leading-6 text-[#F5F6F7]">
+                    Al activar la prueba, se creará el acceso administrador de
+                    la empresa.
                     <br />
-                    Clave provisoria: WamaTrial2026!
+                    El ingreso será por la pantalla de login con el correo
+                    registrado.
                   </div>
                 </div>
               </WamaCard>
