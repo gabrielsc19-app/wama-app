@@ -36,36 +36,6 @@ const stages = [
   "Cierre",
 ];
 
-const initialDeals: Deal[] = [
-  {
-    id: 1,
-    company: "Centro Empresarial Apoquindo",
-    contact: "Rodrigo Fuentes",
-    stage: "Propuesta",
-    amount: 18500000,
-    owner: "Camila Torres",
-    probability: 65,
-  },
-  {
-    id: 2,
-    company: "Clínica Nueva Cordillera",
-    contact: "María José Pérez",
-    stage: "Reunión",
-    amount: 26000000,
-    owner: "Camila Torres",
-    probability: 35,
-  },
-  {
-    id: 3,
-    company: "Condominio Parque Los Robles",
-    contact: "Felipe Arancibia",
-    stage: "Negociación",
-    amount: 9200000,
-    owner: "Camila Torres",
-    probability: 80,
-  },
-];
-
 function formatMoney(value: number) {
   return new Intl.NumberFormat("es-CL", {
     style: "currency",
@@ -101,7 +71,7 @@ export default function SalesHubCrmPage() {
     trialDaysRemaining: 14,
   });
 
-  const [deals, setDeals] = useState<Deal[]>(initialDeals);
+  const [deals, setDeals] = useState<Deal[]>([]);
   const [showDealForm, setShowDealForm] = useState(false);
   const [activeView, setActiveView] = useState("Dashboard");
 
@@ -162,10 +132,20 @@ export default function SalesHubCrmPage() {
 
       return {
         name: stage,
-        deals: stageDeals.length,
+        deals: stageDeals,
         amount: stageAmount,
       };
     });
+  }, [deals]);
+
+  const contacts = useMemo(() => {
+    const uniqueContacts = new Map<string, Deal>();
+
+    deals.forEach((deal) => {
+      uniqueContacts.set(`${deal.contact}-${deal.company}`, deal);
+    });
+
+    return Array.from(uniqueContacts.values());
   }, [deals]);
 
   const remainingDays = getRemainingDays(trialCompany.trialEndsAt);
@@ -191,9 +171,9 @@ export default function SalesHubCrmPage() {
       detail: "Según probabilidad",
     },
     {
-      label: "Usuarios incluidos",
-      value: "10",
-      detail: "Plan base por módulo",
+      label: "Contactos",
+      value: String(contacts.length),
+      detail: "Personas vinculadas a deals",
     },
   ];
 
@@ -235,33 +215,76 @@ export default function SalesHubCrmPage() {
     setDeals((currentDeals) => currentDeals.filter((deal) => deal.id !== id));
   }
 
+  function handleMoveDeal(id: number, nextStage: string) {
+    setDeals((currentDeals) =>
+      currentDeals.map((deal) =>
+        deal.id === id ? { ...deal, stage: nextStage } : deal
+      )
+    );
+  }
+
+  function EmptyState({
+    title,
+    description,
+    buttonText = "Cargar primer deal",
+  }: {
+    title: string;
+    description: string;
+    buttonText?: string;
+  }) {
+    return (
+      <div className="rounded-[2rem] border border-dashed border-[#C8CDD3] bg-white p-10 text-center shadow-sm">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-[#E8FFFD] text-2xl font-black text-[#00AFA4]">
+          +
+        </div>
+
+        <h3 className="mt-5 text-2xl font-black text-[#0B0C0E]">{title}</h3>
+
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-7 text-[#5F6673]">
+          {description}
+        </p>
+
+        <button
+          onClick={() => setShowDealForm(true)}
+          className="mt-6 rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] shadow-[0_12px_30px_rgba(0,229,214,0.25)] transition hover:scale-[1.02]"
+        >
+          {buttonText}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-[#F5F6F7] text-[#0B0C0E]">
-      <header className="sticky top-0 z-30 border-b border-[#E1E4E8] bg-white/90 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center overflow-hidden rounded-2xl border border-[#D7DBE0] bg-[#0B0C0E] text-xl font-black text-[#00E5D6]">
+      <header className="sticky top-0 z-30 border-b border-[#E1E4E8] bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-5 px-6 py-4">
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-3xl border border-[#D7DBE0] bg-white text-2xl font-black text-[#00AFA4] shadow-sm">
               {trialCompany.companyLogo ? (
                 <img
                   src={trialCompany.companyLogo}
                   alt={`Logo ${trialCompany.companyName}`}
-                  className="h-full w-full object-contain bg-white p-2"
+                  className="h-full w-full object-contain p-2"
                 />
               ) : (
                 companyInitial
               )}
             </div>
 
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#00AFA4]">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-black uppercase tracking-[0.18em] text-[#00AFA4]">
                 {trialCompany.companyName || "Empresa Demo"}
               </p>
-              <h1 className="text-lg font-black text-[#0B0C0E]">
-                Sales Hub
-                <span className="ml-2 text-sm font-semibold text-[#6B7280]">
-                  by WAMA
+
+              <div className="flex flex-wrap items-end gap-2">
+                <h1 className="text-2xl font-black text-[#0B0C0E]">
+                  Sales Hub
+                </h1>
+
+                <span className="pb-1 text-xs font-bold uppercase tracking-[0.16em] text-[#8A94A3]">
+                  powered by WAMA
                 </span>
-              </h1>
+              </div>
             </div>
           </div>
 
@@ -281,8 +304,8 @@ export default function SalesHubCrmPage() {
             ))}
           </nav>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden rounded-2xl border border-[#CDEDEA] bg-[#E8FFFD] px-4 py-2 text-sm md:block">
+          <div className="flex shrink-0 items-center gap-3">
+            <div className="hidden rounded-2xl border border-[#CDEDEA] bg-[#E8FFFD] px-4 py-2 text-sm lg:block">
               <span className="font-black text-[#00AFA4]">Trial activo</span>
               <span className="ml-2 text-[#5F6673]">
                 {remainingDays} días restantes
@@ -309,13 +332,14 @@ export default function SalesHubCrmPage() {
               <p className="text-sm font-semibold text-[#5F6673]">
                 CRM operativo
               </p>
+
               <h2 className="mt-2 text-4xl font-black tracking-[-0.04em] text-[#0B0C0E] md:text-5xl">
                 Gestiona tu pipeline comercial.
               </h2>
+
               <p className="mt-4 max-w-3xl text-base leading-7 text-[#5F6673]">
-                Carga negocios, controla etapas, responsables, probabilidades y
-                monto estimado. Esta vista corresponde al software activo de la
-                empresa durante la prueba gratuita.
+                Carga prospectos, contactos y negocios. Luego avanza cada deal
+                por las etapas del pipeline comercial.
               </p>
             </div>
 
@@ -324,33 +348,18 @@ export default function SalesHubCrmPage() {
                 <span className="text-[#5F6673]">Plan</span>
                 <strong>Trial Sales Hub</strong>
               </div>
+
               <div className="flex justify-between gap-8">
                 <span className="text-[#5F6673]">Usuarios incluidos</span>
                 <strong>10</strong>
               </div>
+
               <div className="flex justify-between gap-8">
                 <span className="text-[#5F6673]">Precio luego del trial</span>
                 <strong>US$10 / módulo</strong>
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpis.map((kpi) => (
-            <div
-              key={kpi.label}
-              className="rounded-[1.75rem] border border-[#E1E4E8] bg-white p-5 shadow-sm"
-            >
-              <p className="text-sm font-semibold text-[#5F6673]">
-                {kpi.label}
-              </p>
-              <strong className="mt-3 block text-3xl font-black text-[#0B0C0E]">
-                {kpi.value}
-              </strong>
-              <p className="mt-2 text-sm text-[#5F6673]">{kpi.detail}</p>
-            </div>
-          ))}
         </div>
 
         {showDealForm && (
@@ -360,6 +369,7 @@ export default function SalesHubCrmPage() {
                 <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
                   Nuevo deal
                 </p>
+
                 <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
                   Cargar negocio comercial
                 </h3>
@@ -379,7 +389,7 @@ export default function SalesHubCrmPage() {
             >
               <div className="grid gap-2">
                 <label className="text-sm font-bold text-[#0B0C0E]">
-                  Empresa
+                  Empresa / prospecto
                 </label>
                 <input
                   value={newDeal.company}
@@ -494,120 +504,330 @@ export default function SalesHubCrmPage() {
           </div>
         )}
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        {activeView === "Dashboard" && (
+          <>
+            <div className="mb-6 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {kpis.map((kpi) => (
+                <div
+                  key={kpi.label}
+                  className="rounded-[1.75rem] border border-[#E1E4E8] bg-white p-5 shadow-sm"
+                >
+                  <p className="text-sm font-semibold text-[#5F6673]">
+                    {kpi.label}
+                  </p>
+                  <strong className="mt-3 block text-3xl font-black text-[#0B0C0E]">
+                    {kpi.value}
+                  </strong>
+                  <p className="mt-2 text-sm text-[#5F6673]">{kpi.detail}</p>
+                </div>
+              ))}
+            </div>
+
+            {deals.length === 0 ? (
+              <EmptyState
+                title="Todavía no tienes negocios cargados"
+                description="Para comenzar a trabajar en el CRM, carga tu primer prospecto o deal. Después podrás moverlo por las etapas del pipeline y controlar el avance comercial."
+              />
+            ) : (
+              <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <DealsTable
+                  deals={deals}
+                  onDelete={handleDeleteDeal}
+                  onAdd={() => {
+                    setShowDealForm(true);
+                    setActiveView("Deals");
+                  }}
+                />
+
+                <PipelineSummary pipelineStages={pipelineStages} />
+              </div>
+            )}
+          </>
+        )}
+
+        {activeView === "Deals" && (
+          <>
+            {deals.length === 0 ? (
+              <EmptyState
+                title="Carga tu primer prospecto o negocio"
+                description="Aquí aparecerán los deals que ingreses. Cada oportunidad tendrá empresa, contacto, etapa, monto estimado, probabilidad y responsable."
+              />
+            ) : (
+              <DealsTable
+                deals={deals}
+                onDelete={handleDeleteDeal}
+                onAdd={() => setShowDealForm(true)}
+              />
+            )}
+          </>
+        )}
+
+        {activeView === "Pipeline" && (
           <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
-            <div className="mb-5 flex items-center justify-between gap-4">
+            <div className="mb-6 flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
               <div>
                 <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
-                  Deals
+                  Pipeline
                 </p>
                 <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
-                  Negocios comerciales
+                  Tablero de ventas
                 </h3>
               </div>
 
               <button
                 onClick={() => setShowDealForm(true)}
-                className="rounded-full border border-[#D7DBE0] bg-white px-4 py-2 text-sm font-bold text-[#0B0C0E] hover:bg-[#F5F6F7]"
+                className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E]"
               >
-                + Agregar
+                + Nuevo deal
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-[1.5rem] border border-[#E1E4E8]">
-              <div className="grid grid-cols-[1.4fr_0.9fr_0.8fr_0.8fr_0.5fr] bg-[#F5F6F7] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#5F6673]">
-                <span>Empresa</span>
-                <span>Etapa</span>
-                <span>Prob.</span>
-                <span>Monto</span>
-                <span></span>
-              </div>
-
-              {deals.map((deal) => (
+            <div className="grid gap-4 xl:grid-cols-6">
+              {pipelineStages.map((stage) => (
                 <div
-                  key={deal.id}
-                  className="grid grid-cols-[1.4fr_0.9fr_0.8fr_0.8fr_0.5fr] items-center border-t border-[#E1E4E8] px-4 py-4 text-sm"
+                  key={stage.name}
+                  className="min-h-[280px] rounded-[1.5rem] border border-[#E1E4E8] bg-[#F5F6F7] p-4"
                 >
-                  <div>
-                    <p className="font-black text-[#0B0C0E]">{deal.company}</p>
-                    <p className="mt-1 text-[#5F6673]">
-                      {deal.contact} · {deal.owner}
-                    </p>
+                  <div className="mb-4 flex items-center justify-between">
+                    <div>
+                      <h4 className="font-black text-[#0B0C0E]">
+                        {stage.name}
+                      </h4>
+                      <p className="mt-1 text-xs font-semibold text-[#5F6673]">
+                        {stage.deals.length} deals ·{" "}
+                        {formatShortMoney(
+                          stage.deals.reduce((sum, deal) => sum + deal.amount, 0)
+                        )}
+                      </p>
+                    </div>
                   </div>
 
-                  <span className="w-fit rounded-full bg-[#F5F6F7] px-3 py-1 font-bold text-[#5F6673]">
-                    {deal.stage}
-                  </span>
+                  <div className="grid gap-3">
+                    {stage.deals.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-[#C8CDD3] bg-white px-4 py-6 text-center text-xs leading-5 text-[#8A94A3]">
+                        Sin negocios en esta etapa
+                      </div>
+                    ) : (
+                      stage.deals.map((deal) => (
+                        <div
+                          key={deal.id}
+                          className="rounded-2xl border border-[#E1E4E8] bg-white p-4 shadow-sm"
+                        >
+                          <h5 className="font-black text-[#0B0C0E]">
+                            {deal.company}
+                          </h5>
+                          <p className="mt-1 text-xs text-[#5F6673]">
+                            {deal.contact}
+                          </p>
 
-                  <span className="w-fit rounded-full bg-[#E8FFFD] px-3 py-1 font-black text-[#00AFA4]">
-                    {deal.probability}%
-                  </span>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="rounded-full bg-[#E8FFFD] px-3 py-1 text-xs font-black text-[#00AFA4]">
+                              {deal.probability}%
+                            </span>
+                            <strong className="text-sm">
+                              {formatShortMoney(deal.amount)}
+                            </strong>
+                          </div>
 
-                  <strong>{formatShortMoney(deal.amount)}</strong>
-
-                  <button
-                    onClick={() => handleDeleteDeal(deal.id)}
-                    className="text-sm font-bold text-[#9CA3AF] hover:text-[#0B0C0E]"
-                  >
-                    Eliminar
-                  </button>
+                          <select
+                            value={deal.stage}
+                            onChange={(event) =>
+                              handleMoveDeal(deal.id, event.target.value)
+                            }
+                            className="mt-3 w-full rounded-xl border border-[#D7DBE0] bg-[#F5F6F7] px-3 py-2 text-xs font-bold outline-none"
+                          >
+                            {stages.map((item) => (
+                              <option key={item}>{item}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+        )}
 
-          <div className="grid gap-6">
-            <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
-                Pipeline
-              </p>
-              <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
-                Etapas
-              </h3>
+        {activeView === "Contactos" && (
+          <>
+            {contacts.length === 0 ? (
+              <EmptyState
+                title="Aún no tienes contactos"
+                description="Los contactos se crearán automáticamente cuando cargues tu primer deal. Luego podrás gestionar personas, empresas y seguimiento comercial."
+                buttonText="Cargar deal con contacto"
+              />
+            ) : (
+              <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
+                <div className="mb-5">
+                  <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
+                    Contactos
+                  </p>
+                  <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
+                    Personas registradas
+                  </h3>
+                </div>
 
-              <div className="mt-5 grid gap-3">
-                {pipelineStages.map((stage) => (
-                  <div
-                    key={stage.name}
-                    className="rounded-2xl border border-[#E1E4E8] bg-[#F5F6F7] p-4"
-                  >
-                    <div className="mb-2 flex items-center justify-between">
-                      <strong>{stage.name}</strong>
-                      <span className="text-sm font-bold text-[#5F6673]">
-                        {stage.deals} deals
-                      </span>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {contacts.map((contact) => (
+                    <div
+                      key={`${contact.contact}-${contact.company}`}
+                      className="rounded-[1.5rem] border border-[#E1E4E8] bg-[#F5F6F7] p-5"
+                    >
+                      <h4 className="font-black text-[#0B0C0E]">
+                        {contact.contact}
+                      </h4>
+                      <p className="mt-2 text-sm text-[#5F6673]">
+                        {contact.company}
+                      </p>
+                      <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-[#00AFA4]">
+                        Asociado a deal
+                      </p>
                     </div>
-                    <p className="text-sm text-[#5F6673]">
-                      {formatShortMoney(stage.amount)}
-                    </p>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+          </>
+        )}
 
-            <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
+        <div className="mt-6 rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
+          <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
+            <div>
               <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
                 Licencia
               </p>
               <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
                 Trial activo
               </h3>
-              <p className="mt-3 text-sm leading-6 text-[#5F6673]">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#5F6673]">
                 La prueba gratuita dura 14 días. Luego, el acceso al módulo
                 Sales Hub cuesta US$10 mensuales e incluye hasta 10 usuarios.
                 Usuarios adicionales: US$10 extra.
               </p>
-
-              <a
-                href="/licencia"
-                className="mt-5 inline-flex rounded-full border border-[#D7DBE0] px-4 py-2 text-sm font-black text-[#0B0C0E] hover:bg-[#F5F6F7]"
-              >
-                Ver plan
-              </a>
             </div>
+
+            <a
+              href="/licencia"
+              className="inline-flex rounded-full border border-[#D7DBE0] px-4 py-2 text-sm font-black text-[#0B0C0E] hover:bg-[#F5F6F7]"
+            >
+              Ver plan
+            </a>
           </div>
         </div>
       </section>
     </main>
+  );
+}
+
+function DealsTable({
+  deals,
+  onDelete,
+  onAdd,
+}: {
+  deals: Deal[];
+  onDelete: (id: number) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
+            Deals
+          </p>
+          <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">
+            Negocios comerciales
+          </h3>
+        </div>
+
+        <button
+          onClick={onAdd}
+          className="rounded-full border border-[#D7DBE0] bg-white px-4 py-2 text-sm font-bold text-[#0B0C0E] hover:bg-[#F5F6F7]"
+        >
+          + Agregar
+        </button>
+      </div>
+
+      <div className="overflow-hidden rounded-[1.5rem] border border-[#E1E4E8]">
+        <div className="grid grid-cols-[1.4fr_0.9fr_0.8fr_0.8fr_0.5fr] bg-[#F5F6F7] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-[#5F6673]">
+          <span>Empresa</span>
+          <span>Etapa</span>
+          <span>Prob.</span>
+          <span>Monto</span>
+          <span></span>
+        </div>
+
+        {deals.map((deal) => (
+          <div
+            key={deal.id}
+            className="grid grid-cols-[1.4fr_0.9fr_0.8fr_0.8fr_0.5fr] items-center border-t border-[#E1E4E8] px-4 py-4 text-sm"
+          >
+            <div>
+              <p className="font-black text-[#0B0C0E]">{deal.company}</p>
+              <p className="mt-1 text-[#5F6673]">
+                {deal.contact} · {deal.owner}
+              </p>
+            </div>
+
+            <span className="w-fit rounded-full bg-[#F5F6F7] px-3 py-1 font-bold text-[#5F6673]">
+              {deal.stage}
+            </span>
+
+            <span className="w-fit rounded-full bg-[#E8FFFD] px-3 py-1 font-black text-[#00AFA4]">
+              {deal.probability}%
+            </span>
+
+            <strong>{formatShortMoney(deal.amount)}</strong>
+
+            <button
+              onClick={() => onDelete(deal.id)}
+              className="text-sm font-bold text-[#9CA3AF] hover:text-[#0B0C0E]"
+            >
+              Eliminar
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function PipelineSummary({
+  pipelineStages,
+}: {
+  pipelineStages: {
+    name: string;
+    deals: Deal[];
+    amount: number;
+  }[];
+}) {
+  return (
+    <div className="rounded-[2rem] border border-[#E1E4E8] bg-white p-6 shadow-sm">
+      <p className="text-sm font-black uppercase tracking-[0.2em] text-[#00AFA4]">
+        Pipeline
+      </p>
+      <h3 className="mt-1 text-2xl font-black text-[#0B0C0E]">Etapas</h3>
+
+      <div className="mt-5 grid gap-3">
+        {pipelineStages.map((stage) => (
+          <div
+            key={stage.name}
+            className="rounded-2xl border border-[#E1E4E8] bg-[#F5F6F7] p-4"
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <strong>{stage.name}</strong>
+              <span className="text-sm font-bold text-[#5F6673]">
+                {stage.deals.length} deals
+              </span>
+            </div>
+            <p className="text-sm text-[#5F6673]">
+              {formatShortMoney(stage.amount)}
+            </p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
