@@ -24,6 +24,125 @@ type AssistantResponse = {
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
+function getLastUserMessage(messages: ChatMessage[]) {
+  return [...messages].reverse().find((message) => message.from === "user")?.text || "";
+}
+
+function getLocalSalesAnswer(message: string) {
+  const text = message.toLowerCase();
+
+  if (
+    text.includes("hola") ||
+    text.includes("buenas") ||
+    text.includes("hello")
+  ) {
+    return {
+      reply:
+        "Hola, soy el agente WAMA. Puedo ayudarte a elegir un módulo, activar una prueba o entender cómo WAMA puede ordenar tu empresa. ¿Qué proceso quieres mejorar hoy?",
+      suggestedModule: "Módulos WAMA",
+      intent: "greeting",
+    };
+  }
+
+  if (
+    text.includes("precio") ||
+    text.includes("valor") ||
+    text.includes("costo") ||
+    text.includes("licencia") ||
+    text.includes("cuánto") ||
+    text.includes("cuanto")
+  ) {
+    return {
+      reply:
+        "WAMA funciona por módulos. El plan base es de US$10 mensuales por módulo e incluye hasta 10 usuarios. Si tu empresa necesita más usuarios, se puede agregar un bloque adicional.",
+      suggestedModule: "Módulos WAMA",
+      intent: "pricing",
+    };
+  }
+
+  if (
+    text.includes("venta") ||
+    text.includes("ventas") ||
+    text.includes("crm") ||
+    text.includes("pipeline") ||
+    text.includes("deal") ||
+    text.includes("deals") ||
+    text.includes("comercial")
+  ) {
+    return {
+      reply:
+        "Para ventas te recomiendo partir con Sales Hub. Te permite ordenar prospectos, contactos, deals, pipeline, seguimiento y reportes comerciales. ¿Quieres que te ayude a configurar una prueba?",
+      suggestedModule: "Sales Hub",
+      intent: "module_sales",
+    };
+  }
+
+  if (
+    text.includes("operacion") ||
+    text.includes("operación") ||
+    text.includes("alerta") ||
+    text.includes("caso") ||
+    text.includes("sla") ||
+    text.includes("responsable")
+  ) {
+    return {
+      reply:
+        "Para operación te recomiendo el módulo Operación. Sirve para gestionar alertas, casos, responsables, evidencias, SLA y trazabilidad diaria.",
+      suggestedModule: "Operación",
+      intent: "module_operation",
+    };
+  }
+
+  if (
+    text.includes("finanza") ||
+    text.includes("finanzas") ||
+    text.includes("pago") ||
+    text.includes("pagos") ||
+    text.includes("documento") ||
+    text.includes("factura") ||
+    text.includes("cartola") ||
+    text.includes("conciliación") ||
+    text.includes("conciliacion")
+  ) {
+    return {
+      reply:
+        "Para finanzas te recomiendo el módulo Finanzas. Ayuda a ordenar documentos, pagos, cartolas, conciliaciones, pendientes y reportes financieros.",
+      suggestedModule: "Finanzas",
+      intent: "module_finance",
+    };
+  }
+
+  if (
+    text.includes("prueba") ||
+    text.includes("gratis") ||
+    text.includes("trial") ||
+    text.includes("demo")
+  ) {
+    return {
+      reply:
+        "La prueba gratuita dura 14 días. Primero cargas los datos de tu empresa, eliges el módulo inicial y luego puedes entrar al portal para comenzar a trabajar.",
+      suggestedModule: "Módulos WAMA",
+      intent: "trial",
+    };
+  }
+
+  if (text.length < 3 || /(.)\1{5,}/.test(text)) {
+    return {
+      reply:
+        "No entendí bien tu mensaje. Puedes contarme si quieres ordenar ventas, operación, finanzas o reportes.",
+      suggestedModule: "Módulos WAMA",
+      intent: "unknown",
+    };
+  }
+
+  return {
+    reply:
+      "Puedo ayudarte a elegir el módulo correcto para tu empresa. WAMA trabaja con Sales Hub, Operación, Finanzas y Reportes. ¿Qué área necesitas ordenar primero?",
+    suggestedModule: "Módulos WAMA",
+    intent: "unknown",
+  };
+}
+
 function safeJsonParse(text: string): AssistantResponse | null {
   try {
     return JSON.parse(text) as AssistantResponse;
@@ -70,35 +189,37 @@ export async function POST(request: Request) {
 
     const messages = (body.messages || []) as ChatMessage[];
     const lead = (body.lead || {}) as LeadData;
+    const lastUserMessage = getLastUserMessage(messages);
+    const localFallback = getLocalSalesAnswer(lastUserMessage);
 
     if (!OPENAI_API_KEY) {
       return NextResponse.json({
-        reply:
-          "La IA de WAMA aún no tiene configurada la API Key. Revisa OPENAI_API_KEY en Vercel y en .env.local.",
+        reply: localFallback.reply,
         lead,
         leadReady: false,
-        suggestedModule: lead.suggestedModule || "",
-        intent: "missing_api_key",
+        suggestedModule: localFallback.suggestedModule,
+        intent: localFallback.intent,
+        mode: "local_fallback",
       });
     }
 
     const systemPrompt = `
-Eres el Asistente WAMA, un agente de ventas para una app SaaS modular.
+Eres el Agente WAMA, un agente comercial para una app SaaS modular.
 
 Objetivo:
 - Ayudar al visitante a entender WAMA.
 - Recomendar el módulo correcto: Sales Hub, Operación o Finanzas.
-- Capturar lead comercial: nombre, empresa, correo o celular, y necesidad.
+- Capturar lead comercial de forma natural: nombre, empresa, correo o celular, y necesidad.
 - Incentivar prueba gratis de 14 días.
-- Mantener tono profesional, directo, comercial y cercano.
+- Responder con tono profesional, comercial, claro y cercano.
 - No sonar como formulario rígido.
 - No tomar "hola", "buenas", "ok", "gracias" como nombre.
 - Si el usuario saluda, saluda y pregunta qué necesita.
 - Si el usuario escribe algo incoherente, responde que no entendiste.
 - Si el usuario escribe algo inapropiado, responde con límite profesional y vuelve a WAMA.
-- No inventes datos de empresa, precios ni características fuera de este contexto.
+- No inventes datos fuera de este contexto.
 
-Contexto de WAMA:
+Contexto:
 - WAMA es software modular para empresas.
 - Módulos: Sales Hub, Operación, Finanzas y Reportes.
 - Sales Hub: CRM, prospectos, contactos, deals, pipeline, seguimiento comercial.
@@ -108,9 +229,8 @@ Contexto de WAMA:
 - Precio base: US$10 mensuales por módulo.
 - Incluye hasta 10 usuarios por módulo.
 - Usuarios adicionales: bloque adicional de US$10.
-- El objetivo comercial es que el cliente active prueba gratis o deje sus datos.
 
-Debes responder SIEMPRE en JSON válido, sin markdown:
+Responde SIEMPRE en JSON válido, sin markdown:
 {
   "reply": "respuesta breve para el usuario",
   "lead": {
@@ -125,7 +245,7 @@ Debes responder SIEMPRE en JSON válido, sin markdown:
   "intent": "greeting|pricing|trial|module_sales|module_operation|module_finance|lead_capture|unknown|inappropriate"
 }
 
-Reglas de captura:
+Reglas:
 - Si ya tienes nombre, no lo vuelvas a pedir.
 - Si ya tienes empresa, no la vuelvas a pedir.
 - Si ya tienes contacto, no lo vuelvas a pedir.
@@ -134,11 +254,6 @@ Reglas de captura:
 - leadReady solo debe ser true si tienes name, company, contact y need.
 - suggestedModule debe ser "Sales Hub", "Operación", "Finanzas" o "Módulos WAMA".
 `;
-
-    const userInput = JSON.stringify({
-      currentLead: lead,
-      conversation: messages,
-    });
 
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -155,7 +270,10 @@ Reglas de captura:
           },
           {
             role: "user",
-            content: userInput,
+            content: JSON.stringify({
+              currentLead: lead,
+              conversation: messages,
+            }),
           },
         ],
         temperature: 0.4,
@@ -164,15 +282,15 @@ Reglas de captura:
 
     if (!response.ok) {
       const errorText = await response.text();
+      console.error("WAMA assistant OpenAI error:", errorText);
 
       return NextResponse.json({
-        reply:
-          "La IA de WAMA no pudo responder en este momento. Podemos continuar con la prueba gratis o revisar los módulos.",
+        reply: localFallback.reply,
         lead,
         leadReady: false,
-        suggestedModule: lead.suggestedModule || "",
-        intent: "openai_error",
-        error: errorText,
+        suggestedModule: localFallback.suggestedModule,
+        intent: localFallback.intent,
+        mode: "local_fallback",
       });
     }
 
@@ -182,12 +300,12 @@ Reglas de captura:
 
     if (!parsed) {
       return NextResponse.json({
-        reply:
-          "No entendí bien tu mensaje. Puedo ayudarte con prueba gratis, módulos, precios o acceso al portal.",
+        reply: localFallback.reply,
         lead,
         leadReady: false,
-        suggestedModule: lead.suggestedModule || "",
-        intent: "parse_error",
+        suggestedModule: localFallback.suggestedModule,
+        intent: localFallback.intent,
+        mode: "local_fallback",
       });
     }
 
@@ -204,24 +322,27 @@ Reglas de captura:
     };
 
     return NextResponse.json({
-      reply: parsed.reply || "Te puedo ayudar con WAMA.",
+      reply: parsed.reply || localFallback.reply,
       lead: nextLead,
       leadReady: Boolean(parsed.leadReady),
       suggestedModule:
-        parsed.suggestedModule || parsed.lead?.suggestedModule || "",
-      intent: parsed.intent || "unknown",
+        parsed.suggestedModule ||
+        parsed.lead?.suggestedModule ||
+        localFallback.suggestedModule,
+      intent: parsed.intent || localFallback.intent,
+      mode: "ai",
     });
-  } catch {
-    return NextResponse.json(
-      {
-        reply:
-          "Hubo un problema con el asistente. Intenta nuevamente o activa la prueba gratis.",
-        lead: {},
-        leadReady: false,
-        suggestedModule: "",
-        intent: "server_error",
-      },
-      { status: 200 }
-    );
+  } catch (error) {
+    console.error("WAMA assistant server error:", error);
+
+    return NextResponse.json({
+      reply:
+        "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, operación o finanzas?",
+      lead: {},
+      leadReady: false,
+      suggestedModule: "Módulos WAMA",
+      intent: "server_error",
+      mode: "local_fallback",
+    });
   }
 }

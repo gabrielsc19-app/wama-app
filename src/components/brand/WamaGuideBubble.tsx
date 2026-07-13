@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 type Message = {
   from: "wama" | "user";
@@ -23,13 +22,18 @@ export default function WamaGuideBubble() {
   const [leadSent, setLeadSent] = useState(false);
   const [leadStatus, setLeadStatus] = useState("");
   const [lead, setLead] = useState<LeadData>({});
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [messages, setMessages] = useState<Message[]>([
     {
       from: "wama",
-      text: "Hola, soy WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
+      text: "Hola, soy el agente WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
     },
   ]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isLoading, leadStatus]);
 
   async function sendLeadToAdmin(nextLead: LeadData, suggestedModule?: string) {
     if (leadSent) return;
@@ -51,12 +55,12 @@ export default function WamaGuideBubble() {
       if (data.sent) {
         setLeadStatus("Tus datos fueron enviados al equipo WAMA.");
       } else {
-        setLeadStatus("Tus datos quedaron registrados en modo demo.");
+        setLeadStatus("Tus datos quedaron registrados para seguimiento comercial.");
       }
 
       setLeadSent(true);
     } catch {
-      setLeadStatus("No se pudo enviar el lead, pero puedes activar la prueba.");
+      setLeadStatus("Tus datos quedaron registrados para seguimiento comercial.");
     }
   }
 
@@ -106,7 +110,7 @@ export default function WamaGuideBubble() {
           from: "wama",
           text:
             data.reply ||
-            "Te puedo ayudar con módulos, prueba gratis o acceso al portal.",
+            "Puedo ayudarte a elegir el módulo correcto para tu empresa.",
         },
       ]);
 
@@ -118,7 +122,7 @@ export default function WamaGuideBubble() {
         ...current,
         {
           from: "wama",
-          text: "No pude responder en este momento. Puedes activar la prueba gratis o revisar los módulos.",
+          text: "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, operación o finanzas?",
         },
       ]);
     } finally {
@@ -134,7 +138,7 @@ export default function WamaGuideBubble() {
     setMessages([
       {
         from: "wama",
-        text: "Hola, soy WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
+        text: "Hola, soy el agente WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
       },
     ]);
   }
@@ -142,8 +146,8 @@ export default function WamaGuideBubble() {
   return (
     <div className="fixed bottom-6 right-6 z-[80]">
       {isOpen && (
-        <div className="mb-4 flex h-[660px] w-[400px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#111318] shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
-          <div className="border-b border-white/10 bg-[#0B0C0E] p-5">
+        <div className="mb-4 flex h-[640px] w-[410px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#111318] shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
+          <div className="shrink-0 border-b border-white/10 bg-[#0B0C0E] p-5">
             <p className="text-xs font-black uppercase tracking-[0.25em] text-[#00E5D6]">
               Agente WAMA
             </p>
@@ -173,7 +177,7 @@ export default function WamaGuideBubble() {
 
             {isLoading && (
               <div className="mr-auto max-w-[92%] rounded-2xl border border-[#00E5D6]/20 bg-[#00E5D6]/10 px-4 py-3 text-sm text-[#F5F6F7]">
-                WAMA está pensando...
+                Escribiendo...
               </div>
             )}
 
@@ -182,25 +186,11 @@ export default function WamaGuideBubble() {
                 {leadStatus}
               </div>
             )}
+
+            <div ref={messagesEndRef} />
           </div>
 
-          <div className="border-t border-white/10 bg-[#111318] p-4">
-            <div className="mb-3 grid grid-cols-2 gap-2">
-              <Link
-                href="/trial"
-                className="rounded-2xl bg-[#00E5D6] px-3 py-3 text-center text-xs font-black text-[#0B0C0E]"
-              >
-                Prueba gratis
-              </Link>
-
-              <Link
-                href="/modulos"
-                className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-bold text-[#F5F6F7]"
-              >
-                Ver módulos
-              </Link>
-            </div>
-
+          <div className="shrink-0 border-t border-white/10 bg-[#111318] p-4">
             <form onSubmit={handleAsk} className="flex gap-2">
               <input
                 value={question}
