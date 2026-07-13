@@ -1,5 +1,6 @@
 import Link from "next/link";
 import WamaLogo from "./WamaLogo";
+import WamaGuideBubble from "./WamaGuideBubble";
 
 export default function WamaShell({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +42,8 @@ export default function WamaShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <div className="relative z-10">{children}</div>
+
+      <WamaGuideBubble />
     </main>
   );
 }

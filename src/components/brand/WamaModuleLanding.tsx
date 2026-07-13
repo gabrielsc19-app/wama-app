@@ -37,8 +37,6 @@ export default function WamaModuleLanding({
   accentLabel,
   selfServiceTitle,
   selfServiceDescription,
-  aiTitle,
-  aiDescription,
   features,
   workflow,
   metrics,
@@ -140,7 +138,7 @@ export default function WamaModuleLanding({
             ))}
           </div>
 
-          <div className="mt-16 grid gap-6 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="mt-16 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
             <WamaCard className="p-7">
               <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
                 Autogestión
@@ -171,36 +169,47 @@ export default function WamaModuleLanding({
             </WamaCard>
 
             <WamaCard className="p-7">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                Asistente WAMA
-              </p>
+              <div className="flex h-full flex-col justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
+                    WAMA te acompaña
+                  </p>
 
-              <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
-                {aiTitle}
-              </h2>
+                  <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
+                    Activa, carga tus datos y comienza a trabajar.
+                  </h2>
 
-              <p className="mt-5 text-base leading-8 text-[#C4C7CC]">
-                {aiDescription}
-              </p>
+                  <p className="mt-5 text-base leading-8 text-[#C4C7CC]">
+                    El asistente te guía durante la prueba: qué datos cargar,
+                    qué módulo activar y cómo avanzar dentro del portal.
+                  </p>
+                </div>
 
-              <div className="mt-7 rounded-[2rem] border border-[#00E5D6]/20 bg-[#00E5D6]/10 p-5">
-                <p className="text-sm font-black text-[#00E5D6]">
-                  Ejemplo de ayuda
-                </p>
-
-                <div className="mt-4 grid gap-3">
-                  {[
-                    "¿Qué datos necesito cargar para comenzar?",
-                    "Muéstrame pendientes sin seguimiento.",
-                    "Resume los riesgos del módulo para esta semana.",
-                  ].map((question) => (
-                    <div
-                      key={question}
-                      className="rounded-2xl border border-white/10 bg-[#0B0C0E]/70 p-4 text-sm font-semibold text-[#F5F6F7]"
-                    >
-                      {question}
+                <div className="mt-8 rounded-[2rem] border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-5">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">
+                      W
                     </div>
-                  ))}
+
+                    <div>
+                      <p className="text-sm font-black text-[#F5F6F7]">
+                        Hola, soy WAMA.
+                      </p>
+
+                      <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
+                        Te ayudo a configurar tu prueba gratis y a entender qué
+                        necesitas para comenzar.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 grid gap-3">
+                    <WamaButton href="/trial">Comenzar prueba gratis</WamaButton>
+
+                    <WamaButton href="/modulos" variant="secondary">
+                      Explorar módulos
+                    </WamaButton>
+                  </div>
                 </div>
               </div>
             </WamaCard>
