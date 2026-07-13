@@ -51,25 +51,6 @@ export default function ChangePasswordPage() {
     }
   }, [router]);
 
-  function redirectByModule(moduleName?: string) {
-    if (moduleName === "Sales Hub") {
-      router.push("/sales-hub/crm");
-      return;
-    }
-
-    if (moduleName === "Operación") {
-      router.push("/operacion");
-      return;
-    }
-
-    if (moduleName === "Finanzas") {
-      router.push("/finanzas");
-      return;
-    }
-
-    router.push("/app");
-  }
-
   function handleChangePassword(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -121,7 +102,7 @@ export default function ChangePasswordPage() {
         })
       );
 
-      redirectByModule(session.module);
+      router.push("/portal");
     } catch {
       setError("No se pudo actualizar la clave. Intenta nuevamente.");
     }
@@ -141,7 +122,8 @@ export default function ChangePasswordPage() {
 
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
             Para proteger el acceso al software, el primer ingreso requiere
-            reemplazar la clave provisoria por una clave propia.
+            reemplazar la clave provisoria por una clave propia. Luego entrarás
+            al portal privado de tu empresa.
           </p>
         </div>
 
@@ -201,7 +183,7 @@ export default function ChangePasswordPage() {
               type="submit"
               className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-semibold text-[#0B0C0E] transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,229,214,0.35)]"
             >
-              Guardar nueva clave
+              Guardar nueva clave y entrar al portal
             </button>
           </form>
         </WamaCard>
