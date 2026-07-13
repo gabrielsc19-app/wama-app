@@ -5,29 +5,54 @@ import Link from "next/link";
 
 const demoAnswers = [
   {
-    keywords: ["precio", "valor", "cuanto", "cuánto", "costo", "licencia"],
+    keywords: ["precio", "valor", "cuanto", "cuánto", "costo", "licencia", "pago"],
     answer:
-      "WAMA funciona por módulos. Cada módulo cuesta US$10 mensuales e incluye hasta 10 usuarios. Si necesitas más usuarios, puedes activar bloques adicionales.",
+      "El plan base cuesta US$10 mensuales por módulo e incluye hasta 10 usuarios. Si necesitas más usuarios, puedes agregar bloques adicionales.",
   },
   {
-    keywords: ["prueba", "gratis", "trial"],
+    keywords: ["usuario", "usuarios", "equipo", "personas"],
     answer:
-      "Puedes activar una prueba gratis de 14 días. Durante ese periodo configuras tu empresa, cargas datos iniciales y pruebas el módulo seleccionado.",
+      "Cada módulo incluye hasta 10 usuarios. Si tu empresa necesita agregar más, WAMA puede activar un bloque adicional.",
   },
   {
-    keywords: ["sales", "crm", "venta", "ventas", "pipeline", "deal"],
+    keywords: ["prueba", "gratis", "trial", "demo"],
     answer:
-      "Para comenzar con Sales Hub, activa la prueba y luego completa el onboarding comercial: qué vendes, tipo de venta, pipeline, contactos y primeros deals.",
+      "Puedes activar una prueba gratis de 14 días. Primero cargas los datos de tu empresa y luego entras al portal para comenzar.",
+  },
+  {
+    keywords: ["sales", "crm", "venta", "ventas", "pipeline", "deal", "deals"],
+    answer:
+      "Para comenzar con Sales Hub, activa la prueba y completa el onboarding comercial: qué vendes, tipo de venta, pipeline y primeros deals.",
   },
   {
     keywords: ["operacion", "operación", "caso", "alerta", "sla", "responsable"],
     answer:
-      "En Operación, WAMA ayuda a ordenar alertas, asignar responsables, controlar SLA, adjuntar evidencia y revisar casos pendientes.",
+      "En Operación puedes gestionar alertas, responsables, SLA, evidencia y seguimiento de casos desde un solo portal.",
   },
   {
-    keywords: ["finanza", "finanzas", "pago", "documento", "cartola", "conciliacion", "conciliación"],
+    keywords: [
+      "finanza",
+      "finanzas",
+      "pago",
+      "pagos",
+      "documento",
+      "documentos",
+      "cartola",
+      "conciliacion",
+      "conciliación",
+    ],
     answer:
-      "En Finanzas, WAMA ayuda a cargar documentos, revisar pendientes, validar cartolas y detectar diferencias antes del cierre.",
+      "En Finanzas puedes cargar documentos, revisar pendientes, validar cartolas y controlar conciliaciones.",
+  },
+  {
+    keywords: ["portal", "login", "ingresar", "acceso", "entrar"],
+    answer:
+      "Para entrar al software debes ir a Acceso portal, ingresar tu correo y clave, y luego verás los módulos activos de tu empresa.",
+  },
+  {
+    keywords: ["reporte", "reportes", "dashboard", "indicador", "indicadores"],
+    answer:
+      "Los reportes muestran indicadores ejecutivos para decidir: ventas, operación, finanzas, pendientes y riesgos.",
   },
 ];
 
@@ -40,7 +65,7 @@ function getDemoAnswer(question: string) {
 
   if (match) return match.answer;
 
-  return "Te puedo ayudar a elegir un módulo, activar una prueba gratis o entender cómo comenzar. Cuéntame si necesitas ventas, operación o finanzas.";
+  return "Te puedo ayudar a elegir un módulo, activar una prueba gratis o entender cómo empezar. Cuéntame si necesitas ventas, operación o finanzas.";
 }
 
 export default function WamaGuideBubble() {
@@ -49,7 +74,7 @@ export default function WamaGuideBubble() {
   const [messages, setMessages] = useState([
     {
       from: "wama",
-      text: "Hola, soy WAMA. Te acompaño para activar tu prueba, elegir un módulo y comenzar a trabajar.",
+      text: "Hola, soy WAMA. Te ayudo a comenzar. Puedes preguntarme por prueba gratis, módulos, precios o acceso al portal.",
     },
   ]);
 
@@ -73,7 +98,7 @@ export default function WamaGuideBubble() {
   return (
     <div className="fixed bottom-6 right-6 z-[80]">
       {isOpen && (
-        <div className="mb-4 w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#111318] shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
+        <div className="mb-4 flex h-[620px] w-[380px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#111318] shadow-[0_24px_90px_rgba(0,0,0,0.45)]">
           <div className="border-b border-white/10 bg-[#0B0C0E] p-5">
             <p className="text-xs font-black uppercase tracking-[0.25em] text-[#00E5D6]">
               Asistente WAMA
@@ -83,19 +108,19 @@ export default function WamaGuideBubble() {
               ¿Tienes dudas?
             </h3>
 
-            <p className="mt-3 text-sm leading-6 text-[#C4C7CC]">
-              Pregúntame cómo activar la prueba, qué módulo usar o cómo empezar.
+            <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
+              Te ayudo a elegir módulo, activar la prueba o entrar al portal.
             </p>
           </div>
 
-          <div className="max-h-[260px] space-y-3 overflow-y-auto p-4">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4">
             {messages.map((message, index) => (
               <div
                 key={`${message.from}-${index}`}
-                className={`rounded-2xl px-4 py-3 text-sm leading-6 ${
+                className={`max-w-[92%] rounded-2xl px-4 py-3 text-sm leading-6 ${
                   message.from === "wama"
-                    ? "border border-[#00E5D6]/20 bg-[#00E5D6]/10 text-[#F5F6F7]"
-                    : "bg-white/[0.06] text-[#F5F6F7]"
+                    ? "mr-auto border border-[#00E5D6]/20 bg-[#00E5D6]/10 text-[#F5F6F7]"
+                    : "ml-auto bg-white/[0.08] text-[#F5F6F7]"
                 }`}
               >
                 {message.text}
@@ -103,36 +128,38 @@ export default function WamaGuideBubble() {
             ))}
           </div>
 
-          <form onSubmit={handleAsk} className="border-t border-white/10 p-4">
-            <input
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              className="w-full rounded-2xl border border-white/10 bg-[#0B0C0E] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/50"
-              placeholder="Escribe tu pregunta..."
-            />
+          <div className="border-t border-white/10 bg-[#111318] p-4">
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <Link
+                href="/trial"
+                className="rounded-2xl bg-[#00E5D6] px-3 py-3 text-center text-xs font-black text-[#0B0C0E]"
+              >
+                Prueba gratis
+              </Link>
 
-            <button
-              type="submit"
-              className="mt-3 w-full rounded-2xl bg-[#00E5D6] px-4 py-3 text-sm font-black text-[#0B0C0E]"
-            >
-              Preguntar
-            </button>
-          </form>
+              <Link
+                href="/modulos"
+                className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-bold text-[#F5F6F7]"
+              >
+                Ver módulos
+              </Link>
+            </div>
 
-          <div className="grid gap-3 border-t border-white/10 p-4">
-            <Link
-              href="/trial"
-              className="rounded-2xl bg-[#00E5D6] px-4 py-3 text-center text-sm font-black text-[#0B0C0E]"
-            >
-              Activar prueba gratis
-            </Link>
+            <form onSubmit={handleAsk} className="flex gap-2">
+              <input
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#0B0C0E] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/50"
+                placeholder="Escribe tu pregunta..."
+              />
 
-            <Link
-              href="/modulos"
-              className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-center text-sm font-bold text-[#F5F6F7]"
-            >
-              Ver módulos
-            </Link>
+              <button
+                type="submit"
+                className="rounded-2xl bg-[#00E5D6] px-4 py-3 text-sm font-black text-[#0B0C0E]"
+              >
+                Enviar
+              </button>
+            </form>
           </div>
         </div>
       )}
