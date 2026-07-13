@@ -168,7 +168,7 @@ export default function SalesHubOnboardingPage() {
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <WamaButton href="/sales-hub">Entrar al CRM</WamaButton>
+            <WamaButton href="/sales-hub/crm">Continuar al CRM</WamaButton>
 
             <WamaButton href="/acceso/sales-hub" variant="secondary">
               Volver al acceso
@@ -310,7 +310,7 @@ export default function SalesHubOnboardingPage() {
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <WamaButton href="/sales-hub">Entrar al CRM</WamaButton>
+              <WamaButton href="/sales-hub/crm">Continuar al CRM</WamaButton>
 
               <WamaButton href="/licencia" variant="secondary">
                 Ver licencia
