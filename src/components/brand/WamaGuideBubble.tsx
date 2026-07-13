@@ -15,6 +15,147 @@ type LeadData = {
   suggestedModule?: string;
 };
 
+function isGreeting(text: string) {
+  const value = text.trim().toLowerCase();
+
+  return [
+    "hola",
+    "buenas",
+    "buen día",
+    "buen dia",
+    "buenas tardes",
+    "buenas noches",
+    "hello",
+    "hi",
+  ].some((greeting) => value === greeting || value.startsWith(`${greeting} `));
+}
+
+function isContact(text: string) {
+  return (
+    /\S+@\S+\.\S+/.test(text) ||
+    /\+?\d[\d\s.-]{7,}/.test(text)
+  );
+}
+
+function looksLikeName(text: string) {
+  const value = text.trim();
+
+  if (value.length < 2) return false;
+  if (isGreeting(value)) return false;
+  if (isContact(value)) return false;
+
+  const blockedWords = [
+    "ventas",
+    "venta",
+    "crm",
+    "pipeline",
+    "operacion",
+    "operación",
+    "finanzas",
+    "finanza",
+    "pago",
+    "pagos",
+    "documentos",
+    "documento",
+    "precio",
+    "prueba",
+    "gratis",
+    "portal",
+    "modulo",
+    "módulo",
+  ];
+
+  const lowerValue = value.toLowerCase();
+
+  if (blockedWords.some((word) => lowerValue.includes(word))) {
+    return false;
+  }
+
+  return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value);
+}
+
+function localQuickAnswer(text: string) {
+  const value = text.toLowerCase();
+
+  if (
+    value.includes("precio") ||
+    value.includes("valor") ||
+    value.includes("costo") ||
+    value.includes("cuánto") ||
+    value.includes("cuanto") ||
+    value.includes("licencia")
+  ) {
+    return {
+      reply:
+        "WAMA funciona por módulos. El plan base es de US$10 mensuales por módulo e incluye hasta 10 usuarios. Para orientarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Módulos WAMA",
+    };
+  }
+
+  if (
+    value.includes("ventas") ||
+    value.includes("venta") ||
+    value.includes("crm") ||
+    value.includes("pipeline") ||
+    value.includes("deal") ||
+    value.includes("deals")
+  ) {
+    return {
+      reply:
+        "Para ventas te recomiendo Sales Hub. Sirve para ordenar prospectos, contactos, deals, pipeline y seguimiento comercial. Para ayudarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Sales Hub",
+    };
+  }
+
+  if (
+    value.includes("operacion") ||
+    value.includes("operación") ||
+    value.includes("alerta") ||
+    value.includes("caso") ||
+    value.includes("sla") ||
+    value.includes("responsable")
+  ) {
+    return {
+      reply:
+        "Para operación te recomiendo el módulo Operación. Ayuda a gestionar alertas, casos, responsables, evidencia y SLA. Para ayudarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Operación",
+    };
+  }
+
+  if (
+    value.includes("finanza") ||
+    value.includes("finanzas") ||
+    value.includes("pago") ||
+    value.includes("pagos") ||
+    value.includes("factura") ||
+    value.includes("documento") ||
+    value.includes("cartola") ||
+    value.includes("conciliación") ||
+    value.includes("conciliacion")
+  ) {
+    return {
+      reply:
+        "Para finanzas te recomiendo el módulo Finanzas. Ayuda a ordenar documentos, pagos, cartolas, pendientes y conciliación. Para ayudarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Finanzas",
+    };
+  }
+
+  if (
+    value.includes("prueba") ||
+    value.includes("gratis") ||
+    value.includes("trial") ||
+    value.includes("demo")
+  ) {
+    return {
+      reply:
+        "La prueba gratuita dura 14 días. Te permite configurar tu empresa, elegir un módulo y comenzar a trabajar en el portal. Para iniciar, ¿cómo te llamas?",
+      suggestedModule: "Módulos WAMA",
+    };
+  }
+
+  return null;
+}
+
 export default function WamaGuideBubble() {
   const [isOpen, setIsOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -27,7 +168,7 @@ export default function WamaGuideBubble() {
   const [messages, setMessages] = useState<Message[]>([
     {
       from: "wama",
-      text: "Hola, soy el agente WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
+      text: "Hola, soy el agente WAMA. Te ayudo a elegir el módulo correcto, activar una prueba gratis y comenzar rápido. ¿Cómo te llamas?",
     },
   ]);
 
@@ -53,33 +194,18 @@ export default function WamaGuideBubble() {
       const data = await response.json();
 
       if (data.sent) {
-        setLeadStatus("Tus datos fueron enviados al equipo WAMA.");
+        setLeadStatus("Perfecto. Tus datos fueron enviados al equipo WAMA.");
       } else {
-        setLeadStatus("Tus datos quedaron registrados para seguimiento comercial.");
+        setLeadStatus("Perfecto. Tus datos quedaron registrados para seguimiento comercial.");
       }
 
       setLeadSent(true);
     } catch {
-      setLeadStatus("Tus datos quedaron registrados para seguimiento comercial.");
+      setLeadStatus("Perfecto. Tus datos quedaron registrados para seguimiento comercial.");
     }
   }
 
-  async function handleAsk(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
-    const cleanQuestion = question.trim();
-    if (!cleanQuestion || isLoading) return;
-
-    const nextMessages: Message[] = [
-      ...messages,
-      {
-        from: "user",
-        text: cleanQuestion,
-      },
-    ];
-
-    setMessages(nextMessages);
-    setQuestion("");
+  async function callAssistant(nextMessages: Message[], nextLead: LeadData) {
     setIsLoading(true);
 
     try {
@@ -90,19 +216,19 @@ export default function WamaGuideBubble() {
         },
         body: JSON.stringify({
           messages: nextMessages,
-          lead,
+          lead: nextLead,
         }),
       });
 
       const data = await response.json();
 
-      const nextLead = {
-        ...lead,
+      const updatedLead = {
+        ...nextLead,
         ...(data.lead || {}),
-        suggestedModule: data.suggestedModule || data.lead?.suggestedModule,
+        suggestedModule: data.suggestedModule || data.lead?.suggestedModule || nextLead.suggestedModule,
       };
 
-      setLead(nextLead);
+      setLead(updatedLead);
 
       setMessages((current) => [
         ...current,
@@ -110,12 +236,12 @@ export default function WamaGuideBubble() {
           from: "wama",
           text:
             data.reply ||
-            "Puedo ayudarte a elegir el módulo correcto para tu empresa.",
+            "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Qué proceso quieres ordenar primero?",
         },
       ]);
 
       if (data.leadReady) {
-        await sendLeadToAdmin(nextLead, data.suggestedModule);
+        await sendLeadToAdmin(updatedLead, data.suggestedModule);
       }
     } catch {
       setMessages((current) => [
@@ -130,6 +256,143 @@ export default function WamaGuideBubble() {
     }
   }
 
+  async function handleAsk(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    const cleanQuestion = question.trim();
+    if (!cleanQuestion || isLoading) return;
+
+    const userMessage: Message = {
+      from: "user",
+      text: cleanQuestion,
+    };
+
+    const nextMessages: Message[] = [...messages, userMessage];
+
+    setMessages(nextMessages);
+    setQuestion("");
+
+    if (isGreeting(cleanQuestion) && !lead.name) {
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: "Hola, bienvenido a WAMA. Para ayudarte mejor, ¿cómo te llamas?",
+        },
+      ]);
+      return;
+    }
+
+    if (!lead.name && looksLikeName(cleanQuestion)) {
+      const nextLead = {
+        ...lead,
+        name: cleanQuestion,
+      };
+
+      setLead(nextLead);
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: `Gracias, ${cleanQuestion}. ¿De qué empresa vienes?`,
+        },
+      ]);
+
+      return;
+    }
+
+    if (lead.name && !lead.company && !isContact(cleanQuestion)) {
+      const nextLead = {
+        ...lead,
+        company: cleanQuestion,
+      };
+
+      setLead(nextLead);
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: "Perfecto. ¿Me dejas tu correo o celular para enviarte información y ayudarte con la prueba?",
+        },
+      ]);
+
+      return;
+    }
+
+    if (lead.name && lead.company && !lead.contact && isContact(cleanQuestion)) {
+      const nextLead = {
+        ...lead,
+        contact: cleanQuestion,
+      };
+
+      setLead(nextLead);
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: "Gracias. Ahora cuéntame qué necesitas ordenar: ventas, operación, finanzas, reportes u otro proceso.",
+        },
+      ]);
+
+      return;
+    }
+
+    if (lead.name && lead.company && lead.contact && !lead.need) {
+      const quick = localQuickAnswer(cleanQuestion);
+
+      const nextLead = {
+        ...lead,
+        need: cleanQuestion,
+        suggestedModule: quick?.suggestedModule || lead.suggestedModule || "Módulos WAMA",
+      };
+
+      setLead(nextLead);
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text:
+            quick?.reply ||
+            "Perfecto. Con esa información puedo orientar mejor el módulo inicial para tu empresa.",
+        },
+        {
+          from: "wama",
+          text: "Ya tengo los datos principales. Los dejaré registrados para seguimiento comercial.",
+        },
+      ]);
+
+      await sendLeadToAdmin(nextLead, nextLead.suggestedModule);
+      return;
+    }
+
+    const quick = localQuickAnswer(cleanQuestion);
+
+    if (quick && !lead.name) {
+      const nextLead = {
+        ...lead,
+        suggestedModule: quick.suggestedModule,
+      };
+
+      setLead(nextLead);
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: quick.reply,
+        },
+      ]);
+
+      return;
+    }
+
+    await callAssistant(nextMessages, lead);
+  }
+
   function resetChat() {
     setQuestion("");
     setLead({});
@@ -138,7 +401,7 @@ export default function WamaGuideBubble() {
     setMessages([
       {
         from: "wama",
-        text: "Hola, soy el agente WAMA. Puedo ayudarte a elegir un módulo, activar una prueba gratis o resolver dudas sobre el portal.",
+        text: "Hola, soy el agente WAMA. Te ayudo a elegir el módulo correcto, activar una prueba gratis y comenzar rápido. ¿Cómo te llamas?",
       },
     ]);
   }
@@ -157,7 +420,7 @@ export default function WamaGuideBubble() {
             </h3>
 
             <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
-              Pregúntame por módulos, prueba gratis, precios o acceso al portal.
+              Respondo dudas, recomiendo módulos y te ayudo a activar tu prueba.
             </p>
           </div>
 
@@ -197,7 +460,7 @@ export default function WamaGuideBubble() {
                 onChange={(event) => setQuestion(event.target.value)}
                 disabled={isLoading}
                 className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-[#0B0C0E] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/50 disabled:opacity-60"
-                placeholder="Escribe tu pregunta..."
+                placeholder="Escribe tu respuesta..."
               />
 
               <button
