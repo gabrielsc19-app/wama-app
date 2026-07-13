@@ -88,9 +88,7 @@ export default function LoginPage() {
     }
 
     if (company.status === "blocked") {
-      setError(
-        "La cuenta se encuentra bloqueada. Contacta a WAMA para activar licencia."
-      );
+      setError("Tu cuenta requiere activación de licencia para continuar.");
       return;
     }
 
@@ -122,22 +120,17 @@ export default function LoginPage() {
       <section className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[0.95fr_1.05fr] lg:items-center">
         <div>
           <div className="mb-6 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
-            Portal privado
+            Portal WAMA
           </div>
 
           <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-7xl">
-            Accede a tu portal WAMA.
+            Accede a tu portal.
           </h1>
 
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
-            Ingresa con el correo y clave asignados a tu empresa. Por seguridad,
-            WAMA no muestra información de empresas antes del inicio de sesión.
+            Ingresa con tu correo y clave para continuar al panel privado de tu
+            empresa.
           </p>
-
-          <div className="mt-8 rounded-3xl border border-white/10 bg-white/[0.035] p-5 text-sm leading-7 text-[#C4C7CC]">
-            Si activaste una prueba gratuita, usa el correo administrador
-            registrado y la clave provisoria recibida.
-          </div>
         </div>
 
         <WamaCard className="p-7">
@@ -151,7 +144,7 @@ export default function LoginPage() {
             </h2>
 
             <p className="mt-2 text-sm text-[#C4C7CC]">
-              El portal de tu empresa se mostrará después de validar el acceso.
+              Continúa al módulo activo de tu empresa.
             </p>
           </div>
 

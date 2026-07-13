@@ -24,21 +24,12 @@ export default function WamaShell({ children }: { children: React.ReactNode }) {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden rounded-full border border-white/15 bg-white/[0.04] px-5 py-3 text-sm font-bold text-[#F5F6F7] transition hover:border-[#00E5D6]/50 hover:bg-[#00E5D6]/10 sm:inline-flex"
-            >
-              Acceso portal
-            </Link>
-
-            <Link
-              href="/trial"
-              className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:shadow-[0_0_28px_rgba(0,229,214,0.35)]"
-            >
-              Prueba gratis
-            </Link>
-          </div>
+          <Link
+            href="/trial"
+            className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:shadow-[0_0_28px_rgba(0,229,214,0.35)]"
+          >
+            Prueba gratis
+          </Link>
         </div>
       </header>
 
