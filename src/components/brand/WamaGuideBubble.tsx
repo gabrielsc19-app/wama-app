@@ -31,24 +31,47 @@ function isGreeting(text: string) {
 }
 
 function isContact(text: string) {
-  return (
-    /\S+@\S+\.\S+/.test(text) ||
-    /\+?\d[\d\s.-]{7,}/.test(text)
-  );
+  return /\S+@\S+\.\S+/.test(text) || /\+?\d[\d\s.-]{7,}/.test(text);
+}
+
+function isInappropriateInput(text: string) {
+  const value = text.trim().toLowerCase();
+
+  const blockedWords = [
+    "pene",
+    "sexo",
+    "porno",
+    "puta",
+    "puto",
+    "weon",
+    "weón",
+    "ctm",
+    "mierda",
+    "droga",
+    "matar",
+    "suicidio",
+  ];
+
+  return blockedWords.some((word) => value.includes(word));
 }
 
 function looksLikeName(text: string) {
   const value = text.trim();
+  const lowerValue = value.toLowerCase();
 
   if (value.length < 2) return false;
+  if (value.length > 45) return false;
   if (isGreeting(value)) return false;
   if (isContact(value)) return false;
+  if (isInappropriateInput(value)) return false;
 
   const blockedWords = [
     "ventas",
     "venta",
     "crm",
     "pipeline",
+    "deal",
+    "deals",
     "operacion",
     "operación",
     "finanzas",
@@ -63,15 +86,42 @@ function looksLikeName(text: string) {
     "portal",
     "modulo",
     "módulo",
+    "hola",
+    "test",
+    "demo",
+    "asdf",
+    "qwerty",
   ];
-
-  const lowerValue = value.toLowerCase();
 
   if (blockedWords.some((word) => lowerValue.includes(word))) {
     return false;
   }
 
-  return /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(value);
+  const onlyLettersAndSpaces = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/.test(value);
+  if (!onlyLettersAndSpaces) return false;
+
+  const hasAtLeastTwoLetters = /[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ]{2,}/.test(value);
+  if (!hasAtLeastTwoLetters) return false;
+
+  const repeatedCharacters = /(.)\1{3,}/.test(lowerValue);
+  if (repeatedCharacters) return false;
+
+  return true;
+}
+
+function isPossibleCompany(text: string) {
+  const value = text.trim();
+
+  if (value.length < 2) return false;
+  if (value.length > 80) return false;
+  if (isGreeting(value)) return false;
+  if (isContact(value)) return false;
+  if (isInappropriateInput(value)) return false;
+
+  const repeatedCharacters = /(.)\1{4,}/.test(value.toLowerCase());
+  if (repeatedCharacters) return false;
+
+  return true;
 }
 
 function localQuickAnswer(text: string) {
@@ -196,12 +246,16 @@ export default function WamaGuideBubble() {
       if (data.sent) {
         setLeadStatus("Perfecto. Tus datos fueron enviados al equipo WAMA.");
       } else {
-        setLeadStatus("Perfecto. Tus datos quedaron registrados para seguimiento comercial.");
+        setLeadStatus(
+          "Perfecto. Tus datos quedaron registrados para seguimiento comercial."
+        );
       }
 
       setLeadSent(true);
     } catch {
-      setLeadStatus("Perfecto. Tus datos quedaron registrados para seguimiento comercial.");
+      setLeadStatus(
+        "Perfecto. Tus datos quedaron registrados para seguimiento comercial."
+      );
     }
   }
 
@@ -225,7 +279,10 @@ export default function WamaGuideBubble() {
       const updatedLead = {
         ...nextLead,
         ...(data.lead || {}),
-        suggestedModule: data.suggestedModule || data.lead?.suggestedModule || nextLead.suggestedModule,
+        suggestedModule:
+          data.suggestedModule ||
+          data.lead?.suggestedModule ||
+          nextLead.suggestedModule,
       };
 
       setLead(updatedLead);
@@ -272,6 +329,20 @@ export default function WamaGuideBubble() {
     setMessages(nextMessages);
     setQuestion("");
 
+    if (isInappropriateInput(cleanQuestion)) {
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: !lead.name
+            ? "No pude validar ese dato como nombre. Para continuar, escribe tu nombre real."
+            : "No pude validar ese dato. Para continuar, escribe información real de tu empresa o necesidad.",
+        },
+      ]);
+
+      return;
+    }
+
     if (isGreeting(cleanQuestion) && !lead.name) {
       setMessages((current) => [
         ...current,
@@ -280,6 +351,40 @@ export default function WamaGuideBubble() {
           text: "Hola, bienvenido a WAMA. Para ayudarte mejor, ¿cómo te llamas?",
         },
       ]);
+
+      return;
+    }
+
+    if (!lead.name && !looksLikeName(cleanQuestion)) {
+      const quick = localQuickAnswer(cleanQuestion);
+
+      if (quick) {
+        const nextLead = {
+          ...lead,
+          suggestedModule: quick.suggestedModule,
+        };
+
+        setLead(nextLead);
+
+        setMessages((current) => [
+          ...current,
+          {
+            from: "wama",
+            text: quick.reply,
+          },
+        ]);
+
+        return;
+      }
+
+      setMessages((current) => [
+        ...current,
+        {
+          from: "wama",
+          text: "Para ayudarte mejor necesito tu nombre real. Escríbelo, por ejemplo: Gabriel Sánchez.",
+        },
+      ]);
+
       return;
     }
 
@@ -302,7 +407,19 @@ export default function WamaGuideBubble() {
       return;
     }
 
-    if (lead.name && !lead.company && !isContact(cleanQuestion)) {
+    if (lead.name && !lead.company) {
+      if (!isPossibleCompany(cleanQuestion)) {
+        setMessages((current) => [
+          ...current,
+          {
+            from: "wama",
+            text: "No pude validar ese dato como empresa. Escríbeme el nombre real de tu empresa para continuar.",
+          },
+        ]);
+
+        return;
+      }
+
       const nextLead = {
         ...lead,
         company: cleanQuestion,
@@ -321,7 +438,19 @@ export default function WamaGuideBubble() {
       return;
     }
 
-    if (lead.name && lead.company && !lead.contact && isContact(cleanQuestion)) {
+    if (lead.name && lead.company && !lead.contact) {
+      if (!isContact(cleanQuestion)) {
+        setMessages((current) => [
+          ...current,
+          {
+            from: "wama",
+            text: "Para continuar necesito un correo o celular válido. Por ejemplo: contacto@empresa.cl o +56912345678.",
+          },
+        ]);
+
+        return;
+      }
+
       const nextLead = {
         ...lead,
         contact: cleanQuestion,
@@ -346,7 +475,8 @@ export default function WamaGuideBubble() {
       const nextLead = {
         ...lead,
         need: cleanQuestion,
-        suggestedModule: quick?.suggestedModule || lead.suggestedModule || "Módulos WAMA",
+        suggestedModule:
+          quick?.suggestedModule || lead.suggestedModule || "Módulos WAMA",
       };
 
       setLead(nextLead);
