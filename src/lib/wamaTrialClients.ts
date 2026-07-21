@@ -78,20 +78,6 @@ export const trialClients: WamaTrialClient[] = [
       },
     ],
   },
-  {
-    id: "nexo-facility",
-    companyName: "Nexo Facility Group SpA",
-    moduleName: "Sales Hub",
-    email: "demo@nexofacility.cl",
-    password: "WamaTrial2026!",
-    rut: "77.684.219-4",
-    industry: "Servicios operacionales para edificios corporativos",
-    logoText: "NF",
-    trialDays: 14,
-    userLimit: 10,
-    monthlyPrice: "US$10 / módulo",
-    deals: [],
-  },
 ];
 
 export function findTrialClient(email: string, password: string) {
