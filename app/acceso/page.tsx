@@ -17,14 +17,12 @@ export default function AccesoPage() {
     const client = findTrialClient(email, password);
 
     if (!client) {
-      setError(
-        "No pudimos validar el acceso. Revisa el correo y la clave asignada."
-      );
+      setError("No pudimos validar el acceso. Revisa el correo y la clave asignada.");
       return;
     }
 
     window.localStorage.setItem("wamaActiveClient", JSON.stringify(client));
-    router.push("/sales-hub/crm");
+    router.push("/portal");
   }
 
   return (
@@ -32,27 +30,27 @@ export default function AccesoPage() {
       <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="inline-flex rounded-full border border-[#00E5D6]/35 bg-[#00E5D6]/10 px-5 py-2 text-sm font-black text-[#00E5D6]">
-            Acceso al software
+            Acceso portal
           </p>
 
           <h1 className="mt-8 text-6xl font-black leading-tight tracking-[-0.06em] md:text-8xl">
-            Accede a tu portal WAMA.
+            Entra a tu portal WAMA.
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-8 text-[#C4C7CC]">
-            Ingresa con el correo y clave asignados a tu empresa. Desde el portal
-            podrás entrar al módulo contratado, cargar información y comenzar la
-            prueba gratuita.
+            Ingresa con el correo y clave asignados a tu empresa. Desde tu portal
+            podrás acceder al módulo activo, revisar tu prueba gratuita y comenzar
+            a trabajar.
           </p>
 
           <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] p-5">
             <p className="text-xs font-black uppercase tracking-[0.22em] text-[#00E5D6]">
-              Accesos demo disponibles
+              Accesos demo
             </p>
 
             <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
-              Estos accesos son solo para pruebas internas de WAMA. En producción,
-              cada cliente recibirá su correo y clave de acceso.
+              Para pruebas internas, selecciona una empresa demo. En producción,
+              cada cliente recibirá su acceso privado.
             </p>
 
             <div className="mt-4 grid gap-3">
@@ -68,9 +66,7 @@ export default function AccesoPage() {
                   className="rounded-2xl border border-white/10 bg-[#111318] p-4 text-left transition hover:border-[#00E5D6]/45"
                 >
                   <p className="font-black">{client.companyName}</p>
-                  <p className="mt-1 text-sm text-[#C4C7CC]">
-                    {client.email}
-                  </p>
+                  <p className="mt-1 text-sm text-[#C4C7CC]">{client.email}</p>
                 </button>
               ))}
             </div>
@@ -88,7 +84,7 @@ export default function AccesoPage() {
           <h2 className="mt-3 text-4xl font-black">Iniciar sesión</h2>
 
           <p className="mt-3 text-sm leading-6 text-[#C4C7CC]">
-            WAMA no muestra información de empresas antes del inicio de sesión.
+            Ingresa para continuar al panel privado de tu empresa.
           </p>
 
           <div className="mt-8 grid gap-5">
@@ -124,13 +120,12 @@ export default function AccesoPage() {
             type="submit"
             className="mt-7 w-full rounded-full bg-[#00E5D6] px-6 py-4 text-sm font-black text-[#0B0C0E]"
           >
-            Acceder al portal
+            Acceder a mi portal
           </button>
 
-          <div className="mt-5 rounded-2xl border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-4 text-sm leading-6 text-[#C4C7CC]">
-            <strong className="text-[#F5F6F7]">Demo:</strong> selecciona una
-            empresa de prueba o ingresa manualmente el correo y clave asignados.
-          </div>
+          <p className="mt-5 text-center text-xs font-semibold text-[#C4C7CC]">
+            Prueba gratuita activa por 14 días.
+          </p>
         </form>
       </section>
     </main>
