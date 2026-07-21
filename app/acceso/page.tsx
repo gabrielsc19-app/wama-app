@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { findTrialClient, trialClients } from "../../../src/lib/wamaTrialClients";
+import { findTrialClient, trialClients } from "../../src/lib/wamaTrialClients";
 
-export default function SalesHubAccessPage() {
+export default function AccesoPage() {
   const router = useRouter();
 
   const [email, setEmail] = useState("demo@andesfacility.cl");
@@ -32,17 +32,17 @@ export default function SalesHubAccessPage() {
       <section className="mx-auto grid min-h-screen max-w-7xl items-center gap-10 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr]">
         <div>
           <p className="inline-flex rounded-full border border-[#00E5D6]/35 bg-[#00E5D6]/10 px-5 py-2 text-sm font-black text-[#00E5D6]">
-            Sales Hub WAMA
+            Acceso al software
           </p>
 
           <h1 className="mt-8 text-6xl font-black leading-tight tracking-[-0.06em] md:text-8xl">
-            Accede al CRM comercial.
+            Accede a tu portal WAMA.
           </h1>
 
           <p className="mt-6 max-w-xl text-lg leading-8 text-[#C4C7CC]">
             Ingresa con el correo y clave asignados a tu empresa. Desde el portal
-            podrás trabajar tu pipeline, crear target accounts, registrar deals y
-            revisar el dashboard comercial.
+            podrás entrar al módulo contratado, cargar información y comenzar la
+            prueba gratuita.
           </p>
 
           <div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.04] p-5">
@@ -52,7 +52,7 @@ export default function SalesHubAccessPage() {
 
             <p className="mt-2 text-sm leading-6 text-[#C4C7CC]">
               Estos accesos son solo para pruebas internas de WAMA. En producción,
-              cada cliente recibirá su correo y clave privada.
+              cada cliente recibirá su correo y clave de acceso.
             </p>
 
             <div className="mt-4 grid gap-3">
@@ -124,7 +124,7 @@ export default function SalesHubAccessPage() {
             type="submit"
             className="mt-7 w-full rounded-full bg-[#00E5D6] px-6 py-4 text-sm font-black text-[#0B0C0E]"
           >
-            Acceder al Sales Hub
+            Acceder al portal
           </button>
 
           <div className="mt-5 rounded-2xl border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-4 text-sm leading-6 text-[#C4C7CC]">
