@@ -18,8 +18,14 @@ export default function WamaDemoVideo({
           playsInline
           className="aspect-video w-full bg-black object-contain"
         >
-          <source src="/videos/wama-demo.mp4" type="video/mp4" />
-
+          <source
+            src="/videos/wama-sales-demo-v2.webm"
+            type="video/webm"
+          />
+          <source
+            src="/videos/wama-sales-demo-v2.mp4"
+            type="video/mp4"
+          />
           Tu navegador no puede reproducir este video.
         </video>
       </div>
