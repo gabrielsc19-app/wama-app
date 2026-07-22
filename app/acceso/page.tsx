@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import WamaShell from "../../src/components/brand/WamaShell";
-import WamaDemoVideo from "../../src/components/marketing/WamaDemoVideo";
+import WamaDemoVideo from "../components/WamaDemoVideo";
 import {
   findTrialClient,
   trialClients,
@@ -70,7 +70,8 @@ export default function AccesoPage() {
 
               <div className="border-l border-white/15 pl-0 lg:pl-9">
                 <p className="text-sm leading-7 text-[#AEB6C0]">
-                  Empresa demo: <strong className="text-white">Vertex Facilities</strong>
+                  Empresa demo:{" "}
+                  <strong className="text-white">Vertex Facilities</strong>
                 </p>
                 <p className="mt-2 text-sm leading-7 text-[#AEB6C0]">
                   Todos los clientes, contactos y oportunidades son ficticios.

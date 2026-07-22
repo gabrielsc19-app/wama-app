@@ -1,6 +1,6 @@
 import Link from "next/link";
 import WamaShell from "../src/components/brand/WamaShell";
-import WamaDemoVideo from "../src/components/marketing/WamaDemoVideo";
+import WamaDemoVideo from "./components/WamaDemoVideo";
 
 export default function HomePage() {
   return (
