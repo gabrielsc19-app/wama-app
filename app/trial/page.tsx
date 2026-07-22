@@ -3,423 +3,249 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import WamaShell from "../../src/components/brand/WamaShell";
-import WamaCard from "../../src/components/brand/WamaCard";
 
 const modules = ["Sales Hub", "Operación", "Finanzas"];
-
-const saleTypes = [
-  "Venta spot",
-  "Venta recurrente",
-  "Venta mixta",
-  "Arriendo / contrato mensual",
-  "Proyecto único",
-  "Servicio operacional",
-];
-
-const businessModels = [
-  "Producto",
-  "Servicio",
-  "Software / SaaS",
-  "Arriendo",
-  "Proyecto",
-  "Mantención",
-  "Facility / operación",
-  "Otro",
-];
 
 export default function TrialPage() {
   const router = useRouter();
 
-  const [companyLogo, setCompanyLogo] = useState<string | null>(null);
-  const [companyName, setCompanyName] = useState("Empresa demo");
-  const [companyRut, setCompanyRut] = useState("");
-  const [industry, setIndustry] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [selectedModule, setSelectedModule] = useState("Sales Hub");
-
-  const [businessModel, setBusinessModel] = useState("Servicio");
-  const [saleType, setSaleType] = useState("Venta recurrente");
-  const [whatCompanySells, setWhatCompanySells] = useState("");
-  const [averageTicket, setAverageTicket] = useState("");
-  const [salesCycle, setSalesCycle] = useState("");
-  const [currency, setCurrency] = useState("CLP");
   const [requestedUsers, setRequestedUsers] = useState("10");
-
-  function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-
-    if (!file) return;
-
-    const reader = new FileReader();
-
-    reader.onloadend = () => {
-      setCompanyLogo(reader.result as string);
-    };
-
-    reader.readAsDataURL(file);
-  }
+  const [error, setError] = useState("");
 
   function handleCreateTrial(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setError("");
+
+    const cleanCompany = companyName.trim();
+    const cleanName = contactName.trim();
+    const cleanEmail = contactEmail.trim().toLowerCase();
+    const users = Number(requestedUsers);
+
+    if (!cleanCompany || !cleanName || !cleanEmail) {
+      setError("Completa empresa, responsable y correo para activar la prueba.");
+      return;
+    }
+
+    if (!Number.isFinite(users) || users < 1) {
+      setError("La cantidad de usuarios debe ser mayor a cero.");
+      return;
+    }
 
     const today = new Date();
     const trialEndsAt = new Date(today);
     trialEndsAt.setDate(today.getDate() + 14);
 
-    const trialData = {
-      companyName: companyName || "Empresa demo",
-      companyRut,
-      industry,
-      contactName,
-      contactEmail,
-      contactPhone,
-      selectedModule,
-      companyLogo,
-      status: "trial",
+    const logoText = cleanCompany
+      .split(/\s+/)
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+
+    const temporaryPassword = "WamaTrial2026!";
+
+    const trialClient = {
+      id: `trial-${Date.now()}`,
+      companyName: cleanCompany,
+      moduleName: selectedModule,
+      email: cleanEmail,
+      password: temporaryPassword,
+      rut: "Pendiente de configurar",
+      industry: "Empresa en periodo de prueba",
+      logoText: logoText || "W",
+      trialDays: 14,
+      userLimit: users,
+      monthlyPrice: "US$10 por módulo / mes",
       trialStartedAt: today.toISOString(),
       trialEndsAt: trialEndsAt.toISOString(),
-      trialDaysRemaining: 14,
-
-      businessModel,
-      saleType,
-      whatCompanySells,
-      averageTicket,
-      salesCycle,
-      currency,
-      requestedUsers: Number(requestedUsers),
-      includedUsers: 10,
-      modulePriceUsd: 10,
-      extraUsersBlockPriceUsd: 10,
-
-      adminEmail: contactEmail,
-      mustChangePassword: true,
+      contactName: cleanName,
+      contactPhone: contactPhone.trim(),
+      deals: [],
     };
 
     const initialUsers = [
       {
         id: 1,
-        name: contactName || "Administrador trial",
-        email: contactEmail || "admin@empresa.cl",
+        name: cleanName,
+        email: cleanEmail,
         role: "Administrador",
-        status: "Invitado",
-        temporaryPassword: "WamaTrial2026!",
+        status: "Activo",
+        temporaryPassword,
         mustChangePassword: true,
       },
     ];
 
-    localStorage.setItem("wamaTrialCompany", JSON.stringify(trialData));
-    localStorage.setItem("wamaCompanyUsers", JSON.stringify(initialUsers));
+    window.localStorage.setItem(
+      "wamaTrialCompany",
+      JSON.stringify(trialClient),
+    );
+    window.localStorage.setItem(
+      "wamaCompanyUsers",
+      JSON.stringify(initialUsers),
+    );
+    window.localStorage.setItem(
+      "wamaActiveClient",
+      JSON.stringify(trialClient),
+    );
 
-    if (selectedModule === "Sales Hub") {
-      router.push("/acceso/sales-hub");
-      return;
-    }
-
-    if (selectedModule === "Operación") {
-      router.push("/operacion");
-      return;
-    }
-
-    if (selectedModule === "Finanzas") {
-      router.push("/finanzas");
-      return;
-    }
-
-    router.push("/app");
+    router.push("/portal");
   }
 
   return (
     <WamaShell>
-      <section className="mx-auto max-w-7xl px-6 py-14">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
-          <div>
-            <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
-              Prueba gratis 14 días
-            </div>
-
-            <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-6xl">
-              Activa WAMA para tu empresa.
-            </h1>
-
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
-              Configura una prueba gratuita, define qué vende tu empresa,
-              selecciona el módulo inicial y prepara el acceso al software.
-            </p>
-
-            <div className="mt-8 grid gap-4">
-              {[
-                "14 días gratis sin pago inicial",
-                "Configuración comercial por tipo de negocio",
-                "Logo y datos de empresa",
-                "10 usuarios incluidos",
-                "US$10 mensual por módulo después del trial",
-                "Usuarios adicionales por US$10 extra",
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm text-[#F5F6F7]"
-                >
-                  <span className="h-2 w-2 rounded-full bg-[#00E5D6]" />
-                  {item}
-                </div>
-              ))}
-            </div>
+      <main className="overflow-hidden bg-white text-[#0B0C0E]">
+        <section className="relative overflow-hidden bg-[#0B0C0E] text-white">
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute right-[-10rem] top-[-10rem] h-[34rem] w-[34rem] rounded-full bg-[#00E5D6]/10 blur-[170px]" />
           </div>
 
-          <WamaCard className="p-6">
-            <div className="mb-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
+          <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:py-28">
+            <div className="lg:sticky lg:top-32">
+              <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">
+                Prueba gratis por 14 días
+              </p>
+
+              <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl">
+                Activa WAMA sin una implementación compleja.
+              </h1>
+
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">
+                Crea tu portal, define el primer módulo y comienza con un acceso
+                administrador para tu empresa.
+              </p>
+
+              <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
+                <Benefit number="01" text="14 días de prueba sin pago inicial" />
+                <Benefit number="02" text="Hasta 10 usuarios incluidos" />
+                <Benefit number="03" text="Acceso inmediato al portal" />
+                <Benefit number="04" text="Implementación por módulos" />
+              </div>
+            </div>
+
+            <form
+              onSubmit={handleCreateTrial}
+              className="rounded-[2rem] bg-white p-7 text-[#0B0C0E] shadow-[0_35px_110px_rgba(0,0,0,0.28)] sm:p-10"
+            >
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-[#008F87]">
                 Datos de activación
               </p>
 
-              <h2 className="mt-2 text-2xl font-black text-[#F5F6F7]">
-                Configura la prueba
+              <h2 className="mt-4 text-4xl font-black tracking-[-0.05em]">
+                Crea tu portal.
               </h2>
-            </div>
 
-            <form className="grid gap-5" onSubmit={handleCreateTrial}>
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Nombre de empresa">
+              <p className="mt-4 max-w-xl text-sm leading-7 text-[#69717D]">
+                Pediremos la configuración comercial detallada después, dentro
+                de WAMA. Primero necesitamos activar tu acceso.
+              </p>
+
+              <div className="mt-8 grid gap-5">
+                <Field label="Empresa">
                   <input
                     value={companyName}
                     onChange={(event) => setCompanyName(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                    placeholder="Ej: Empresa Demo SpA"
+                    className={inputClass}
+                    placeholder="Nombre de la empresa"
                     required
                   />
                 </Field>
 
-                <Field label="RUT empresa">
-                  <input
-                    value={companyRut}
-                    onChange={(event) => setCompanyRut(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                    placeholder="Ej: 76.123.456-7"
-                  />
-                </Field>
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field label="Responsable">
+                    <input
+                      value={contactName}
+                      onChange={(event) => setContactName(event.target.value)}
+                      className={inputClass}
+                      placeholder="Nombre y apellido"
+                      required
+                    />
+                  </Field>
 
-                <Field label="Rubro">
-                  <input
-                    value={industry}
-                    onChange={(event) => setIndustry(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                    placeholder="Ej: Retail, servicios, industrial"
-                  />
-                </Field>
-
-                <Field label="Responsable">
-                  <input
-                    value={contactName}
-                    onChange={(event) => setContactName(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                    placeholder="Nombre del contacto principal"
-                  />
-                </Field>
+                  <Field label="Teléfono">
+                    <input
+                      value={contactPhone}
+                      onChange={(event) => setContactPhone(event.target.value)}
+                      className={inputClass}
+                      placeholder="+56 9 1234 5678"
+                    />
+                  </Field>
+                </div>
 
                 <Field label="Correo administrador">
                   <input
                     type="email"
                     value={contactEmail}
                     onChange={(event) => setContactEmail(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                    className={inputClass}
                     placeholder="correo@empresa.cl"
                     required
                   />
                 </Field>
 
-                <Field label="Teléfono">
-                  <input
-                    value={contactPhone}
-                    onChange={(event) => setContactPhone(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                    placeholder="+56 9 1234 5678"
-                  />
-                </Field>
-              </div>
-
-              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                  Configuración comercial
-                </p>
-
-                <div className="mt-5 grid gap-4 md:grid-cols-2">
-                  <Field label="¿Qué vende tu empresa?">
-                    <textarea
-                      value={whatCompanySells}
-                      onChange={(event) =>
-                        setWhatCompanySells(event.target.value)
-                      }
-                      className="min-h-[108px] w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                      placeholder="Ej: servicios, productos, arriendos, proyectos, software, asesorías..."
-                      required
-                    />
-                  </Field>
-
-                  <div className="grid gap-4">
-                    <Field label="Modelo de negocio">
-                      <select
-                        value={businessModel}
-                        onChange={(event) =>
-                          setBusinessModel(event.target.value)
-                        }
-                        className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none focus:border-[#00E5D6]/60"
-                      >
-                        {businessModels.map((model) => (
-                          <option key={model}>{model}</option>
-                        ))}
-                      </select>
-                    </Field>
-
-                    <Field label="Tipo de venta">
-                      <select
-                        value={saleType}
-                        onChange={(event) => setSaleType(event.target.value)}
-                        className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none focus:border-[#00E5D6]/60"
-                      >
-                        {saleTypes.map((type) => (
-                          <option key={type}>{type}</option>
-                        ))}
-                      </select>
-                    </Field>
-                  </div>
-
-                  <Field label="Ticket promedio estimado">
-                    <input
-                      value={averageTicket}
-                      onChange={(event) => setAverageTicket(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                      placeholder="Ej: 15000000"
-                    />
-                  </Field>
-
-                  <Field label="Ciclo de venta estimado">
-                    <input
-                      value={salesCycle}
-                      onChange={(event) => setSalesCycle(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
-                      placeholder="Ej: 30 días, 60 días, 3 meses"
-                    />
-                  </Field>
-
-                  <Field label="Moneda de trabajo">
+                <div className="grid gap-5 md:grid-cols-2">
+                  <Field label="Módulo inicial">
                     <select
-                      value={currency}
-                      onChange={(event) => setCurrency(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none focus:border-[#00E5D6]/60"
+                      value={selectedModule}
+                      onChange={(event) => setSelectedModule(event.target.value)}
+                      className={inputClass}
                     >
-                      <option>CLP</option>
-                      <option>UF</option>
-                      <option>USD</option>
+                      {modules.map((module) => (
+                        <option key={module}>{module}</option>
+                      ))}
                     </select>
                   </Field>
 
-                  <Field label="Usuarios solicitados">
+                  <Field label="Usuarios">
                     <input
                       type="number"
                       min="1"
+                      max="100"
                       value={requestedUsers}
                       onChange={(event) => setRequestedUsers(event.target.value)}
-                      className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none placeholder:text-[#C4C7CC]/60 focus:border-[#00E5D6]/60"
+                      className={inputClass}
                     />
                   </Field>
                 </div>
-
-                {Number(requestedUsers) > 10 && (
-                  <div className="mt-5 rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 p-4 text-sm leading-6 text-[#F5F6F7]">
-                    El plan base incluye 10 usuarios. Para activar más de 10
-                    usuarios se debe contratar un bloque adicional por US$10.
-                  </div>
-                )}
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <Field label="Módulo inicial">
-                  <select
-                    value={selectedModule}
-                    onChange={(event) => setSelectedModule(event.target.value)}
-                    className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 text-sm text-[#F5F6F7] outline-none focus:border-[#00E5D6]/60"
-                  >
-                    {modules.map((module) => (
-                      <option key={module}>{module}</option>
-                    ))}
-                  </select>
-                </Field>
-
-                <Field label="Logo de empresa">
-                  <label className="flex cursor-pointer items-center justify-between gap-4 rounded-2xl border border-dashed border-[#00E5D6]/35 bg-[#00E5D6]/5 px-4 py-4 text-sm text-[#C4C7CC]">
-                    <span>Subir logo PNG, JPG o SVG</span>
-
-                    <span className="rounded-full bg-[#00E5D6]/15 px-3 py-1 text-xs font-bold text-[#00E5D6]">
-                      Elegir archivo
-                    </span>
-
-                    <input
-                      type="file"
-                      accept="image/png,image/jpeg,image/svg+xml"
-                      className="hidden"
-                      onChange={handleLogoChange}
-                    />
-                  </label>
-                </Field>
-              </div>
-
-              <WamaCard className="p-5">
-                <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-                      {companyLogo ? (
-                        <img
-                          src={companyLogo}
-                          alt="Logo empresa"
-                          className="h-full w-full object-contain p-2"
-                        />
-                      ) : (
-                        <span className="text-2xl font-black text-[#00E5D6]">
-                          {companyName.slice(0, 1).toUpperCase()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <p className="text-sm text-[#C4C7CC]">
-                        Vista previa del portal
-                      </p>
-
-                      <h3 className="text-2xl font-black text-[#F5F6F7]">
-                        {companyName || "Empresa demo"}
-                      </h3>
-
-                      <p className="mt-1 text-sm font-semibold text-[#00E5D6]">
-                        {selectedModule} by WAMA · Trial 14 días
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-5 py-4 text-sm leading-6 text-[#F5F6F7]">
-                    Al activar la prueba, se creará el acceso administrador de
-                    la empresa.
-                    <br />
-                    El ingreso será por la pantalla de login con el correo
-                    registrado.
-                  </div>
+              {Number(requestedUsers) > 10 && (
+                <div className="mt-5 border-l-4 border-[#00AFA4] bg-[#E7FFFC] px-4 py-3 text-sm leading-6 text-[#315A57]">
+                  El plan base incluye 10 usuarios. Los usuarios adicionales se
+                  configuran después de activar el portal.
                 </div>
-              </WamaCard>
+              )}
+
+              {error && (
+                <div className="mt-5 border-l-4 border-red-500 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+                  {error}
+                </div>
+              )}
 
               <button
                 type="submit"
-                className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-semibold text-[#0B0C0E] transition-all duration-200 hover:shadow-[0_0_30px_rgba(0,229,214,0.35)]"
+                className="mt-7 inline-flex w-full items-center justify-center rounded-full bg-[#00E5D6] px-7 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 hover:shadow-[0_15px_35px_rgba(0,229,214,0.22)]"
               >
                 Activar prueba gratis
               </button>
+
+              <p className="mt-5 text-center text-xs leading-6 text-[#7C8490]">
+                Se creará un acceso temporal con clave WamaTrial2026!
+              </p>
             </form>
-          </WamaCard>
-        </div>
-      </section>
+          </div>
+        </section>
+      </main>
     </WamaShell>
   );
 }
+
+const inputClass =
+  "w-full rounded-2xl border border-[#D7DBE0] bg-[#F7F8FA] px-4 py-4 text-sm text-[#0B0C0E] outline-none transition placeholder:text-[#8B929D] focus:border-[#00AFA4] focus:bg-white";
 
 function Field({
   label,
@@ -429,9 +255,24 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <div className="grid gap-2">
-      <label className="text-sm font-semibold text-[#F5F6F7]">{label}</label>
+    <label className="grid gap-2">
+      <span className="text-sm font-black">{label}</span>
       {children}
+    </label>
+  );
+}
+
+function Benefit({
+  number,
+  text,
+}: {
+  number: string;
+  text: string;
+}) {
+  return (
+    <div className="grid grid-cols-[3rem_1fr] gap-4 py-5">
+      <span className="text-xs font-black text-[#00E5D6]">{number}</span>
+      <p className="text-sm font-black text-white">{text}</p>
     </div>
   );
 }

@@ -8,10 +8,14 @@ export default function WamaShell({
   children: React.ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-[#0B0C0E] text-[#F5F6F7]">
+    <div className="min-h-screen bg-[#0B0C0E] text-[#F5F6F7]">
       <header className="sticky top-0 z-50 border-b border-white/10 bg-[#0B0C0E]/95 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-6 px-6 py-5">
-          <Link href="/" className="flex items-center">
+          <Link
+            href="/"
+            aria-label="Ir al inicio de WAMA"
+            className="flex items-center"
+          >
             <WamaLogo />
           </Link>
 
@@ -39,7 +43,7 @@ export default function WamaShell({
 
             <Link
               href="/trial"
-              className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black text-[#0B0C0E] transition hover:shadow-[0_0_28px_rgba(0,229,214,0.35)]"
+              className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 hover:shadow-[0_0_28px_rgba(0,229,214,0.28)]"
             >
               Prueba gratis
             </Link>
@@ -47,9 +51,9 @@ export default function WamaShell({
         </div>
       </header>
 
-      <div className="relative z-10">{children}</div>
+      <div>{children}</div>
 
       <WamaGuideBubble />
-    </main>
+    </div>
   );
 }
