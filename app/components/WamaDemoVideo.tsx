@@ -13,15 +13,14 @@ export default function WamaDemoVideo({
     <div className={className}>
       <div className="overflow-hidden rounded-[1.75rem] border border-[#D3D8DE] bg-black shadow-[0_35px_100px_rgba(11,12,14,0.2)]">
         <video
+          autoPlay
+          muted
+          loop
           controls
-          preload="metadata"
+          preload="auto"
           playsInline
           className="aspect-video w-full bg-black object-contain"
         >
-          <source
-            src="/videos/wama-sales-demo-v2.webm"
-            type="video/webm"
-          />
           <source
             src="/videos/wama-sales-demo-v2.mp4"
             type="video/mp4"

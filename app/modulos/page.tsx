@@ -1,211 +1,256 @@
+import Link from "next/link";
 import WamaShell from "../../src/components/brand/WamaShell";
-import WamaButton from "../../src/components/brand/WamaButton";
 
 const modules = [
   {
-    eyebrow: "Gestión comercial",
-    name: "Sales Hub",
+    number: "01",
+    eyebrow: "Disponible",
+    name: "WAMA Sales",
+    title: "Gestiona todo tu proceso comercial.",
     description:
-      "Convierte prospectos en oportunidades con pipeline, contactos, deals y reportes comerciales.",
-    href: "/modulos/sales-hub",
-    cta: "Ver Sales Hub",
-    metrics: ["Pipeline", "Deals", "Contactos", "Forecast"],
-    score: "92%",
-    status: "Listo para activar",
+      "Centraliza prospectos, clientes, oportunidades, actividades y resultados en un solo flujo.",
+    result: "Más seguimiento. Menos oportunidades perdidas.",
+    href: "/sales-hub",
+    action: "Conocer Sales Hub",
   },
   {
-    eyebrow: "Gestión operativa",
-    name: "Operación",
+    number: "02",
+    eyebrow: "Próximamente",
+    name: "WAMA Ops",
+    title: "Controla la operación en tiempo real.",
     description:
-      "Controla alertas, casos, responsables, evidencias y cumplimiento operativo diario.",
-    href: "/modulos/operacion",
-    cta: "Ver Operación",
-    metrics: ["Alertas", "SLA", "Evidencia", "Responsables"],
-    score: "88%",
-    status: "Listo para activar",
+      "Ordena alertas, tareas, responsables, evidencias y cumplimiento operacional.",
+    result: "Más control. Menos información dispersa.",
+    href: "/operacion",
+    action: "Conocer Operación",
   },
   {
-    eyebrow: "Control financiero",
-    name: "Finanzas",
+    number: "03",
+    eyebrow: "Próximamente",
+    name: "WAMA Finance",
+    title: "Mantén el control financiero de tu empresa.",
     description:
-      "Ordena documentos, pagos, conciliaciones, pendientes y visibilidad financiera.",
-    href: "/modulos/finanzas",
-    cta: "Ver Finanzas",
-    metrics: ["Documentos", "Pagos", "Conciliación", "Pendientes"],
-    score: "84%",
-    status: "Listo para activar",
+      "Gestiona documentos, pagos, vencimientos, aprobaciones y reportes financieros.",
+    result: "Más visibilidad. Menos decisiones tardías.",
+    href: "/finanzas",
+    action: "Conocer Finanzas",
+  },
+  {
+    number: "04",
+    eyebrow: "En desarrollo",
+    name: "WAMA Reports",
+    title: "Convierte la gestión en decisiones.",
+    description:
+      "Consolida ventas, operación y finanzas en una lectura ejecutiva clara.",
+    result: "Más claridad. Menos tiempo preparando reportes.",
+    href: "/reportes",
+    action: "Conocer Reportes",
   },
 ];
 
-const journey = [
-  "Elige módulo",
-  "Activa prueba",
-  "Carga datos",
-  "Trabaja en portal",
-  "Revisa reportes",
-];
-
-export default function ModulesPage() {
+export default function ModulosPage() {
   return (
     <WamaShell>
-      <section className="relative overflow-hidden">
-        <div className="relative mx-auto max-w-7xl px-6 py-20">
-          <div className="mb-14 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
-            <div className="wama-fade-up">
-              <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
-                Módulos WAMA
-              </div>
+      <main className="overflow-hidden bg-white text-[#0B0C0E]">
+        <HeroSection />
+        <ModulesList />
+        <ImplementationSection />
+        <FinalCallToAction />
+      </main>
+    </WamaShell>
+  );
+}
 
-              <h1 className="max-w-4xl text-5xl font-black leading-tight tracking-[-0.05em] text-[#F5F6F7] md:text-7xl">
-                Activa solo lo que tu empresa necesita.
-              </h1>
+function HeroSection() {
+  return (
+    <section className="relative overflow-hidden bg-[#0B0C0E] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute right-[-10rem] top-[-10rem] h-[34rem] w-[34rem] rounded-full bg-[#00E5D6]/10 blur-[170px]" />
+      </div>
 
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-[#C4C7CC]">
-                WAMA funciona por módulos conectados. Comienza con el área que
-                hoy necesita más orden y crece cuando tu operación lo requiera.
-              </p>
-            </div>
+      <div className="relative mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">
+          Plataforma modular
+        </p>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <WamaButton href="/trial">Prueba gratis</WamaButton>
-              <WamaButton href="/login" variant="secondary">
-                Acceso portal
-              </WamaButton>
-            </div>
+        <h1 className="mt-7 max-w-5xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl md:text-7xl">
+          Activa solo lo que tu empresa necesita.
+        </h1>
+
+        <p className="mt-8 max-w-3xl text-lg leading-8 text-[#B7BEC8]">
+          Comienza con un proceso, valida el resultado y amplía WAMA cuando tu
+          organización lo requiera.
+        </p>
+
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/acceso"
+            className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5"
+          >
+            Probar WAMA
+          </Link>
+
+          <a
+            href="#modulos"
+            className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white transition hover:border-[#00E5D6]/60 hover:text-[#00E5D6]"
+          >
+            Ver módulos
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ModulesList() {
+  return (
+    <section id="modulos" className="scroll-mt-24 bg-white">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <div className="grid gap-12 lg:grid-cols-[0.68fr_1.32fr]">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">
+              Empieza por tu prioridad
+            </p>
+
+            <h2 className="mt-5 max-w-xl text-4xl font-black leading-tight tracking-[-0.055em] md:text-5xl">
+              Un sistema. Varios procesos.
+            </h2>
+
+            <p className="mt-6 max-w-lg text-base leading-7 text-[#69717D]">
+              Todos los módulos comparten la misma lógica visual, los mismos
+              usuarios y una sola experiencia de gestión.
+            </p>
           </div>
 
-          <div className="mb-14 grid gap-3 md:grid-cols-5">
-            {journey.map((item, index) => (
-              <div
-                key={item}
-                className="wama-card-motion rounded-3xl border border-white/10 bg-white/[0.035] p-5"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6]">
-                  {index + 1}
-                </span>
-                <p className="mt-4 text-sm font-bold text-[#F5F6F7]">{item}</p>
-              </div>
-            ))}
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="divide-y divide-[#DDE1E6] border-y border-[#DDE1E6]">
             {modules.map((module) => (
               <article
-                key={module.name}
-                className="wama-card-motion rounded-[2rem] border border-white/10 bg-[#111318] p-7 shadow-[0_24px_80px_rgba(0,0,0,0.24)]"
+                key={module.number}
+                className="grid gap-6 py-10 md:grid-cols-[4rem_0.55fr_1fr] md:items-start"
               >
-                <div className="relative z-10">
-                  <div className="mb-7 flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-black uppercase tracking-[0.25em] text-[#00E5D6]">
-                        {module.eyebrow}
-                      </p>
+                <p className="text-sm font-black text-[#008F87]">
+                  {module.number}
+                </p>
 
-                      <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
-                        {module.name}
-                      </h2>
-                    </div>
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-[#858E99]">
+                    {module.eyebrow}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-black tracking-[-0.04em]">
+                    {module.name}
+                  </h3>
+                </div>
 
-                    <span className="rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-3 py-1 text-xs font-bold text-[#00E5D6]">
-                      {module.status}
-                    </span>
-                  </div>
-
-                  <p className="min-h-[84px] text-base leading-7 text-[#C4C7CC]">
+                <div>
+                  <p className="text-xl font-black tracking-[-0.03em]">
+                    {module.title}
+                  </p>
+                  <p className="mt-3 max-w-2xl text-base leading-7 text-[#69717D]">
                     {module.description}
                   </p>
-
-                  <div className="mt-8 rounded-3xl border border-white/10 bg-[#0B0C0E]/70 p-5">
-                    <div className="mb-4 flex items-center justify-between">
-                      <p className="text-sm font-bold text-[#F5F6F7]">
-                        Potencial de control
-                      </p>
-
-                      <span className="text-sm font-black text-[#00E5D6]">
-                        {module.score}
-                      </span>
-                    </div>
-
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className="wama-progress-fill h-2 rounded-full bg-[#00E5D6]"
-                        style={{ width: module.score }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-3">
-                    {module.metrics.map((item) => (
-                      <div
-                        key={item}
-                        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm font-semibold text-[#F5F6F7]"
-                      >
-                        <span className="h-2 w-2 rounded-full bg-[#00E5D6]" />
-                        {item}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-8">
-                    <WamaButton href={module.href} variant="secondary">
-                      {module.cta}
-                    </WamaButton>
-                  </div>
+                  <p className="mt-5 text-sm font-black text-[#008F87]">
+                    {module.result}
+                  </p>
+                  <Link
+                    href={module.href}
+                    className="mt-6 inline-flex text-sm font-black transition hover:text-[#008F87]"
+                  >
+                    {module.action} →
+                  </Link>
                 </div>
               </article>
             ))}
           </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
-          <div className="mt-14 overflow-hidden rounded-[2.5rem] border border-white/10 bg-[#111318] p-8">
-            <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-              <div>
-                <p className="text-sm font-black uppercase tracking-[0.25em] text-[#00E5D6]">
-                  Experiencia modular
-                </p>
+function ImplementationSection() {
+  return (
+    <section className="border-y border-[#E1E5E9] bg-[#F5F6F7]">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr]">
+          <div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">
+              Implementación
+            </p>
+            <h2 className="mt-5 max-w-xl text-4xl font-black leading-tight tracking-[-0.055em] md:text-5xl">
+              Comienza sin complejidad.
+            </h2>
+          </div>
 
-                <h2 className="mt-3 text-4xl font-black tracking-[-0.04em] text-[#F5F6F7]">
-                  Un portal, varios módulos, una sola forma de controlar.
-                </h2>
-
-                <p className="mt-5 text-base leading-7 text-[#C4C7CC]">
-                  El usuario entra a su portal, ve sus módulos activos y trabaja
-                  sin perderse en menús innecesarios.
-                </p>
-              </div>
-
-              <div className="grid gap-4">
-                {modules.map((module, index) => (
-                  <div
-                    key={module.name}
-                    className="wama-float rounded-3xl border border-white/10 bg-white/[0.04] p-5"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6]">
-                          {index + 1}
-                        </span>
-
-                        <div>
-                          <p className="font-black text-[#F5F6F7]">
-                            {module.name}
-                          </p>
-                          <p className="text-sm text-[#C4C7CC]">
-                            {module.eyebrow}
-                          </p>
-                        </div>
-                      </div>
-
-                      <span className="text-sm font-black text-[#00E5D6]">
-                        Activo
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <div className="divide-y divide-[#D5DAE0] border-y border-[#D5DAE0]">
+            <Step
+              number="01"
+              title="Define la prioridad"
+              text="Selecciona el proceso que hoy necesita más orden."
+            />
+            <Step
+              number="02"
+              title="Configura el portal"
+              text="Creamos usuarios, permisos y estructura inicial."
+            />
+            <Step
+              number="03"
+              title="Activa el módulo"
+              text="Tu equipo comienza a gestionar en un entorno centralizado."
+            />
+            <Step
+              number="04"
+              title="Amplía cuando lo necesites"
+              text="Incorpora nuevos módulos sin cambiar de plataforma."
+            />
           </div>
         </div>
-      </section>
-    </WamaShell>
+      </div>
+    </section>
+  );
+}
+
+function Step({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="grid gap-5 py-8 sm:grid-cols-[4rem_0.55fr_1fr]">
+      <p className="text-sm font-black text-[#008F87]">{number}</p>
+      <h3 className="text-xl font-black">{title}</h3>
+      <p className="text-base leading-7 text-[#69717D]">{text}</p>
+    </div>
+  );
+}
+
+function FinalCallToAction() {
+  return (
+    <section className="bg-[#0B0C0E] text-white">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <h2 className="max-w-5xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">
+          Empieza por un módulo. Construye una mejor gestión.
+        </h2>
+
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/acceso"
+            className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]"
+          >
+            Probar WAMA
+          </Link>
+
+          <Link
+            href="/trial"
+            className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white"
+          >
+            Solicitar mi portal
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }

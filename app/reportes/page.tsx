@@ -1,311 +1,271 @@
+import Link from "next/link";
 import WamaShell from "../../src/components/brand/WamaShell";
-import WamaCard from "../../src/components/brand/WamaCard";
-import WamaButton from "../../src/components/brand/WamaButton";
 
-const executiveKpis = [
+const priorities = [
   {
-    label: "Riesgo operativo",
-    value: "Medio",
-    detail: "3 casos fuera de SLA",
-    progress: "64%",
+    number: "01",
+    area: "Ventas",
+    title: "Oportunidades sin seguimiento",
+    action: "Revisar negocios sin próxima actividad.",
   },
   {
-    label: "Pipeline comercial",
-    value: "$128M",
-    detail: "18 deals activos",
-    progress: "78%",
-  },
-  {
-    label: "Finanzas",
-    value: "$42M",
-    detail: "Pendiente por validar",
-    progress: "52%",
-  },
-  {
-    label: "Cumplimiento",
-    value: "86%",
-    detail: "Indicador general",
-    progress: "86%",
-  },
-];
-
-const moduleReport = [
-  {
-    title: "Sales Hub",
-    value: "$128M",
-    subtitle: "Pipeline comercial",
-    progress: "78%",
-    decision: "Priorizar deals en negociación y propuestas enviadas.",
-  },
-  {
-    title: "Operación",
-    value: "12",
-    subtitle: "Casos abiertos",
-    progress: "64%",
-    decision: "Revisar responsables y casos fuera de SLA.",
-  },
-  {
-    title: "Finanzas",
-    value: "$42M",
-    subtitle: "Documentos pendientes",
-    progress: "52%",
-    decision: "Validar cartola y documentos vencidos.",
-  },
-];
-
-const chartBars = [
-  { label: "Ventas", value: "78%", amount: "$128M" },
-  { label: "Operación", value: "64%", amount: "12 casos" },
-  { label: "Finanzas", value: "52%", amount: "$42M" },
-  { label: "Usuarios", value: "40%", amount: "4/10" },
-];
-
-const alerts = [
-  {
-    title: "Deals sin seguimiento",
-    area: "Sales Hub",
-    level: "Alta",
-  },
-  {
-    title: "Casos fuera de SLA",
+    number: "02",
     area: "Operación",
-    level: "Media",
+    title: "Casos fuera de plazo",
+    action: "Validar responsables y compromisos pendientes.",
   },
   {
-    title: "Documentos sin conciliación",
+    number: "03",
     area: "Finanzas",
-    level: "Media",
+    title: "Documentos por validar",
+    action: "Priorizar vencimientos y conciliaciones.",
   },
 ];
 
-export default function ReportsPage() {
+export default function ReportesPage() {
   return (
     <WamaShell>
-      <section className="mx-auto max-w-7xl px-6 py-16">
-        <div className="mb-12 flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
+      <main className="overflow-hidden bg-white text-[#0B0C0E]">
+        <HeroSection />
+        <ExecutiveReading />
+        <PrioritiesSection />
+        <DecisionSection />
+        <FinalCallToAction />
+      </main>
+    </WamaShell>
+  );
+}
+
+function HeroSection() {
+  return (
+    <section className="relative overflow-hidden bg-[#0B0C0E] text-white">
+      <div className="pointer-events-none absolute inset-0">
+        <div className="absolute left-[-12rem] top-20 h-[30rem] w-[30rem] rounded-full bg-[#00E5D6]/10 blur-[150px]" />
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">
+          WAMA Reports
+        </p>
+
+        <h1 className="mt-7 max-w-5xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl md:text-7xl">
+          Mira el negocio antes de decidir.
+        </h1>
+
+        <p className="mt-8 max-w-3xl text-lg leading-8 text-[#B7BEC8]">
+          WAMA transforma ventas, operación y finanzas en una lectura ejecutiva
+          clara, priorizada y accionable.
+        </p>
+
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/acceso"
+            className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]"
+          >
+            Probar WAMA
+          </Link>
+
+          <a
+            href="#lectura-ejecutiva"
+            className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white"
+          >
+            Ver lectura ejecutiva
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ExecutiveReading() {
+  return (
+    <section id="lectura-ejecutiva" className="scroll-mt-24 bg-white">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <div className="grid gap-14 lg:grid-cols-[0.68fr_1.32fr]">
           <div>
-            <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
-              Reportes ejecutivos
-            </div>
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">
+              Lectura ejecutiva
+            </p>
 
-            <h1 className="max-w-4xl text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-7xl">
-              Mira el negocio antes de decidir.
-            </h1>
+            <h2 className="mt-5 max-w-xl text-4xl font-black leading-tight tracking-[-0.055em] md:text-5xl">
+              Lo importante, sin ruido.
+            </h2>
 
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[#C4C7CC]">
-              WAMA resume ventas, operación y finanzas en una vista ejecutiva
-              para detectar riesgos, prioridades y oportunidades.
+            <p className="mt-6 max-w-lg text-base leading-7 text-[#69717D]">
+              Un reporte WAMA no muestra datos por mostrar. Explica qué está
+              pasando, dónde mirar y qué decisión requiere atención.
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <WamaButton href="/trial">Prueba gratis</WamaButton>
-            <WamaButton href="/login" variant="secondary">
-              Acceso portal
-            </WamaButton>
+          <div className="border-y border-[#DDE1E6]">
+            <ExecutiveMetric
+              label="Salud general"
+              value="86%"
+              interpretation="Gestión controlada, con prioridades específicas por resolver."
+            />
+            <ExecutiveMetric
+              label="Pipeline comercial"
+              value="2.480 UF"
+              interpretation="La mayor concentración está en propuesta y negociación."
+            />
+            <ExecutiveMetric
+              label="Cumplimiento operativo"
+              value="88%"
+              interpretation="Tres casos requieren revisión por plazo y responsable."
+            />
+            <ExecutiveMetric
+              label="Validación financiera"
+              value="84%"
+              interpretation="Existen documentos pendientes de conciliación."
+            />
           </div>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="mb-8 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
-          {executiveKpis.map((kpi) => (
-            <WamaCard key={kpi.label} className="p-6">
-              <p className="text-sm text-[#C4C7CC]">{kpi.label}</p>
+function ExecutiveMetric({
+  label,
+  value,
+  interpretation,
+}: {
+  label: string;
+  value: string;
+  interpretation: string;
+}) {
+  return (
+    <article className="grid gap-5 border-b border-[#DDE1E6] py-9 last:border-b-0 md:grid-cols-[0.42fr_0.28fr_1fr] md:items-center">
+      <p className="text-sm font-black uppercase tracking-[0.14em] text-[#7E8792]">
+        {label}
+      </p>
+      <p className="text-3xl font-black tracking-[-0.045em]">{value}</p>
+      <p className="text-base leading-7 text-[#69717D]">{interpretation}</p>
+    </article>
+  );
+}
 
-              <strong className="mt-3 block text-4xl font-black text-[#F5F6F7]">
-                {kpi.value}
-              </strong>
+function PrioritiesSection() {
+  return (
+    <section className="border-y border-white/10 bg-[#0B0C0E] text-white">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <div className="max-w-4xl">
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-[#00E5D6]">
+            Prioridades
+          </p>
 
-              <p className="mt-3 text-sm text-[#C4C7CC]">{kpi.detail}</p>
+          <h2 className="mt-6 text-4xl font-black leading-tight tracking-[-0.055em] md:text-6xl">
+            El reporte termina en una acción.
+          </h2>
+        </div>
 
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className="h-2 animate-[wamaGrow_1.2s_ease-out] rounded-full bg-[#00E5D6]"
-                  style={{ width: kpi.progress }}
-                />
-              </div>
-            </WamaCard>
+        <div className="mt-16 divide-y divide-white/10 border-y border-white/10">
+          {priorities.map((priority) => (
+            <article
+              key={priority.number}
+              className="grid gap-6 py-9 md:grid-cols-[4rem_0.35fr_0.75fr_1fr]"
+            >
+              <p className="text-sm font-black text-[#00E5D6]">
+                {priority.number}
+              </p>
+              <p className="text-sm font-black uppercase tracking-[0.14em] text-[#8F98A4]">
+                {priority.area}
+              </p>
+              <h3 className="text-xl font-black">{priority.title}</h3>
+              <p className="text-base leading-7 text-[#AFB7C1]">
+                {priority.action}
+              </p>
+            </article>
           ))}
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <WamaCard className="p-6">
-            <div className="mb-7 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                  Análisis consolidado
-                </p>
+function DecisionSection() {
+  return (
+    <section className="bg-[#F5F6F7]">
+      <div className="mx-auto grid max-w-7xl gap-14 px-6 py-24 lg:grid-cols-[0.7fr_1.3fr] lg:py-32">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">
+            Una sola lectura
+          </p>
 
-                <h2 className="mt-2 text-3xl font-black text-[#F5F6F7]">
-                  Estado general por módulo
-                </h2>
-              </div>
-
-              <span className="rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-bold text-[#00E5D6]">
-                Demo ejecutivo
-              </span>
-            </div>
-
-            <div className="grid gap-5">
-              {moduleReport.map((module) => (
-                <div
-                  key={module.title}
-                  className="rounded-3xl border border-white/10 bg-white/[0.035] p-5"
-                >
-                  <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
-                    <div>
-                      <h3 className="text-2xl font-black text-[#F5F6F7]">
-                        {module.title}
-                      </h3>
-
-                      <p className="mt-1 text-sm text-[#C4C7CC]">
-                        {module.subtitle}
-                      </p>
-                    </div>
-
-                    <strong className="text-3xl font-black text-[#F5F6F7]">
-                      {module.value}
-                    </strong>
-                  </div>
-
-                  <div className="h-3 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-3 animate-[wamaGrow_1.3s_ease-out] rounded-full bg-[#00E5D6]"
-                      style={{ width: module.progress }}
-                    />
-                  </div>
-
-                  <div className="mt-4 rounded-2xl border border-[#00E5D6]/20 bg-[#00E5D6]/10 p-4 text-sm leading-6 text-[#F5F6F7]">
-                    <strong className="text-[#00E5D6]">
-                      Decisión sugerida:
-                    </strong>{" "}
-                    {module.decision}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </WamaCard>
-
-          <div className="grid gap-6">
-            <WamaCard className="p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                Score WAMA
-              </p>
-
-              <h2 className="mt-2 text-3xl font-black text-[#F5F6F7]">
-                Salud general
-              </h2>
-
-              <div className="mx-auto mt-8 flex h-56 w-56 items-center justify-center rounded-full border-[18px] border-[#00E5D6] bg-[#00E5D6]/10 shadow-[0_0_60px_rgba(0,229,214,0.18)] animate-[wamaPulse_2.4s_ease-in-out_infinite]">
-                <div className="text-center">
-                  <strong className="block text-5xl font-black text-[#F5F6F7]">
-                    86%
-                  </strong>
-                  <span className="text-sm font-semibold text-[#C4C7CC]">
-                    Controlado
-                  </span>
-                </div>
-              </div>
-
-              <p className="mt-8 text-center text-sm leading-7 text-[#C4C7CC]">
-                Indicador consolidado considerando actividad comercial,
-                cumplimiento operativo y validación financiera.
-              </p>
-            </WamaCard>
-
-            <WamaCard className="p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                Alertas para decidir
-              </p>
-
-              <h2 className="mt-2 text-3xl font-black text-[#F5F6F7]">
-                Prioridades
-              </h2>
-
-              <div className="mt-6 grid gap-3">
-                {alerts.map((alert, index) => (
-                  <div
-                    key={alert.title}
-                    className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 text-sm font-black text-[#00E5D6]">
-                        {index + 1}
-                      </span>
-
-                      <div>
-                        <p className="font-bold text-[#F5F6F7]">
-                          {alert.title}
-                        </p>
-                        <p className="text-sm text-[#C4C7CC]">{alert.area}</p>
-                      </div>
-                    </div>
-
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-bold text-[#C4C7CC]">
-                      {alert.level}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </WamaCard>
-          </div>
+          <h2 className="mt-5 max-w-xl text-4xl font-black leading-tight tracking-[-0.055em] md:text-5xl">
+            Menos tiempo preparando. Más tiempo decidiendo.
+          </h2>
         </div>
 
-        <WamaCard className="mt-6 p-6">
-          <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[#00E5D6]">
-                Comparativo visual
-              </p>
+        <div className="divide-y divide-[#D5DAE0] border-y border-[#D5DAE0]">
+          <DecisionRow
+            number="01"
+            title="Consolida"
+            text="Reúne información de ventas, operación y finanzas."
+          />
+          <DecisionRow
+            number="02"
+            title="Interpreta"
+            text="Explica qué cambió y por qué requiere atención."
+          />
+          <DecisionRow
+            number="03"
+            title="Prioriza"
+            text="Ordena riesgos, pendientes y oportunidades."
+          />
+          <DecisionRow
+            number="04"
+            title="Actúa"
+            text="Convierte cada hallazgo en una decisión concreta."
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
 
-              <h2 className="mt-2 text-3xl font-black text-[#F5F6F7]">
-                Dónde está concentrada la gestión
-              </h2>
-            </div>
-          </div>
+function DecisionRow({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="grid gap-5 py-8 sm:grid-cols-[4rem_0.45fr_1fr]">
+      <p className="text-sm font-black text-[#008F87]">{number}</p>
+      <h3 className="text-xl font-black">{title}</h3>
+      <p className="text-base leading-7 text-[#69717D]">{text}</p>
+    </div>
+  );
+}
 
-          <div className="grid gap-5 md:grid-cols-4">
-            {chartBars.map((bar) => (
-              <div
-                key={bar.label}
-                className="rounded-3xl border border-white/10 bg-white/[0.035] p-5"
-              >
-                <div className="mb-4 flex items-center justify-between">
-                  <p className="font-bold text-[#F5F6F7]">{bar.label}</p>
-                  <span className="text-sm font-bold text-[#00E5D6]">
-                    {bar.value}
-                  </span>
-                </div>
+function FinalCallToAction() {
+  return (
+    <section className="bg-white">
+      <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+        <h2 className="max-w-5xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">
+          Convierte la gestión diaria en mejores decisiones.
+        </h2>
 
-                <div className="flex h-40 items-end rounded-2xl bg-[#0F1117] p-3">
-                  <div
-                    className="w-full animate-[wamaBar_1.2s_ease-out] rounded-xl bg-[#00E5D6]"
-                    style={{ height: bar.value }}
-                  />
-                </div>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <Link
+            href="/acceso"
+            className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]"
+          >
+            Probar WAMA
+          </Link>
 
-                <p className="mt-4 text-sm text-[#C4C7CC]">{bar.amount}</p>
-              </div>
-            ))}
-          </div>
-        </WamaCard>
-
-        <style>{`
-          @keyframes wamaGrow {
-            from { width: 0; opacity: 0.4; }
-            to { opacity: 1; }
-          }
-
-          @keyframes wamaBar {
-            from { height: 0; opacity: 0.4; }
-            to { opacity: 1; }
-          }
-
-          @keyframes wamaPulse {
-            0%, 100% { transform: scale(1); box-shadow: 0 0 55px rgba(0,229,214,0.14); }
-            50% { transform: scale(1.025); box-shadow: 0 0 85px rgba(0,229,214,0.25); }
-          }
-        `}</style>
-      </section>
-    </WamaShell>
+          <Link
+            href="/modulos"
+            className="inline-flex items-center justify-center rounded-full border-2 border-[#0B0C0E] px-8 py-4 text-sm font-black text-[#0B0C0E]"
+          >
+            Ver módulos
+          </Link>
+        </div>
+      </div>
+    </section>
   );
 }
