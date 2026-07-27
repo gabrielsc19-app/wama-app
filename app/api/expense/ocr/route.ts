@@ -33,45 +33,20 @@ const emptyResult = (): OcrPayload => ({
   warnings: [],
 });
 
-function normalizeResult(value: unknown): OcrPayload {
-  const parsed = value && typeof value === "object" ? (value as Record<string, unknown>) : {};
-  const numberOrNull = (input: unknown) => {
-    if (input === null || input === undefined || input === "") return null;
-    const numeric = Number(input);
-    return Number.isFinite(numeric) ? Math.round(numeric) : null;
-  };
-
+function extractJson(text: string): OcrPayload {
+  const cleaned = text.replace(/^```json\s*/i, "").replace(/```$/i, "").trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error("La IA no devolvió un JSON válido.");
+  const parsed = JSON.parse(match[0]);
   return {
     ...emptyResult(),
-    merchant: String(parsed.merchant ?? "").trim(),
-    rut: String(parsed.rut ?? "").trim(),
-    date: String(parsed.date ?? "").trim(),
-    folio: String(parsed.folio ?? "").trim(),
-    documentType: String(parsed.documentType ?? "").trim(),
-    netAmount: numberOrNull(parsed.netAmount),
-    taxAmount: numberOrNull(parsed.taxAmount),
-    totalAmount: numberOrNull(parsed.totalAmount),
-    suggestedCategory: String(parsed.suggestedCategory ?? "Otros").trim() || "Otros",
-    suggestedCostCenter: String(parsed.suggestedCostCenter ?? "Operaciones").trim() || "Operaciones",
+    ...parsed,
+    netAmount: parsed.netAmount == null ? null : Number(parsed.netAmount),
+    taxAmount: parsed.taxAmount == null ? null : Number(parsed.taxAmount),
+    totalAmount: parsed.totalAmount == null ? null : Number(parsed.totalAmount),
     confidence: Math.max(0, Math.min(100, Number(parsed.confidence ?? 0))),
-    warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map(String).filter(Boolean) : [],
+    warnings: Array.isArray(parsed.warnings) ? parsed.warnings.map(String) : [],
   };
-}
-
-function readOutputText(payload: Record<string, unknown>): string {
-  if (typeof payload.output_text === "string") return payload.output_text;
-  const output = Array.isArray(payload.output) ? payload.output : [];
-  return output
-    .flatMap((item) => {
-      if (!item || typeof item !== "object") return [];
-      const content = (item as { content?: unknown }).content;
-      return Array.isArray(content) ? content : [];
-    })
-    .map((item) => {
-      if (!item || typeof item !== "object") return "";
-      return String((item as { text?: unknown }).text ?? "");
-    })
-    .join("\n");
 }
 
 export async function POST(request: NextRequest) {
@@ -79,7 +54,7 @@ export async function POST(request: NextRequest) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: "OCR no configurado. Falta OPENAI_API_KEY en Vercel." },
+        { error: "OCR no configurado. Agrega OPENAI_API_KEY en Vercel y en .env.local." },
         { status: 503 },
       );
     }
@@ -90,7 +65,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Debes adjuntar una imagen o PDF." }, { status: 400 });
     }
 
-    if (file.size > 12 * 1024 * 1024) {
+    const maxBytes = 12 * 1024 * 1024;
+    if (file.size > maxBytes) {
       return NextResponse.json({ error: "El archivo supera el máximo de 12 MB." }, { status: 413 });
     }
 
@@ -100,104 +76,69 @@ export async function POST(request: NextRequest) {
     }
 
     const bytes = Buffer.from(await file.arrayBuffer());
-    const base64 = bytes.toString("base64");
-    const dataUrl = `data:${file.type};base64,${base64}`;
-
-    const prompt = [
-      "Analiza este comprobante chileno de gasto.",
-      "Extrae solo información visible. No inventes valores.",
-      "Prioriza el emisor/proveedor del documento, no el cliente receptor.",
-      "Para montos usa enteros CLP sin separadores ni símbolos.",
-      "La fecha debe quedar en YYYY-MM-DD.",
-      "Si un dato no es legible, devuelve cadena vacía o null y agrega una advertencia.",
-      "Clasifica la categoría entre: Combustible, Movilización, Alimentación, Alojamiento, Insumos, Servicios u Otros.",
-      "Sugiere centro de costo entre: Operaciones, Comercial, Administración, TI o Proyecto.",
-    ].join(" ");
+    const dataUrl = `data:${file.type};base64,${bytes.toString("base64")}`;
+    const prompt = `Analiza este comprobante chileno de gasto. Extrae solamente datos visibles; no inventes. Devuelve JSON puro con esta forma exacta:
+{
+  "merchant": "razón social o comercio",
+  "rut": "RUT con dígito verificador",
+  "date": "YYYY-MM-DD",
+  "folio": "folio o número de documento",
+  "documentType": "boleta|factura|voucher|otro",
+  "netAmount": 0,
+  "taxAmount": 0,
+  "totalAmount": 0,
+  "suggestedCategory": "Combustible|Movilización|Alimentación|Alojamiento|Insumos|Servicios|Otros",
+  "suggestedCostCenter": "Operaciones|Comercial|Administración|TI|Proyecto",
+  "confidence": 0,
+  "warnings": []
+}
+Reglas: montos como números enteros en CLP sin puntos ni símbolos; si no se distingue un dato usa cadena vacía o null; confidence de 0 a 100; warnings debe explicar campos dudosos o ilegibles.`;
 
     const content = file.type === "application/pdf"
       ? [
           { type: "input_text", text: prompt },
-          { type: "input_file", filename: file.name, file_data: dataUrl },
+          { type: "input_file", filename: file.name, file_data: bytes.toString("base64") },
         ]
       : [
           { type: "input_text", text: prompt },
           { type: "input_image", image_url: dataUrl, detail: "high" },
         ];
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 50_000);
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      signal: controller.signal,
       body: JSON.stringify({
-        model: process.env.OPENAI_OCR_MODEL || process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        model: process.env.OPENAI_MODEL || process.env.OPENAI_OCR_MODEL || "gpt-4.1-mini",
         input: [{ role: "user", content }],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "expense_document_ocr",
-            strict: true,
-            schema: {
-              type: "object",
-              additionalProperties: false,
-              properties: {
-                merchant: { type: "string" },
-                rut: { type: "string" },
-                date: { type: "string" },
-                folio: { type: "string" },
-                documentType: { type: "string" },
-                netAmount: { anyOf: [{ type: "integer" }, { type: "null" }] },
-                taxAmount: { anyOf: [{ type: "integer" }, { type: "null" }] },
-                totalAmount: { anyOf: [{ type: "integer" }, { type: "null" }] },
-                suggestedCategory: { type: "string" },
-                suggestedCostCenter: { type: "string" },
-                confidence: { type: "number" },
-                warnings: { type: "array", items: { type: "string" } },
-              },
-              required: [
-                "merchant", "rut", "date", "folio", "documentType", "netAmount",
-                "taxAmount", "totalAmount", "suggestedCategory", "suggestedCostCenter",
-                "confidence", "warnings",
-              ],
-            },
-          },
-        },
       }),
     });
-    clearTimeout(timeout);
 
-    const payload = (await response.json()) as Record<string, unknown>;
+    const payload = await response.json();
     if (!response.ok) {
-      const error = payload.error && typeof payload.error === "object"
-        ? String((payload.error as { message?: unknown }).message ?? "")
-        : "";
-      return NextResponse.json(
-        { error: error || "No fue posible analizar el documento." },
-        { status: response.status },
-      );
+      const apiCode = String(payload?.error?.code || "");
+      const apiType = String(payload?.error?.type || "");
+      const quota = response.status === 429 || apiCode === "insufficient_quota" || apiType === "insufficient_quota";
+      if (quota) {
+        return NextResponse.json(
+          {
+            code: "quota_exceeded",
+            error: "La cuenta API de OpenAI no tiene saldo disponible. Activa facturación o aumenta el límite mensual y vuelve a intentar.",
+          },
+          { status: 429 },
+        );
+      }
+      const detail = payload?.error?.message || "No fue posible analizar el documento.";
+      return NextResponse.json({ code: "ocr_failed", error: detail }, { status: response.status });
     }
 
-    const outputText = readOutputText(payload);
-    if (!outputText) {
-      return NextResponse.json({ error: "El OCR no devolvió resultados." }, { status: 502 });
-    }
-
-    const result = normalizeResult(JSON.parse(outputText));
-    if (result.totalAmount === null) {
-      result.warnings.push("No fue posible identificar con seguridad el total del documento.");
-    }
-
+    const outputText = payload.output_text || payload.output?.flatMap((item: any) => item.content || []).map((item: any) => item.text || "").join("\n") || "";
+    const result = extractJson(outputText);
     return NextResponse.json({ data: result });
   } catch (error) {
-    const message = error instanceof Error
-      ? error.name === "AbortError"
-        ? "El análisis demoró demasiado. Intenta con una foto más nítida."
-        : error.message
-      : "Error inesperado de OCR.";
+    const message = error instanceof Error ? error.message : "Error inesperado de OCR.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

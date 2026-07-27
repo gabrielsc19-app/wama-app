@@ -146,67 +146,106 @@ function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
   const [preview,setPreview]=useState("");
   const [file,setFile]=useState<File|null>(null);
   const [processing,setProcessing]=useState(false);
+  const [processLabel,setProcessLabel]=useState("");
   const [ocrError,setOcrError]=useState("");
+  const [quotaError,setQuotaError]=useState(false);
   const [confidence,setConfidence]=useState<number|null>(null);
   const [warnings,setWarnings]=useState<string[]>([]);
   const [form,setForm]=useState({merchant:"",rut:"",date:new Date().toISOString().slice(0,10),folio:"",category:"Otros",costCenter:"Operaciones",detected:"",declared:"",reason:""});
   const difference=Number(form.declared||0)-Number(form.detected||0);
 
-  const readFile=(ev:ChangeEvent<HTMLInputElement>)=>{
+  const prepareImage=async(selected:File):Promise<File>=>{
+    if(!selected.type.startsWith("image/") || selected.size < 1_500_000) return selected;
+    const bitmap=await createImageBitmap(selected);
+    const max=1600;
+    const scale=Math.min(1,max/Math.max(bitmap.width,bitmap.height));
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(bitmap.width*scale));
+    canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+    const ctx=canvas.getContext("2d");
+    if(!ctx) return selected;
+    ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+    const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,"image/jpeg",0.86));
+    return blob?new File([blob],selected.name.replace(/\.[^.]+$/,"")+".jpg",{type:"image/jpeg"}):selected;
+  };
+
+  const applyOcr=(data:any)=>{
+    const total=data.totalAmount==null?"":String(Math.round(data.totalAmount));
+    setForm(v=>({
+      ...v,
+      merchant:data.merchant||"",
+      rut:data.rut||"",
+      date:data.date||v.date,
+      folio:data.folio||"",
+      category:data.suggestedCategory||"Otros",
+      costCenter:data.suggestedCostCenter||"Operaciones",
+      detected:total,
+      declared:total,
+      reason:data.merchant?`Gasto en ${data.merchant}`:"",
+    }));
+    setConfidence(Number(data.confidence||0));
+    setWarnings(Array.isArray(data.warnings)?data.warnings:[]);
+    setStep(2);
+  };
+
+  const analyzeFile=async(selected:File)=>{
+    setProcessing(true);setOcrError("");setQuotaError(false);setWarnings([]);
+    try{
+      setProcessLabel("Preparando documento…");
+      const optimized=await prepareImage(selected);
+      setFile(optimized);
+      setProcessLabel("WAMA está leyendo el documento…");
+      const body=new FormData(); body.append("file",optimized);
+      const response=await fetch("/api/expense/ocr",{method:"POST",body});
+      setProcessLabel("Extrayendo comercio, fecha y monto…");
+      const payload=await response.json();
+      if(!response.ok){
+        const err=new Error(payload.error||"No fue posible leer el documento.") as Error & {code?:string};
+        err.code=payload.code;
+        throw err;
+      }
+      applyOcr(payload.data);
+    }catch(error){
+      const code=(error as Error & {code?:string})?.code;
+      setQuotaError(code==="quota_exceeded");
+      setOcrError(error instanceof Error?error.message:"Error inesperado de OCR.");
+    } finally {
+      setProcessing(false);setProcessLabel("");
+    }
+  };
+
+  const readFile=async(ev:ChangeEvent<HTMLInputElement>)=>{
     const selected=ev.target.files?.[0];
     if(!selected)return;
-    setFile(selected);
-    setFileName(selected.name);
-    setOcrError("");
-    setConfidence(null);
-    setWarnings([]);
+    setFile(selected);setFileName(selected.name);setOcrError("");setQuotaError(false);setConfidence(null);setWarnings([]);
     if(selected.type.startsWith("image/")){
       const reader=new FileReader();
       reader.onload=()=>setPreview(String(reader.result));
       reader.readAsDataURL(selected);
     } else setPreview("");
+    await analyzeFile(selected);
   };
 
-  const process=async()=>{
-    if(!file){setOcrError("Toma una foto o selecciona un documento antes de continuar.");return;}
-    setProcessing(true);setOcrError("");setWarnings([]);
-    try{
-      const body=new FormData(); body.append("file",file);
-      const response=await fetch("/api/expense/ocr",{method:"POST",body});
-      const payload=await response.json();
-      if(!response.ok) throw new Error(payload.error||"No fue posible leer el documento.");
-      const data=payload.data;
-      const total=data.totalAmount==null?"":String(Math.round(data.totalAmount));
-      setForm(v=>({
-        ...v,
-        merchant:data.merchant||"",
-        rut:data.rut||"",
-        date:data.date||v.date,
-        folio:data.folio||"",
-        category:data.suggestedCategory||"Otros",
-        costCenter:data.suggestedCostCenter||"Operaciones",
-        detected:total,
-        declared:total,
-        reason:data.merchant?`Gasto en ${data.merchant}`:"",
-      }));
-      setConfidence(Number(data.confidence||0));
-      setWarnings(Array.isArray(data.warnings)?data.warnings:[]);
-      setStep(2);
-    }catch(error){setOcrError(error instanceof Error?error.message:"Error inesperado de OCR.");}
-    finally{setProcessing(false);}
-  };
-
+  const retry=()=>{ if(file) void analyzeFile(file); };
   const submit=()=>{
     const next=Math.max(...seed.map(e=>Number(e.id.split("-")[1])),...[]) + Math.floor(Math.random()*900)+1;
     onSubmit({id:`RG-${String(next).padStart(6,"0")}`,person:"Gabriel Sánchez",merchant:form.merchant||"Sin comercio",category:form.category,costCenter:form.costCenter,amount:Number(form.declared||0),detectedAmount:Number(form.detected||0),status:difference===0?"Pendiente":"En revisión",date:todayLabel(),reason:form.reason,fileName:fileName||"documento.jpg",createdAt:new Date().toISOString(),audit:["Documento original cargado",`OCR ejecutado${confidence!==null?` · confianza ${confidence}%`:""}`,...(difference!==0?[`Monto editado: diferencia ${money(Math.abs(difference))}`]:[]),"Rendición enviada"]});
   };
 
-  return <div className="mx-auto max-w-5xl"><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Nueva rendición</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Foto. WAMA lee. Tú confirmas.</h2><p className="mt-4 text-[#69717D]">La evidencia original queda protegida y el OCR completa automáticamente los datos visibles.</p>
-    <div className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[#DDE1E6] bg-white p-2">{["Documento","Confirmación","Enviar"].map((label,index)=><div key={label} className={`rounded-xl px-2 py-3 text-center text-xs font-black sm:text-sm ${step===index+1?"bg-[#0B0C0E] text-white":step>index+1?"bg-[#DFFBF8] text-[#008F87]":"text-[#8A939E]"}`}>{index+1}. {label}</div>)}</div>
-    <div className="mt-6 rounded-[2rem] border border-[#DDE1E6] bg-white p-6 sm:p-10">
-      {step===1&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Camera className="h-9 w-9"/></div><h3 className="mt-6 text-3xl font-black">Captura tu documento</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">Usa la cámara del teléfono o selecciona una imagen/PDF. WAMA analizará comercio, RUT, fecha, folio y monto.</p><label className="mx-auto mt-8 flex max-w-xl cursor-pointer flex-col items-center overflow-hidden rounded-2xl border-2 border-dashed border-[#AEB6C0] bg-[#F8F9FA] p-6">{preview?<img src={preview} alt="Vista previa" className="max-h-72 rounded-xl object-contain"/>:<Upload className="h-9 w-9 text-[#008F87]"/>}<span className="mt-3 text-sm font-black">{fileName||"Tomar foto o seleccionar archivo"}</span><input type="file" capture="environment" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={readFile}/></label>{ocrError&&<div className="mx-auto mt-5 max-w-xl rounded-xl border border-[#F4C16D] bg-[#FFF8EA] p-4 text-left text-sm font-bold text-[#8B5A00]">{ocrError}</div>}<button disabled={processing||!file} onClick={process} className="mt-8 rounded-full bg-[#0B0C0E] px-8 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{processing?"WAMA está leyendo el documento…":"Analizar con OCR e IA"}</button></div>}
-      {step===2&&<div><div className="flex flex-col justify-between gap-4 border-b border-[#E2E6E9] pb-6 sm:flex-row sm:items-center"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Lectura completada</p><h3 className="mt-2 text-3xl font-black">Confirma los datos</h3></div><span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black ${confidence!==null&&confidence>=80?"bg-[#DFFBF8] text-[#008F87]":"bg-[#FFF2DF] text-[#A46100]"}`}><CheckCircle2 className="h-4 w-4"/>Confianza OCR {confidence??0}%</span></div>{warnings.length>0&&<div className="mt-5 rounded-2xl border border-[#F4C16D] bg-[#FFF8EA] p-4"><p className="text-sm font-black text-[#9A6200]">Revisa estos datos</p><ul className="mt-2 space-y-1 text-xs text-[#7A6135]">{warnings.map((warning,index)=><li key={`${warning}-${index}`}>• {warning}</li>)}</ul></div>}<div className="mt-8 grid gap-7 lg:grid-cols-[.75fr_1.25fr]"><div className="flex min-h-[320px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#AEB6C0] bg-[#F5F6F7] p-6 text-center">{preview?<img src={preview} alt="Documento" className="max-h-[290px] rounded-xl object-contain"/>:<FileText className="h-14 w-14 text-[#008F87]"/>}<p className="mt-4 text-sm font-black">{fileName}</p><p className="mt-1 text-xs text-[#747E89]">Original protegido</p></div><div className="grid gap-4 sm:grid-cols-2"><Input label="Comercio" value={form.merchant} onChange={v=>setForm({...form,merchant:v})}/><Input label="RUT" value={form.rut} onChange={v=>setForm({...form,rut:v})}/><Input label="Fecha" type="date" value={form.date} onChange={v=>setForm({...form,date:v})}/><Input label="Folio" value={form.folio} onChange={v=>setForm({...form,folio:v})}/><Select label="Categoría" value={form.category} options={["Combustible","Movilización","Alimentación","Alojamiento","Insumos","Servicios","Otros"]} onChange={v=>setForm({...form,category:v})}/><Select label="Centro de costo" value={form.costCenter} options={["Operaciones","Comercial","Administración","TI","Proyecto"]} onChange={v=>setForm({...form,costCenter:v})}/><Input label="Monto OCR" value={form.detected} onChange={()=>{}} disabled/><Input label="Monto declarado" value={form.declared} onChange={v=>setForm({...form,declared:v.replace(/\D/g,"")})}/><label className="sm:col-span-2"><span className="text-xs font-black uppercase tracking-[.12em] text-[#69717D]">Motivo</span><textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="mt-2 min-h-24 w-full rounded-xl border border-[#D5DAE0] px-4 py-3 text-sm outline-none focus:border-[#00B8AD]"/></label></div></div>{difference!==0&&<div className="mt-6 rounded-2xl border border-[#F4C16D] bg-[#FFF8EA] p-4"><p className="flex items-center gap-2 text-sm font-black text-[#9A6200]"><AlertTriangle className="h-4 w-4"/>Diferencia detectada: {difference>0?"+":"-"}{money(Math.abs(difference))}</p><p className="mt-1 text-xs text-[#7A6135]">La modificación quedará registrada y Finanzas recibirá una alerta.</p></div>}<div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button onClick={()=>setStep(1)} className="rounded-full border border-[#D5DAE0] px-7 py-3 text-sm font-black">Volver</button><button onClick={()=>setStep(3)} disabled={!form.merchant||!form.declared} className="rounded-full bg-[#0B0C0E] px-7 py-3 text-sm font-black text-white disabled:opacity-40">Continuar</button></div></div>}
-      {step===3&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><CheckCircle2 className="h-10 w-10"/></div><h3 className="mt-6 text-3xl font-black">Todo listo</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">La rendición será enviada y quedará disponible para seguimiento.</p><div className="mx-auto mt-8 max-w-lg divide-y divide-[#E4E7EA] rounded-2xl border border-[#DDE1E6] text-left"><Summary label="Documento" value={fileName}/><Summary label="Comercio" value={form.merchant}/><Summary label="Monto" value={money(Number(form.declared||0))}/><Summary label="Estado" value={difference===0?"Pendiente":"En revisión"}/></div><button onClick={submit} className="mt-8 rounded-full bg-[#00B8AD] px-9 py-4 text-sm font-black text-white">Enviar rendición</button><button onClick={()=>setStep(2)} className="ml-3 mt-8 rounded-full border border-[#D5DAE0] px-7 py-4 text-sm font-black">Volver</button></div>}
+  return <div className="mx-auto max-w-5xl pb-10"><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Nueva rendición</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Saca la foto. WAMA hace el resto.</h2><p className="mt-4 text-[#69717D]">La lectura comienza automáticamente. Solo revisa los datos y envía.</p>
+    <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-[#DDE1E6] bg-white p-2">{["Documento","Confirmación","Enviar"].map((label,index)=><div key={label} className={`rounded-xl px-2 py-3 text-center text-xs font-black sm:text-sm ${step===index+1?"bg-[#0B0C0E] text-white":step>index+1?"bg-[#DFFBF8] text-[#008F87]":"text-[#8A939E]"}`}>{index+1}. {label}</div>)}</div>
+    <div className="mt-5 rounded-[2rem] border border-[#DDE1E6] bg-white p-5 sm:p-8">
+      {step===1&&<div><div className="flex items-center gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Camera className="h-7 w-7"/></div><div><h3 className="text-2xl font-black">Fotografía el documento</h3><p className="mt-1 text-sm text-[#69717D]">Boleta, factura o comprobante. JPG, PNG, WEBP o PDF.</p></div></div>
+        <label className="mt-5 flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed border-[#AEB6C0] bg-[#F8F9FA] p-4 text-left">{preview?<img src={preview} alt="Vista previa" className="h-28 w-24 shrink-0 rounded-xl object-cover"/>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-white text-[#008F87]"><Upload className="h-8 w-8"/></div>}<div className="min-w-0"><p className="truncate font-black">{fileName||"Tomar foto o seleccionar archivo"}</p><p className="mt-1 text-sm text-[#69717D]">El análisis comienza automáticamente.</p></div><input className="hidden" type="file" accept="image/*,.pdf" capture="environment" onChange={readFile}/></label>
+        {processing&&<div className="mt-5 rounded-2xl bg-[#0B0C0E] p-5 text-white"><div className="flex items-center gap-3"><span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-[#00E5D6]"/><div><p className="font-black">{processLabel||"Analizando documento…"}</p><p className="mt-1 text-xs text-[#B9C0C7]">No cierres WAMA. Esto puede tardar algunos segundos.</p></div></div></div>}
+        {ocrError&&!processing&&<div className={`mt-5 rounded-2xl border p-5 ${quotaError?"border-[#F0BF68] bg-[#FFF8E9]":"border-[#F2B5B5] bg-[#FFF1F1]"}`}><div className="flex gap-3"><AlertTriangle className={`mt-0.5 h-5 w-5 shrink-0 ${quotaError?"text-[#A56500]":"text-[#A33030]"}`}/><div><p className="font-black">{quotaError?"OCR temporalmente sin saldo":"No pudimos leer el documento"}</p><p className="mt-2 text-sm leading-6 text-[#5F6670]">{ocrError}</p>{quotaError&&<p className="mt-2 text-xs leading-5 text-[#7A6135]">Activa saldo en la cuenta API de OpenAI y vuelve a intentar. La fotografía permanece cargada.</p>}<div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={retry} className="rounded-full bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Reintentar OCR</button><button type="button" onClick={()=>setStep(2)} className="rounded-full border border-[#C8CED5] px-5 py-3 text-sm font-black">Continuar manualmente</button></div></div></div></div>}
+      </div>}
+      {step===2&&<div><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">Datos detectados</p><h3 className="mt-2 text-3xl font-black">Revisa y confirma</h3>{confidence!==null&&<p className="mt-2 text-sm text-[#69717D]">Confianza de lectura: <strong>{confidence}%</strong></p>}</div>{confidence!==null&&<span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${confidence>=80?"bg-[#E4F9EA] text-[#217A39]":"bg-[#FFF2DF] text-[#9A6200]"}`}>{confidence>=80?"Lectura confiable":"Revisar campos"}</span>}</div>
+        {warnings.length>0&&<div className="mt-5 rounded-xl border border-[#F0BF68] bg-[#FFF8E9] p-4 text-sm text-[#7A6135]">{warnings.map((w,i)=><p key={i}>• {w}</p>)}</div>}
+        <div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label="Comercio" value={form.merchant} onChange={v=>setForm({...form,merchant:v})}/><Input label="RUT" value={form.rut} onChange={v=>setForm({...form,rut:v})}/><Input label="Fecha" type="date" value={form.date} onChange={v=>setForm({...form,date:v})}/><Input label="Folio" value={form.folio} onChange={v=>setForm({...form,folio:v})}/><Select label="Categoría" value={form.category} options={["Combustible","Movilización","Alimentación","Alojamiento","Insumos","Servicios","Otros"]} onChange={v=>setForm({...form,category:v})}/><Select label="Centro de costo" value={form.costCenter} options={["Operaciones","Comercial","Administración","TI","Proyecto"]} onChange={v=>setForm({...form,costCenter:v})}/><Input label="Monto OCR" value={form.detected} disabled onChange={()=>{}}/><Input label="Monto declarado" value={form.declared} type="number" onChange={v=>setForm({...form,declared:v})}/></div><label className="mt-4 block"><span className="text-xs font-black uppercase tracking-[.12em] text-[#69717D]">Motivo</span><textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="mt-2 min-h-28 w-full rounded-xl border border-[#D5DAE0] p-4 outline-none focus:border-[#00B8AD]"/></label>
+        <div className="sticky bottom-[92px] z-20 -mx-2 mt-6 rounded-2xl border border-[#DDE1E6] bg-white/95 p-3 shadow-xl backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"><div className="flex gap-3"><button onClick={()=>setStep(1)} className="rounded-full border border-[#D5DAE0] px-5 py-3 font-black">Volver</button><button onClick={()=>setStep(3)} disabled={!form.merchant||!form.declared} className="flex-1 rounded-full bg-[#0B0C0E] px-6 py-4 font-black text-white disabled:opacity-40">Continuar</button></div></div>
+      </div>}
+      {step===3&&<div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">Confirmación final</p><h3 className="mt-2 text-3xl font-black">Listo para enviar</h3><div className="mt-6 divide-y divide-[#E1E5E8] rounded-2xl border border-[#E1E5E8]"><Summary label="Comercio" value={form.merchant}/><Summary label="Monto" value={money(Number(form.declared||0))}/><Summary label="Categoría" value={form.category}/><Summary label="Centro de costo" value={form.costCenter}/>{difference!==0&&<Summary label="Diferencia OCR" value={money(Math.abs(difference))}/>}</div><div className="sticky bottom-[92px] z-20 -mx-2 mt-6 rounded-2xl border border-[#DDE1E6] bg-white/95 p-3 shadow-xl backdrop-blur lg:static lg:mx-0 lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none"><div className="flex gap-3"><button onClick={()=>setStep(2)} className="rounded-full border border-[#D5DAE0] px-5 py-3 font-black">Volver</button><button onClick={submit} className="flex-1 rounded-full bg-[#00B8AD] px-6 py-4 font-black text-white">Enviar rendición</button></div></div></div>}
     </div>
   </div>;
 }
