@@ -8,17 +8,17 @@ export default function HomePage() {
       <main className="overflow-hidden bg-white text-[#0B0C0E]">
         <section className="relative overflow-hidden bg-[#0B0C0E] text-white">
           <div className="pointer-events-none absolute inset-0"><div className="absolute left-[-12rem] top-20 h-[30rem] w-[30rem] rounded-full bg-[#00E5D6]/10 blur-[150px]" /><div className="absolute right-[-10rem] top-[-8rem] h-[34rem] w-[34rem] rounded-full bg-[#00E5D6]/10 blur-[170px]" /></div>
-          <div className="relative mx-auto grid min-h-[calc(100vh-5rem)] max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:py-28">
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-5 py-14 sm:px-6 sm:py-20 lg:min-h-[calc(100vh-5rem)] lg:grid-cols-[1.08fr_0.92fr] lg:items-end lg:py-28">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">WAMA · Warn and Manage</p>
-              <h1 className="mt-7 max-w-5xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl md:text-7xl">Gestiona tu empresa módulo por módulo.</h1>
-              <p className="mt-8 max-w-3xl text-lg leading-8 text-[#B7BEC8]">Ventas y gastos en productos independientes, conectados y preparados para crecer junto a tu empresa.</p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <h1 className="mt-5 max-w-5xl text-[2.65rem] font-black leading-[0.96] tracking-[-0.065em] sm:mt-7 sm:text-6xl md:text-7xl">Gestiona tu empresa módulo por módulo.</h1>
+              <p className="mt-6 max-w-3xl text-base leading-7 text-[#B7BEC8] sm:mt-8 sm:text-lg sm:leading-8">Ventas y gastos en productos independientes, conectados y preparados para crecer junto a tu empresa.</p>
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:mt-10 sm:flex sm:flex-row">
                 <Link href="/acceso" className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5">Acceder a un portal</Link>
                 <a href="#productos" className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white transition hover:border-[#00E5D6]/60 hover:text-[#00E5D6]">Ver productos</a>
               </div>
             </div>
-            <div className="border-l border-white/15 pl-0 lg:pl-10">
+            <div className="hidden border-l border-white/15 pl-0 lg:block lg:pl-10">
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[#00E5D6]">Productos disponibles</p>
               <h2 className="mt-5 text-3xl font-black tracking-[-0.04em]">Sales Hub + Expense Hub</h2>
               <p className="mt-4 max-w-lg text-base leading-7 text-[#AEB6C0]">Dos portales especializados. Una misma experiencia WAMA.</p>
@@ -28,12 +28,12 @@ export default function HomePage() {
         </section>
 
         <section id="productos" className="scroll-mt-24 bg-[#E9EDF0]">
-          <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
+          <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 sm:py-24 lg:py-32">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">Productos que muestran cómo trabajan</p>
-            <h2 className="mt-5 max-w-5xl text-4xl font-black leading-tight tracking-[-0.055em] md:text-6xl">No solo mires el software. Recorre el proceso completo.</h2>
-            <p className="mt-6 max-w-3xl text-lg leading-8 text-[#66707C]">Cada Hub cuenta una historia distinta: desde la primera acción del usuario hasta la decisión final de la empresa.</p>
+            <h2 className="mt-4 max-w-5xl text-3xl font-black leading-[1.02] tracking-[-0.05em] sm:mt-5 sm:text-4xl md:text-6xl">No solo mires el software. Recorre el proceso completo.</h2>
+            <p className="mt-4 max-w-3xl text-base leading-7 text-[#66707C] sm:mt-6 sm:text-lg sm:leading-8">Cada Hub cuenta una historia distinta: desde la primera acción del usuario hasta la decisión final de la empresa.</p>
 
-            <div className="mt-16 space-y-12">
+            <div className="mt-9 space-y-8 sm:mt-16 sm:space-y-12">
               <ProductStory eyebrow="WAMA Expense Hub" title="De una foto tomada con el celular a un gasto aprobado y controlado." description="Captura, lectura inteligente, confirmación, aprobación y control financiero en una sola experiencia." href="/acceso/expense-hub" action="Entrar al portal Expense" kind="expense" />
               <ProductStory eyebrow="WAMA Sales" title="De un prospecto nuevo a una oportunidad cerrada con seguimiento real." description="Clientes, actividades, propuestas, negociación y resultados comerciales conectados en un único flujo." href="/acceso/sales-hub" action="Entrar al portal Sales" kind="sales" reverse />
             </div>
@@ -64,16 +64,20 @@ export default function HomePage() {
   );
 }
 
-function ProductStory({ eyebrow, title, description, href, action, kind, reverse = false }: { eyebrow:string; title:string; description:string; href:string; action:string; kind:"expense"|"sales"; reverse?:boolean }) {
+function ProductStory({ eyebrow, title, description, href, action, kind }: { eyebrow:string; title:string; description:string; href:string; action:string; kind:"expense"|"sales"; reverse?:boolean }) {
   return (
-    <article className={`grid gap-8 rounded-[2rem] border border-[#D2D8DE] bg-white p-6 shadow-[0_24px_80px_rgba(11,12,14,0.10)] 2xl:grid-cols-2 2xl:items-center sm:p-8 ${reverse ? "2xl:[&>*:first-child]:order-2" : ""}`}>
-      <div>
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#008F87]">{eyebrow}</p>
-        <h3 className="mt-4 text-4xl font-black leading-[1.02] tracking-[-0.055em] md:text-5xl">{title}</h3>
-        <p className="mt-5 max-w-xl text-base leading-7 text-[#69717D]">{description}</p>
-        <Link href={href} className="mt-8 inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-7 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 hover:bg-white">{action} →</Link>
+    <article className="min-w-0 overflow-hidden rounded-[1.75rem] border border-[#D2D8DE] bg-white shadow-[0_20px_65px_rgba(11,12,14,0.10)] sm:rounded-[2.25rem]">
+      <div className="grid gap-6 border-b border-[#E3E7EA] px-5 py-7 sm:px-8 sm:py-9 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end lg:px-10">
+        <div className="min-w-0">
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-[#008F87]">{eyebrow}</p>
+          <h3 className="mt-4 max-w-5xl text-[2.2rem] font-black leading-[1.02] tracking-[-0.055em] sm:text-4xl lg:text-5xl">{title}</h3>
+          <p className="mt-4 max-w-3xl text-base leading-7 text-[#69717D]">{description}</p>
+        </div>
+        <Link href={href} className="inline-flex w-full items-center justify-center rounded-full bg-[#00E5D6] px-7 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 lg:w-auto">{action} →</Link>
       </div>
-      <WamaInteractiveFlow kind={kind} compact />
+      <div className="p-3 sm:p-5 lg:p-7">
+        <WamaInteractiveFlow kind={kind} />
+      </div>
     </article>
   );
 }

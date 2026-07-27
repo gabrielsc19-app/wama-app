@@ -32,14 +32,14 @@ export default function DownloadAppPage() {
   return (
     <WamaShell>
       <main className="min-h-screen bg-[#F3F6F8] text-[#0B0C0E]">
-        <section className="mx-auto max-w-7xl px-6 py-16 lg:py-24">
-          <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:py-24">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-12">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA Mobile</p>
-              <h1 className="mt-6 text-5xl font-black leading-[0.95] tracking-[-0.065em] md:text-7xl">Tu empresa, también en tu celular.</h1>
-              <p className="mt-7 max-w-xl text-lg leading-8 text-[#66707C]">Instala WAMA como aplicación en iPhone, iPad, Android, tablet o computador. Conserva los accesos rápidos y trabaja a pantalla completa.</p>
+              <h1 className="mt-4 text-[2.6rem] font-black leading-[0.95] tracking-[-0.06em] sm:mt-6 sm:text-5xl md:text-7xl">Tu empresa, también en tu celular.</h1>
+              <p className="mt-5 max-w-xl text-base leading-7 text-[#66707C] sm:mt-7 sm:text-lg sm:leading-8">Instala WAMA como aplicación en iPhone, iPad, Android, tablet o computador. Conserva los accesos rápidos y trabaja a pantalla completa.</p>
 
-              <div className="mt-8 grid gap-3">
+              <div className="mt-8 hidden gap-3 sm:grid">
                 {["Captura fotos y documentos desde la cámara", "Accede a Sales Hub y Expense Hub", "Recibe una experiencia optimizada para móvil", "Usa la misma cuenta y permisos de tu empresa"].map((item) => <div key={item} className="flex items-center gap-3 text-sm font-bold"><CheckCircle2 className="h-5 w-5 text-[#00A99D]" />{item}</div>)}
               </div>
 
@@ -56,7 +56,7 @@ export default function DownloadAppPage() {
               </div>
             </div>
 
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-[#0B0C0E] p-6 text-white shadow-[0_35px_110px_rgba(11,12,14,.28)] sm:p-10">
+            <div className="relative hidden overflow-hidden rounded-[2.5rem] bg-[#0B0C0E] p-6 text-white shadow-[0_35px_110px_rgba(11,12,14,.28)] sm:block sm:p-10">
               <div className="absolute right-0 top-0 h-56 w-56 rounded-full bg-[#00E5D6]/15 blur-3xl" />
               <div className="relative mx-auto max-w-md rounded-[2.4rem] border-[8px] border-[#050607] bg-[#F5F6F7] p-3 text-[#0B0C0E]">
                 <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-[#242A30]" />
@@ -73,9 +73,9 @@ export default function DownloadAppPage() {
             </div>
           </div>
 
-          <section id="instrucciones" className="mt-20 grid gap-6 lg:grid-cols-2">
-            <article className="rounded-[2rem] border border-[#D9E0E5] bg-white p-7 sm:p-8"><Apple className="h-9 w-9" /><h2 className="mt-5 text-3xl font-black">Instalar en iPhone o iPad</h2><ol className="mt-6 grid gap-4 text-sm leading-6 text-[#66707C]"><li><strong className="text-[#0B0C0E]">1.</strong> Abre <strong>wamaapp.com</strong> en Safari.</li><li><strong className="text-[#0B0C0E]">2.</strong> Presiona Compartir.</li><li><strong className="text-[#0B0C0E]">3.</strong> Selecciona “Agregar a inicio”.</li><li><strong className="text-[#0B0C0E]">4.</strong> Confirma “Agregar”.</li></ol></article>
-            <article className="rounded-[2rem] border border-[#D9E0E5] bg-white p-7 sm:p-8"><MonitorSmartphone className="h-9 w-9" /><h2 className="mt-5 text-3xl font-black">Instalar en Android o computador</h2><ol className="mt-6 grid gap-4 text-sm leading-6 text-[#66707C]"><li><strong className="text-[#0B0C0E]">1.</strong> Abre WAMA en Chrome.</li><li><strong className="text-[#0B0C0E]">2.</strong> Presiona “Instalar aplicación” en el menú.</li><li><strong className="text-[#0B0C0E]">3.</strong> Acepta la instalación.</li><li><strong className="text-[#0B0C0E]">4.</strong> WAMA quedará en tu pantalla de inicio.</li></ol></article>
+          <section id="instrucciones" className="mt-12 grid gap-4 sm:mt-20 sm:gap-6 lg:grid-cols-2">
+            <article className="rounded-[1.5rem] border border-[#D9E0E5] bg-white p-5 sm:rounded-[2rem] sm:p-8"><Apple className="h-9 w-9" /><h2 className="mt-5 text-3xl font-black">Instalar en iPhone o iPad</h2><ol className="mt-6 grid gap-4 text-sm leading-6 text-[#66707C]"><li><strong className="text-[#0B0C0E]">1.</strong> Abre <strong>wamaapp.com</strong> en Safari.</li><li><strong className="text-[#0B0C0E]">2.</strong> Presiona Compartir.</li><li><strong className="text-[#0B0C0E]">3.</strong> Selecciona “Agregar a inicio”.</li><li><strong className="text-[#0B0C0E]">4.</strong> Confirma “Agregar”.</li></ol></article>
+            <article className="rounded-[1.5rem] border border-[#D9E0E5] bg-white p-5 sm:rounded-[2rem] sm:p-8"><MonitorSmartphone className="h-9 w-9" /><h2 className="mt-5 text-3xl font-black">Instalar en Android o computador</h2><ol className="mt-6 grid gap-4 text-sm leading-6 text-[#66707C]"><li><strong className="text-[#0B0C0E]">1.</strong> Abre WAMA en Chrome.</li><li><strong className="text-[#0B0C0E]">2.</strong> Presiona “Instalar aplicación” en el menú.</li><li><strong className="text-[#0B0C0E]">3.</strong> Acepta la instalación.</li><li><strong className="text-[#0B0C0E]">4.</strong> WAMA quedará en tu pantalla de inicio.</li></ol></article>
           </section>
 
           <section className="mt-8 rounded-[2rem] bg-[#0B0C0E] p-7 text-white sm:p-10">
