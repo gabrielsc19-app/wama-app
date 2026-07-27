@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Apple, CheckCircle2, Download, MonitorSmartphone, PlayCircle, Smartphone } from "lucide-react";
+import Image from "next/image";
+import { Apple, CheckCircle2, Download, MonitorSmartphone, Smartphone } from "lucide-react";
 import WamaShell from "../../src/components/brand/WamaShell";
 
 type InstallPromptEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -35,7 +36,7 @@ export default function DownloadAppPage() {
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:py-24">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-12">
             <div>
-              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA Mobile</p>
+              <div className="flex items-center gap-4"><Image src="/wama-icon-192.png?v=1" alt="WAMA" width={64} height={64} className="rounded-2xl shadow-lg" priority /><div><p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA Mobile</p><p className="mt-1 text-sm font-bold text-[#66707C]">Warn and Manage</p></div></div>
               <h1 className="mt-4 text-[2.6rem] font-black leading-[0.95] tracking-[-0.06em] sm:mt-6 sm:text-5xl md:text-7xl">Tu empresa, también en tu celular.</h1>
               <p className="mt-5 max-w-xl text-base leading-7 text-[#66707C] sm:mt-7 sm:text-lg sm:leading-8">Instala WAMA como aplicación en iPhone, iPad, Android, tablet o computador. Conserva los accesos rápidos y trabaja a pantalla completa.</p>
 
@@ -78,9 +79,7 @@ export default function DownloadAppPage() {
             <article className="rounded-[1.5rem] border border-[#D9E0E5] bg-white p-5 sm:rounded-[2rem] sm:p-8"><MonitorSmartphone className="h-9 w-9" /><h2 className="mt-5 text-3xl font-black">Instalar en Android o computador</h2><ol className="mt-6 grid gap-4 text-sm leading-6 text-[#66707C]"><li><strong className="text-[#0B0C0E]">1.</strong> Abre WAMA en Chrome.</li><li><strong className="text-[#0B0C0E]">2.</strong> Presiona “Instalar aplicación” en el menú.</li><li><strong className="text-[#0B0C0E]">3.</strong> Acepta la instalación.</li><li><strong className="text-[#0B0C0E]">4.</strong> WAMA quedará en tu pantalla de inicio.</li></ol></article>
           </section>
 
-          <section className="mt-8 rounded-[2rem] bg-[#0B0C0E] p-7 text-white sm:p-10">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Video explicativo</p><h2 className="mt-3 text-3xl font-black">Instala WAMA en menos de un minuto.</h2><p className="mt-3 text-sm leading-6 text-[#B7BEC8]">El recorrido muestra cómo agregar WAMA a la pantalla de inicio y entrar con una clave provisoria.</p></div><div className="inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-6 py-4 text-sm font-black"><PlayCircle className="h-5 w-5 text-[#00E5D6]" />Tutorial integrado próximamente</div></div>
-          </section>
+          <section className="mt-8 rounded-[2rem] bg-[#0B0C0E] p-7 text-white sm:p-10"><div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Primer acceso seguro</p><h2 className="mt-3 text-3xl font-black">Correo, clave provisoria y nueva contraseña.</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-[#B7BEC8]">Tu empresa crea el usuario. WAMA envía una clave temporal y, en el primer ingreso, solicita definir una contraseña personal antes de abrir el portal.</p></div><div className="grid gap-2 text-sm font-black"><span className="rounded-full border border-white/15 px-5 py-3">1. Recibe tu acceso</span><span className="rounded-full border border-white/15 px-5 py-3">2. Cambia la contraseña</span><span className="rounded-full bg-[#00E5D6] px-5 py-3 text-[#0B0C0E]">3. Entra a WAMA</span></div></div></section>
         </section>
       </main>
     </WamaShell>

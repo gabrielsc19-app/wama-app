@@ -1,48 +1,62 @@
-/* FixLoop | Pumay service worker
-   Permite recibir notificaciones aunque la app no esté abierta.
-   También actualiza o limpia el badge del ícono de la PWA cuando el navegador lo permite.
+/* WAMA service worker
+   Mantiene la instalación PWA actualizada y gestiona notificaciones y badges.
 */
+
+const WAMA_SW_VERSION = "wama-pwa-v1";
 
 self.addEventListener("install", function () {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", function (event) {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    Promise.all([
+      self.clients.claim(),
+      caches.keys().then(function (keys) {
+        return Promise.all(
+          keys
+            .filter(function (key) {
+              return !key.startsWith(WAMA_SW_VERSION);
+            })
+            .map(function (key) {
+              return caches.delete(key);
+            }),
+        );
+      }),
+    ]),
+  );
 });
 
 async function updateAppBadge(count) {
   try {
     const numericCount = Math.max(0, Number(count || 0));
 
-    if (numericCount > 0) {
-      if ("setAppBadge" in self.navigator) {
-        await self.navigator.setAppBadge(numericCount);
-      }
-
+    if (numericCount > 0 && "setAppBadge" in self.navigator) {
+      await self.navigator.setAppBadge(numericCount);
       return;
     }
 
     if ("clearAppBadge" in self.navigator) {
       await self.navigator.clearAppBadge();
     }
-
-    if ("setAppBadge" in self.navigator) {
-      await self.navigator.setAppBadge(0);
-    }
   } catch (error) {
-    console.warn("No se pudo actualizar el badge de FixLoop:", error);
+    console.warn("No se pudo actualizar el badge de WAMA:", error);
   }
 }
 
 self.addEventListener("message", function (event) {
   const data = event.data || {};
 
-  if (data.type !== "FIXLOOP_SYNC_BADGE") return;
+  if (data.type === "WAMA_SKIP_WAITING") {
+    self.skipWaiting();
+    return;
+  }
 
-  const count = Number(data.count || 0);
+  if (data.type !== "WAMA_SYNC_BADGE" && data.type !== "FIXLOOP_SYNC_BADGE") {
+    return;
+  }
 
-  event.waitUntil(updateAppBadge(count));
+  event.waitUntil(updateAppBadge(Number(data.count || 0)));
 });
 
 self.addEventListener("push", function (event) {
@@ -50,14 +64,12 @@ self.addEventListener("push", function (event) {
 
   try {
     data = event.data ? event.data.json() : {};
-  } catch (error) {
+  } catch {
     data = {
-      title: "FixLoop | Pumay",
+      title: "WAMA",
       body: event.data ? event.data.text() : "Nueva notificación",
     };
   }
-
-  const title = data.title || "FixLoop | Pumay";
 
   const pendingCountRaw =
     data.pendingCount ??
@@ -76,13 +88,13 @@ self.addEventListener("push", function (event) {
 
   const options = {
     body: data.body || "Nueva notificación",
-    icon: data.icon || "/icon-192.png",
-    badge: data.badge || "/icon-192.png",
-    tag: data.tag || "fixloop-pumay",
+    icon: data.icon || "/wama-icon-192.png?v=1",
+    badge: data.badge || "/wama-icon-192.png?v=1",
+    tag: data.tag || "wama-notification",
     renotify: true,
     requireInteraction: false,
     data: {
-      url: data.url || data.data?.url || "/",
+      url: data.url || data.data?.url || "/acceso",
       pendingCount,
       ...(data.data || {}),
     },
@@ -91,7 +103,7 @@ self.addEventListener("push", function (event) {
   event.waitUntil(
     Promise.allSettled([
       updateAppBadge(pendingCount),
-      self.registration.showNotification(title, options),
+      self.registration.showNotification(data.title || "WAMA", options),
     ]),
   );
 });
@@ -99,16 +111,13 @@ self.addEventListener("push", function (event) {
 self.addEventListener("notificationclick", function (event) {
   event.notification.close();
 
-  const urlToOpen = event.notification.data?.url || "/";
+  const urlToOpen = event.notification.data?.url || "/acceso";
 
   event.waitUntil(
     Promise.allSettled([
       updateAppBadge(0),
       clients
-        .matchAll({
-          type: "window",
-          includeUncontrolled: true,
-        })
+        .matchAll({ type: "window", includeUncontrolled: true })
         .then(function (clientList) {
           for (const client of clientList) {
             if ("focus" in client) {
