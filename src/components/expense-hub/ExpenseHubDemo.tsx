@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { ExpenseRole, expenseRoles } from "@/src/lib/expenseRoles";
 import {
   AlertTriangle, ArrowLeft, Bell, Camera, Check, CheckCircle2, ChevronRight,
   CircleDollarSign, Clock3, FileText, Home, LayoutDashboard, Menu, Plus,
@@ -23,19 +24,20 @@ const seed: Expense[] = [
   { id:"RG-000181", person:"Diego Pérez", merchant:"Lider", category:"Insumos", costCenter:"Operaciones", amount:58250, detectedAmount:48250, status:"En revisión", date:"25 Jul", reason:"Materiales de operación", fileName:"boleta-lider.jpg", createdAt:"2026-07-25T18:42:00", audit:["OCR detectó $48.250", "Usuario declaró $58.250", "Alerta generada"] },
 ];
 
-const nav: Array<{ id:View; label:string; icon:typeof Home; mobile?:boolean }> = [
-  { id:"dashboard", label:"Inicio", icon:LayoutDashboard, mobile:true },
-  { id:"new", label:"Rendir", icon:Camera, mobile:true },
-  { id:"mine", label:"Mis rendiciones", icon:ReceiptText, mobile:true },
-  { id:"money", label:"Mi dinero", icon:WalletCards, mobile:true },
-  { id:"approvals", label:"Aprobaciones", icon:CheckCircle2 },
-  { id:"finance", label:"Finanzas", icon:ShieldCheck },
+const nav: Array<{ id:View; label:string; icon:typeof Home; mobile?:boolean; roles:ExpenseRole[] }> = [
+  { id:"dashboard", label:"Inicio", icon:LayoutDashboard, mobile:true, roles:["manager","admin","finance","supervisor"] },
+  { id:"new", label:"Rendir", icon:Camera, mobile:true, roles:["collaborator","admin"] },
+  { id:"mine", label:"Mis rendiciones", icon:ReceiptText, mobile:true, roles:["collaborator","admin"] },
+  { id:"money", label:"Mi dinero", icon:WalletCards, mobile:true, roles:["collaborator","admin"] },
+  { id:"approvals", label:"Aprobaciones", icon:CheckCircle2, mobile:true, roles:["supervisor","admin"] },
+  { id:"finance", label:"Finanzas", icon:ShieldCheck, mobile:true, roles:["finance","admin"] },
 ];
 
 const money = (value:number) => `$${value.toLocaleString("es-CL")}`;
 const todayLabel = () => new Intl.DateTimeFormat("es-CL", { day:"2-digit", month:"short" }).format(new Date()).replace(".", "");
 
 export default function ExpenseHubDemo() {
+  const [role, setRole] = useState<ExpenseRole | null>(null);
   const [view, setView] = useState<View>("dashboard");
   const [menuOpen, setMenuOpen] = useState(false);
   const [expenses, setExpenses] = useState<Expense[]>(seed);
@@ -45,10 +47,21 @@ export default function ExpenseHubDemo() {
   useEffect(() => {
     const saved = localStorage.getItem("wama-expenses-v1");
     if (saved) try { setExpenses(JSON.parse(saved)); } catch { setExpenses(seed); }
+    const savedRole = localStorage.getItem("wama-expense-role") as ExpenseRole | null;
+    if (savedRole && expenseRoles[savedRole]) {
+      setRole(savedRole);
+      setView(expenseRoles[savedRole].defaultView);
+    }
   }, []);
   useEffect(() => { localStorage.setItem("wama-expenses-v1", JSON.stringify(expenses)); }, [expenses]);
 
+  const allowedNav = role ? nav.filter(item => item.roles.includes(role)) : [];
   const active = nav.find(n => n.id === view)?.label ?? "Inicio";
+  const selectRole = (nextRole: ExpenseRole) => {
+    localStorage.setItem("wama-expense-role", nextRole);
+    setRole(nextRole);
+    setView(expenseRoles[nextRole].defaultView);
+  };
   const go = (next:View) => { setView(next); setMenuOpen(false); setSelected(null); };
   const flash = (text:string) => { setNotice(text); window.setTimeout(() => setNotice(""), 2600); };
   const addExpense = (expense:Expense) => { setExpenses(prev => [expense, ...prev]); go("mine"); flash("Rendición enviada correctamente"); };
@@ -59,12 +72,13 @@ export default function ExpenseHubDemo() {
   };
 
   return <div className="expense-hub-root min-h-screen bg-[#F3F5F6] text-[#0B0C0E] pb-24 lg:pb-0">
+    {!role && <RoleSelector onSelect={selectRole}/>} 
     <aside className={`fixed inset-y-0 left-0 z-50 w-[286px] border-r border-white/10 bg-[#0B0C0E] text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-full flex-col">
         <div className="flex h-20 items-center justify-between border-b border-white/10 px-6"><Link href="/app" className="text-2xl font-black tracking-[-.06em]">WAMA<span className="text-[#00E5D6]">.</span></Link><button onClick={()=>setMenuOpen(false)} className="lg:hidden"><X/></button></div>
-        <div className="px-5 py-6"><div className="rounded-2xl border border-[#00E5D6]/15 bg-[#00E5D6]/[.08] p-4"><p className="text-[11px] font-black uppercase tracking-[.18em] text-[#00E5D6]">Expense Hub</p><p className="mt-2 text-sm font-black">Empresa Demo SpA</p><p className="mt-1 text-xs text-[#9EA6B0]">Plan activo · 10 usuarios</p></div></div>
-        <nav className="flex-1 space-y-1 px-4">{nav.map(({id,label,icon:Icon}) => <button key={id} onClick={()=>go(id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold ${view===id ? "bg-[#00E5D6] text-[#0B0C0E]" : "text-[#BFC5CC] hover:bg-white/[.06] hover:text-white"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
-        <div className="border-t border-white/10 p-4"><Link href="/modulos/expense-hub" className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-[#BFC5CC]"><ArrowLeft className="h-5 w-5"/>Volver al módulo</Link><div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-[#BFC5CC]"><Settings className="h-5 w-5"/>Configuración</div></div>
+        <div className="px-5 py-6"><div className="rounded-2xl border border-[#00E5D6]/15 bg-[#00E5D6]/[.08] p-4"><p className="text-[11px] font-black uppercase tracking-[.18em] text-[#00E5D6]">Expense Hub</p><p className="mt-2 text-sm font-black">Empresa Demo SpA</p><p className="mt-1 text-xs text-[#9EA6B0]">{role ? expenseRoles[role].label : "Selecciona tu rol"}</p></div></div>
+        <nav className="flex-1 space-y-1 px-4">{allowedNav.map(({id,label,icon:Icon}) => <button key={id} onClick={()=>go(id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold ${view===id ? "bg-[#00E5D6] text-[#0B0C0E]" : "text-[#BFC5CC] hover:bg-white/[.06] hover:text-white"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
+        <div className="border-t border-white/10 p-4"><button onClick={()=>setRole(null)} className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold text-[#BFC5CC]"><UserRound className="h-5 w-5"/>Cambiar rol</button><div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-[#BFC5CC]"><Settings className="h-5 w-5"/>Configuración</div></div>
       </div>
     </aside>
     {menuOpen && <button onClick={()=>setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden"/>}
@@ -72,7 +86,7 @@ export default function ExpenseHubDemo() {
     <div className="lg:pl-[286px]">
       <header className="expense-hub-header sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#DDE1E6] bg-white/95 px-5 backdrop-blur-xl sm:px-8">
         <div className="flex items-center gap-3"><button onClick={()=>setMenuOpen(true)} className="rounded-xl border border-[#DDE1E6] p-2 lg:hidden"><Menu className="h-5 w-5"/></button><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Expense Hub</p><h1 className="text-xl font-black tracking-[-.035em]">{active}</h1></div></div>
-        <div className="flex items-center gap-3"><button className="relative rounded-full border border-[#DDE1E6] bg-white p-3"><Bell className="h-5 w-5"/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FF9E45]"/></button><div className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-[#0B0C0E] text-sm font-black text-white">GS</div><div><p className="text-sm font-black">Gabriel Sánchez</p><p className="text-xs text-[#737C87]">Administrador</p></div></div></div>
+        <div className="flex items-center gap-3"><button className="relative rounded-full border border-[#DDE1E6] bg-white p-3"><Bell className="h-5 w-5"/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FF9E45]"/></button><button onClick={()=>setRole(null)} className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-[#0B0C0E] text-sm font-black text-white">GS</div><div className="text-left"><p className="text-sm font-black">Gabriel Sánchez</p><p className="text-xs text-[#737C87]">{role ? expenseRoles[role].label : "Sin rol"}</p></div></button></div>
       </header>
       {notice && <div className="fixed right-5 top-24 z-[70] flex items-center gap-2 rounded-2xl bg-[#0B0C0E] px-5 py-4 text-sm font-black text-white shadow-2xl"><Check className="h-4 w-4 text-[#00E5D6]"/>{notice}</div>}
       <main className="p-5 sm:p-8 lg:p-10">
@@ -85,8 +99,35 @@ export default function ExpenseHubDemo() {
       </main>
     </div>
 
-    <nav className="expense-hub-mobile-nav fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden">{nav.filter(n=>n.mobile).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
+    {allowedNav.length > 0 && <nav className={`expense-hub-mobile-nav fixed inset-x-3 bottom-3 z-40 grid rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden ${allowedNav.length===1?"grid-cols-1":allowedNav.length===2?"grid-cols-2":allowedNav.length===3?"grid-cols-3":"grid-cols-4"}`}>{allowedNav.slice(0,4).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>}
     {selected && <ExpenseDrawer expense={selected} onClose={()=>setSelected(null)} onUpdate={updateExpense}/>} 
+  </div>;
+}
+
+function RoleSelector({onSelect}:{onSelect:(role:ExpenseRole)=>void}) {
+  const options: Array<{role:ExpenseRole; icon:typeof UserRound}> = [
+    {role:"collaborator", icon:UserRound},
+    {role:"supervisor", icon:CheckCircle2},
+    {role:"finance", icon:ShieldCheck},
+    {role:"manager", icon:LayoutDashboard},
+    {role:"admin", icon:Settings},
+  ];
+  return <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#0B0C0E]/95 p-5 backdrop-blur-xl sm:p-8">
+    <div className="mx-auto flex min-h-full max-w-5xl items-center justify-center py-10">
+      <div className="w-full rounded-[2rem] bg-white p-6 shadow-2xl sm:p-10">
+        <p className="text-xs font-black uppercase tracking-[.18em] text-[#008F87]">Configuración de acceso</p>
+        <h2 className="mt-3 text-3xl font-black tracking-[-.05em] sm:text-5xl">¿Cuál es tu rol en Expense Hub?</h2>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-[#68717C]">WAMA adapta el menú y las acciones para que cada persona vea solo lo que necesita.</p>
+        <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">{options.map(({role,icon:Icon})=>{
+          const item=expenseRoles[role];
+          return <button key={role} onClick={()=>onSelect(role)} className="group rounded-2xl border border-[#DDE1E6] p-5 text-left transition hover:border-[#00B8AD] hover:bg-[#F4FFFE]">
+            <div className="grid h-11 w-11 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Icon className="h-5 w-5"/></div>
+            <p className="mt-4 text-lg font-black">{item.label}</p>
+            <p className="mt-2 text-sm leading-6 text-[#68717C]">{item.description}</p>
+          </button>;
+        })}</div>
+      </div>
+    </div>
   </div>;
 }
 
@@ -100,20 +141,74 @@ function Dashboard({expenses,onNew,onOpen}:{expenses:Expense[];onNew:()=>void;on
 }
 
 function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
-  const [step,setStep]=useState(1), [fileName,setFileName]=useState(""), [preview,setPreview]=useState("");
+  const [step,setStep]=useState(1);
+  const [fileName,setFileName]=useState("");
+  const [preview,setPreview]=useState("");
+  const [file,setFile]=useState<File|null>(null);
   const [processing,setProcessing]=useState(false);
-  const [form,setForm]=useState({merchant:"",rut:"",date:new Date().toISOString().slice(0,10),folio:"",category:"Combustible",costCenter:"Operaciones",detected:"",declared:"",reason:""});
+  const [ocrError,setOcrError]=useState("");
+  const [confidence,setConfidence]=useState<number|null>(null);
+  const [warnings,setWarnings]=useState<string[]>([]);
+  const [form,setForm]=useState({merchant:"",rut:"",date:new Date().toISOString().slice(0,10),folio:"",category:"Otros",costCenter:"Operaciones",detected:"",declared:"",reason:""});
   const difference=Number(form.declared||0)-Number(form.detected||0);
-  const readFile=(ev:ChangeEvent<HTMLInputElement>)=>{const f=ev.target.files?.[0]; if(!f)return; setFileName(f.name); if(f.type.startsWith("image/")){const r=new FileReader();r.onload=()=>setPreview(String(r.result));r.readAsDataURL(f);} else setPreview("");};
-  const process=()=>{setProcessing(true);setTimeout(()=>{setForm(v=>({...v,merchant:"COPEC",rut:"99.520.000-7",folio:String(Math.floor(1000000+Math.random()*8999999)),detected:"48250",declared:"48250",reason:"Gasto operacional"}));setProcessing(false);setStep(2);},900)};
-  const submit=()=>{const next=Math.max(...seed.map(e=>Number(e.id.split("-")[1])),...[]) + Math.floor(Math.random()*900)+1; onSubmit({id:`RG-${String(next).padStart(6,"0")}`,person:"Gabriel Sánchez",merchant:form.merchant||"Sin comercio",category:form.category,costCenter:form.costCenter,amount:Number(form.declared||0),detectedAmount:Number(form.detected||0),status:difference===0?"Pendiente":"En revisión",date:todayLabel(),reason:form.reason,fileName:fileName||"documento.jpg",createdAt:new Date().toISOString(),audit:["Documento original cargado","OCR ejecutado",...(difference!==0?[`Monto editado: diferencia ${money(Math.abs(difference))}`]:[]),"Rendición enviada"]});};
-  return <div className="mx-auto max-w-5xl"><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Nueva rendición</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Foto. Confirma. Envía.</h2><p className="mt-4 text-[#69717D]">La evidencia original queda protegida y cada cambio se registra.</p>
-    <div className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[#DDE1E6] bg-white p-2">{["Documento","Confirmación","Enviar"].map((l,i)=><div key={l} className={`rounded-xl px-2 py-3 text-center text-xs font-black sm:text-sm ${step===i+1?"bg-[#0B0C0E] text-white":step>i+1?"bg-[#DFFBF8] text-[#008F87]":"text-[#8A939E]"}`}>{i+1}. {l}</div>)}</div>
+
+  const readFile=(ev:ChangeEvent<HTMLInputElement>)=>{
+    const selected=ev.target.files?.[0];
+    if(!selected)return;
+    setFile(selected);
+    setFileName(selected.name);
+    setOcrError("");
+    setConfidence(null);
+    setWarnings([]);
+    if(selected.type.startsWith("image/")){
+      const reader=new FileReader();
+      reader.onload=()=>setPreview(String(reader.result));
+      reader.readAsDataURL(selected);
+    } else setPreview("");
+  };
+
+  const process=async()=>{
+    if(!file){setOcrError("Toma una foto o selecciona un documento antes de continuar.");return;}
+    setProcessing(true);setOcrError("");setWarnings([]);
+    try{
+      const body=new FormData(); body.append("file",file);
+      const response=await fetch("/api/expense/ocr",{method:"POST",body});
+      const payload=await response.json();
+      if(!response.ok) throw new Error(payload.error||"No fue posible leer el documento.");
+      const data=payload.data;
+      const total=data.totalAmount==null?"":String(Math.round(data.totalAmount));
+      setForm(v=>({
+        ...v,
+        merchant:data.merchant||"",
+        rut:data.rut||"",
+        date:data.date||v.date,
+        folio:data.folio||"",
+        category:data.suggestedCategory||"Otros",
+        costCenter:data.suggestedCostCenter||"Operaciones",
+        detected:total,
+        declared:total,
+        reason:data.merchant?`Gasto en ${data.merchant}`:"",
+      }));
+      setConfidence(Number(data.confidence||0));
+      setWarnings(Array.isArray(data.warnings)?data.warnings:[]);
+      setStep(2);
+    }catch(error){setOcrError(error instanceof Error?error.message:"Error inesperado de OCR.");}
+    finally{setProcessing(false);}
+  };
+
+  const submit=()=>{
+    const next=Math.max(...seed.map(e=>Number(e.id.split("-")[1])),...[]) + Math.floor(Math.random()*900)+1;
+    onSubmit({id:`RG-${String(next).padStart(6,"0")}`,person:"Gabriel Sánchez",merchant:form.merchant||"Sin comercio",category:form.category,costCenter:form.costCenter,amount:Number(form.declared||0),detectedAmount:Number(form.detected||0),status:difference===0?"Pendiente":"En revisión",date:todayLabel(),reason:form.reason,fileName:fileName||"documento.jpg",createdAt:new Date().toISOString(),audit:["Documento original cargado",`OCR ejecutado${confidence!==null?` · confianza ${confidence}%`:""}`,...(difference!==0?[`Monto editado: diferencia ${money(Math.abs(difference))}`]:[]),"Rendición enviada"]});
+  };
+
+  return <div className="mx-auto max-w-5xl"><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Nueva rendición</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Foto. WAMA lee. Tú confirmas.</h2><p className="mt-4 text-[#69717D]">La evidencia original queda protegida y el OCR completa automáticamente los datos visibles.</p>
+    <div className="mt-8 grid grid-cols-3 gap-2 rounded-2xl border border-[#DDE1E6] bg-white p-2">{["Documento","Confirmación","Enviar"].map((label,index)=><div key={label} className={`rounded-xl px-2 py-3 text-center text-xs font-black sm:text-sm ${step===index+1?"bg-[#0B0C0E] text-white":step>index+1?"bg-[#DFFBF8] text-[#008F87]":"text-[#8A939E]"}`}>{index+1}. {label}</div>)}</div>
     <div className="mt-6 rounded-[2rem] border border-[#DDE1E6] bg-white p-6 sm:p-10">
-      {step===1&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Camera className="h-9 w-9"/></div><h3 className="mt-6 text-3xl font-black">Captura tu documento</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">En celular abrirá la cámara. También puedes elegir una imagen o PDF.</p><label className="mx-auto mt-8 flex max-w-xl cursor-pointer flex-col items-center overflow-hidden rounded-2xl border-2 border-dashed border-[#AEB6C0] bg-[#F8F9FA] p-6">{preview?<img src={preview} alt="Vista previa" className="max-h-72 rounded-xl object-contain"/>:<Upload className="h-9 w-9 text-[#008F87]"/>}<span className="mt-3 text-sm font-black">{fileName||"Tomar foto o seleccionar archivo"}</span><input type="file" capture="environment" accept="image/*,.pdf" className="hidden" onChange={readFile}/></label><button disabled={processing} onClick={()=>{if(!fileName)setFileName("boleta-copec.jpg");process();}} className="mt-8 rounded-full bg-[#0B0C0E] px-8 py-4 text-sm font-black text-white disabled:opacity-60">{processing?"WAMA está leyendo…":"Procesar documento"}</button></div>}
-      {step===2&&<div><div className="flex flex-col justify-between gap-4 border-b border-[#E2E6E9] pb-6 sm:flex-row sm:items-center"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Lectura completada</p><h3 className="mt-2 text-3xl font-black">Confirma los datos</h3></div><span className="inline-flex items-center gap-2 rounded-full bg-[#DFFBF8] px-4 py-2 text-xs font-black text-[#008F87]"><CheckCircle2 className="h-4 w-4"/>Documento legible</span></div><div className="mt-8 grid gap-7 lg:grid-cols-[.75fr_1.25fr]"><div className="flex min-h-[320px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#AEB6C0] bg-[#F5F6F7] p-6 text-center">{preview?<img src={preview} alt="Documento" className="max-h-[290px] rounded-xl object-contain"/>:<FileText className="h-14 w-14 text-[#008F87]"/>}<p className="mt-4 text-sm font-black">{fileName}</p><p className="mt-1 text-xs text-[#747E89]">Original protegido</p></div><div className="grid gap-4 sm:grid-cols-2"><Input label="Comercio" value={form.merchant} onChange={v=>setForm({...form,merchant:v})}/><Input label="RUT" value={form.rut} onChange={v=>setForm({...form,rut:v})}/><Input label="Fecha" type="date" value={form.date} onChange={v=>setForm({...form,date:v})}/><Input label="Folio" value={form.folio} onChange={v=>setForm({...form,folio:v})}/><Select label="Categoría" value={form.category} options={["Combustible","Movilización","Alimentación","Alojamiento","Insumos","Otros"]} onChange={v=>setForm({...form,category:v})}/><Select label="Centro de costo" value={form.costCenter} options={["Operaciones","Comercial","Administración","TI","Proyecto"]} onChange={v=>setForm({...form,costCenter:v})}/><Input label="Monto OCR" value={form.detected} onChange={()=>{}} disabled/><Input label="Monto declarado" value={form.declared} onChange={v=>setForm({...form,declared:v.replace(/\D/g,"")})}/><label className="sm:col-span-2"><span className="text-xs font-black uppercase tracking-[.12em] text-[#69717D]">Motivo</span><textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="mt-2 min-h-24 w-full rounded-xl border border-[#D5DAE0] px-4 py-3 text-sm outline-none focus:border-[#00B8AD]"/></label></div></div>{difference!==0&&<div className="mt-6 rounded-2xl border border-[#F4C16D] bg-[#FFF8EA] p-4"><p className="flex items-center gap-2 text-sm font-black text-[#9A6200]"><AlertTriangle className="h-4 w-4"/>Diferencia detectada: {difference>0?"+":"-"}{money(Math.abs(difference))}</p><p className="mt-1 text-xs text-[#7A6135]">La modificación quedará registrada y Finanzas recibirá una alerta.</p></div>}<div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button onClick={()=>setStep(1)} className="rounded-full border border-[#D5DAE0] px-7 py-3 text-sm font-black">Volver</button><button onClick={()=>setStep(3)} className="rounded-full bg-[#0B0C0E] px-7 py-3 text-sm font-black text-white">Continuar</button></div></div>}
-      {step===3&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><CheckCircle2 className="h-10 w-10"/></div><h3 className="mt-6 text-3xl font-black">Todo listo</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">La rendición será enviada y quedará disponible para seguimiento.</p><div className="mx-auto mt-8 max-w-lg divide-y divide-[#E4E7EA] rounded-2xl border border-[#DDE1E6] text-left"><Summary label="Documento" value={fileName}/><Summary label="Comercio" value={form.merchant}/><Summary label="Monto" value={money(Number(form.declared||0))}/><Summary label="Estado" value={difference===0?"Pendiente":"En revisión"}/></div><button onClick={submit} className="mt-8 rounded-full bg-[#00B8AD] px-8 py-4 text-sm font-black text-white">Enviar rendición</button></div>}
-    </div></div>;
+      {step===1&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Camera className="h-9 w-9"/></div><h3 className="mt-6 text-3xl font-black">Captura tu documento</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">Usa la cámara del teléfono o selecciona una imagen/PDF. WAMA analizará comercio, RUT, fecha, folio y monto.</p><label className="mx-auto mt-8 flex max-w-xl cursor-pointer flex-col items-center overflow-hidden rounded-2xl border-2 border-dashed border-[#AEB6C0] bg-[#F8F9FA] p-6">{preview?<img src={preview} alt="Vista previa" className="max-h-72 rounded-xl object-contain"/>:<Upload className="h-9 w-9 text-[#008F87]"/>}<span className="mt-3 text-sm font-black">{fileName||"Tomar foto o seleccionar archivo"}</span><input type="file" capture="environment" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={readFile}/></label>{ocrError&&<div className="mx-auto mt-5 max-w-xl rounded-xl border border-[#F4C16D] bg-[#FFF8EA] p-4 text-left text-sm font-bold text-[#8B5A00]">{ocrError}</div>}<button disabled={processing||!file} onClick={process} className="mt-8 rounded-full bg-[#0B0C0E] px-8 py-4 text-sm font-black text-white disabled:cursor-not-allowed disabled:opacity-40">{processing?"WAMA está leyendo el documento…":"Analizar con OCR e IA"}</button></div>}
+      {step===2&&<div><div className="flex flex-col justify-between gap-4 border-b border-[#E2E6E9] pb-6 sm:flex-row sm:items-center"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Lectura completada</p><h3 className="mt-2 text-3xl font-black">Confirma los datos</h3></div><span className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-black ${confidence!==null&&confidence>=80?"bg-[#DFFBF8] text-[#008F87]":"bg-[#FFF2DF] text-[#A46100]"}`}><CheckCircle2 className="h-4 w-4"/>Confianza OCR {confidence??0}%</span></div>{warnings.length>0&&<div className="mt-5 rounded-2xl border border-[#F4C16D] bg-[#FFF8EA] p-4"><p className="text-sm font-black text-[#9A6200]">Revisa estos datos</p><ul className="mt-2 space-y-1 text-xs text-[#7A6135]">{warnings.map((warning,index)=><li key={`${warning}-${index}`}>• {warning}</li>)}</ul></div>}<div className="mt-8 grid gap-7 lg:grid-cols-[.75fr_1.25fr]"><div className="flex min-h-[320px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#AEB6C0] bg-[#F5F6F7] p-6 text-center">{preview?<img src={preview} alt="Documento" className="max-h-[290px] rounded-xl object-contain"/>:<FileText className="h-14 w-14 text-[#008F87]"/>}<p className="mt-4 text-sm font-black">{fileName}</p><p className="mt-1 text-xs text-[#747E89]">Original protegido</p></div><div className="grid gap-4 sm:grid-cols-2"><Input label="Comercio" value={form.merchant} onChange={v=>setForm({...form,merchant:v})}/><Input label="RUT" value={form.rut} onChange={v=>setForm({...form,rut:v})}/><Input label="Fecha" type="date" value={form.date} onChange={v=>setForm({...form,date:v})}/><Input label="Folio" value={form.folio} onChange={v=>setForm({...form,folio:v})}/><Select label="Categoría" value={form.category} options={["Combustible","Movilización","Alimentación","Alojamiento","Insumos","Servicios","Otros"]} onChange={v=>setForm({...form,category:v})}/><Select label="Centro de costo" value={form.costCenter} options={["Operaciones","Comercial","Administración","TI","Proyecto"]} onChange={v=>setForm({...form,costCenter:v})}/><Input label="Monto OCR" value={form.detected} onChange={()=>{}} disabled/><Input label="Monto declarado" value={form.declared} onChange={v=>setForm({...form,declared:v.replace(/\D/g,"")})}/><label className="sm:col-span-2"><span className="text-xs font-black uppercase tracking-[.12em] text-[#69717D]">Motivo</span><textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="mt-2 min-h-24 w-full rounded-xl border border-[#D5DAE0] px-4 py-3 text-sm outline-none focus:border-[#00B8AD]"/></label></div></div>{difference!==0&&<div className="mt-6 rounded-2xl border border-[#F4C16D] bg-[#FFF8EA] p-4"><p className="flex items-center gap-2 text-sm font-black text-[#9A6200]"><AlertTriangle className="h-4 w-4"/>Diferencia detectada: {difference>0?"+":"-"}{money(Math.abs(difference))}</p><p className="mt-1 text-xs text-[#7A6135]">La modificación quedará registrada y Finanzas recibirá una alerta.</p></div>}<div className="mt-8 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end"><button onClick={()=>setStep(1)} className="rounded-full border border-[#D5DAE0] px-7 py-3 text-sm font-black">Volver</button><button onClick={()=>setStep(3)} disabled={!form.merchant||!form.declared} className="rounded-full bg-[#0B0C0E] px-7 py-3 text-sm font-black text-white disabled:opacity-40">Continuar</button></div></div>}
+      {step===3&&<div className="text-center"><div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><CheckCircle2 className="h-10 w-10"/></div><h3 className="mt-6 text-3xl font-black">Todo listo</h3><p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-[#69717D]">La rendición será enviada y quedará disponible para seguimiento.</p><div className="mx-auto mt-8 max-w-lg divide-y divide-[#E4E7EA] rounded-2xl border border-[#DDE1E6] text-left"><Summary label="Documento" value={fileName}/><Summary label="Comercio" value={form.merchant}/><Summary label="Monto" value={money(Number(form.declared||0))}/><Summary label="Estado" value={difference===0?"Pendiente":"En revisión"}/></div><button onClick={submit} className="mt-8 rounded-full bg-[#00B8AD] px-9 py-4 text-sm font-black text-white">Enviar rendición</button><button onClick={()=>setStep(2)} className="ml-3 mt-8 rounded-full border border-[#D5DAE0] px-7 py-4 text-sm font-black">Volver</button></div>}
+    </div>
+  </div>;
 }
 
 function ExpenseList({expenses,title,subtitle,approvals=false,onOpen}:{expenses:Expense[];title:string;subtitle:string;approvals?:boolean;onOpen:(e:Expense)=>void}) {

@@ -1,0 +1,10 @@
+WAMA V14 - Carruseles definitivos de ancho completo
+
+Cambios:
+- El encabezado comercial queda sobre el carrusel.
+- El carrusel ocupa todo el ancho disponible.
+- Se elimina la columna lateral interna.
+- Altura fija por breakpoint para evitar saltos entre slides.
+- Todos los textos y montos están limitados y adaptados al espacio.
+- Sales Hub y Expense Hub mantienen seis etapas propias.
+- Sin dependencias nuevas.

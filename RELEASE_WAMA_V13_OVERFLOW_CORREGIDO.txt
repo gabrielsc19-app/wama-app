@@ -1,0 +1,11 @@
+WAMA V13 — Corrección definitiva de desbordes
+
+Cambios principales:
+- Ningún valor usa whitespace-nowrap dentro de tarjetas estrechas.
+- Tipografía adaptativa según longitud del contenido.
+- Textos largos pueden ocupar dos líneas sin salir del contenedor.
+- Dashboard Expense usa KPIs en grilla 2x2 para mantener montos legibles.
+- Dashboard Sales usa KPIs en grilla 2x2.
+- Carril de etapas muestra número y nombre en líneas separadas.
+- Todos los contenedores críticos usan min-width: 0 y overflow controlado.
+- Se mantiene el diseño blanco/grafito/cian y los seis pasos por módulo.

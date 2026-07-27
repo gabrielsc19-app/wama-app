@@ -1,0 +1,19 @@
+WAMA V11 — EXPERIENCIA MÓVIL LIMPIA
+
+Cambios principales:
+- Menú móvil completo con Inicio, Módulos, Portales e Instalar.
+- Ícono de descarga visible en la cabecera y barra inferior.
+- Barra de navegación inferior tipo aplicación.
+- Agente WAMA oculto en móvil para evitar superposición y ruido visual.
+- Home móvil simplificada: menos texto, menos cajas y CTA claros.
+- Carruseles con diseño móvil específico, no una versión de escritorio comprimida.
+- Un paso por pantalla, datos legibles y montos sin desbordes.
+- Expense Hub y Sales Hub con experiencias móviles diferentes.
+- Página Descargar App más corta y directa en teléfono.
+- Sin dependencias nuevas.
+
+Archivos modificados:
+- src/components/brand/WamaShell.tsx
+- src/components/marketing/WamaInteractiveFlow.tsx
+- app/page.tsx
+- app/descargar-app/page.tsx

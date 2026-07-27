@@ -1,0 +1,25 @@
+WAMA V12 — PROPUESTA DEFINITIVA RESPONSIVE
+
+Archivos principales modificados:
+- app/page.tsx
+- src/components/marketing/WamaInteractiveFlow.tsx
+
+Cambios:
+- Se elimina la composición lateral que comprimía el carrusel.
+- Cada producto presenta primero su propuesta comercial y luego un flujo completo a todo el ancho.
+- Carruseles Sales y Expense rediseñados con panel blanco + área grafito.
+- Montos con tamaños responsive y nowrap.
+- Datos OCR, documentos, aprobaciones y dashboards sin desbordes.
+- Navegación automática y manual por seis etapas.
+- Diseño adaptado a escritorio, tablet y celular sin duplicar contenido.
+- Sin nuevas dependencias.
+
+Prueba local:
+Remove-Item -Recurse -Force .next
+npm run dev
+
+Validación previa a producción:
+npm run build
+git add .
+git commit -m "Implementar experiencia definitiva Sales y Expense"
+git push origin main
