@@ -211,3 +211,466 @@ button {
     transition: none;
   }
 }
+/* ================================
+   WAMA INSTALLED APP EXPERIENCE
+   ================================ */
+
+:root {
+  --wama-safe-top: env(safe-area-inset-top, 0px);
+  --wama-safe-right: env(safe-area-inset-right, 0px);
+  --wama-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --wama-safe-left: env(safe-area-inset-left, 0px);
+}
+
+html[data-wama-mode="app"],
+html[data-wama-mode="app"] body {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+  background: #0b0c0e;
+}
+
+.wama-standalone .wama-web-only {
+  display: none !important;
+}
+
+.wama-app-entry {
+  min-height: 100svh;
+  padding:
+    max(20px, var(--wama-safe-top))
+    max(18px, var(--wama-safe-right))
+    max(20px, var(--wama-safe-bottom))
+    max(18px, var(--wama-safe-left));
+  background:
+    radial-gradient(circle at 85% 5%, rgba(0, 229, 214, 0.16), transparent 30%),
+    linear-gradient(145deg, #080a0d 0%, #0b0c0e 55%, #0d1719 100%);
+  color: #f5f6f7;
+}
+
+.wama-app-entry-loading {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+}
+
+.wama-app-entry-loading p {
+  margin: 0;
+  color: #00e5d6;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+}
+
+.wama-app-splash-mark,
+.wama-app-brand-mark {
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255,255,255,.14);
+  background: #11151a;
+  box-shadow: 0 22px 70px rgba(0,229,214,.13);
+  font-weight: 950;
+  letter-spacing: -.12em;
+}
+
+.wama-app-splash-mark {
+  width: 82px;
+  height: 82px;
+  border-radius: 25px;
+  font-size: 48px;
+}
+
+.wama-app-entry-shell {
+  width: min(1180px, 100%);
+  min-height: calc(100svh - max(40px, var(--wama-safe-top)) - max(40px, var(--wama-safe-bottom)));
+  margin: 0 auto;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 34px;
+  background: rgba(11,12,14,.9);
+  box-shadow: 0 40px 140px rgba(0,0,0,.38);
+  backdrop-filter: blur(22px);
+}
+
+.wama-app-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 82px;
+  padding: 16px 22px;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+}
+
+.wama-app-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wama-app-brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: 15px;
+  font-size: 29px;
+}
+
+.wama-app-brand strong,
+.wama-app-brand span {
+  display: block;
+}
+
+.wama-app-brand strong {
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: .07em;
+}
+
+.wama-app-brand span {
+  margin-top: 2px;
+  color: #00e5d6;
+  font-size: 8px;
+  font-weight: 900;
+  letter-spacing: .15em;
+}
+
+.wama-app-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(0,229,214,.22);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(0,229,214,.08);
+  color: #dffefb;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.wama-app-entry-grid {
+  display: grid;
+  grid-template-columns: .86fr 1.14fr;
+  min-height: calc(100svh - 142px);
+}
+
+.wama-app-entry-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(34px, 7vw, 86px);
+  border-right: 1px solid rgba(255,255,255,.08);
+}
+
+.wama-app-entry-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #00e5d6;
+  font-size: 12px;
+  font-weight: 950;
+  letter-spacing: .2em;
+}
+
+.wama-app-entry-intro h1 {
+  max-width: 610px;
+  margin: 24px 0 0;
+  font-size: clamp(42px, 6vw, 78px);
+  line-height: .94;
+  letter-spacing: -.065em;
+}
+
+.wama-app-entry-intro > p {
+  max-width: 570px;
+  margin: 26px 0 0;
+  color: #aeb7c1;
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.wama-app-feature-list {
+  display: grid;
+  gap: 13px;
+  margin-top: 34px;
+}
+
+.wama-app-feature-list > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.wama-app-feature-list span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 11px;
+  background: rgba(0,229,214,.1);
+  color: #00e5d6;
+  font-size: 11px;
+  font-weight: 950;
+}
+
+.wama-app-feature-list p {
+  margin: 0;
+  color: #d2d8de;
+  font-size: 14px;
+  font-weight: 750;
+}
+
+.wama-app-login-card {
+  align-self: center;
+  width: min(620px, calc(100% - 48px));
+  margin: 34px auto;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 30px;
+  padding: clamp(22px, 4vw, 36px);
+  background: #12161b;
+  box-shadow: 0 28px 90px rgba(0,0,0,.35);
+}
+
+.wama-app-hub-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-radius: 18px;
+  padding: 6px;
+  background: #090b0e;
+}
+
+.wama-app-hub-tabs button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 48px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: #98a2ad;
+  font-weight: 850;
+}
+
+.wama-app-hub-tabs button.is-active {
+  border-color: rgba(0,229,214,.32);
+  background: rgba(0,229,214,.12);
+  color: #f5f6f7;
+}
+
+.wama-app-login-heading {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 28px;
+}
+
+.wama-app-login-icon {
+  display: grid;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 16px;
+  background: #00e5d6;
+  color: #0b0c0e;
+}
+
+.wama-app-login-heading p {
+  margin: 0;
+  color: #00e5d6;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.wama-app-login-heading h2 {
+  margin: 7px 0 0;
+  font-size: clamp(27px, 4vw, 38px);
+  line-height: 1.05;
+  letter-spacing: -.045em;
+}
+
+.wama-app-login-description {
+  margin: 17px 0 0;
+  color: #aeb7c1;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.wama-app-login-form {
+  display: grid;
+  gap: 18px;
+  margin-top: 26px;
+}
+
+.wama-app-login-form label > span {
+  display: block;
+  margin-bottom: 8px;
+  color: #d8dde2;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.wama-app-login-form input {
+  width: 100%;
+  min-height: 52px;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 15px;
+  padding: 0 15px;
+  background: #090b0e;
+  color: #f5f6f7;
+  font: inherit;
+  outline: none;
+}
+
+.wama-app-login-form input:focus {
+  border-color: rgba(0,229,214,.7);
+  box-shadow: 0 0 0 3px rgba(0,229,214,.08);
+}
+
+.wama-app-password-field {
+  position: relative;
+}
+
+.wama-app-password-field input {
+  padding-right: 52px;
+}
+
+.wama-app-password-field button {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: #8d98a4;
+  transform: translateY(-50%);
+}
+
+.wama-app-login-error {
+  border: 1px solid rgba(248,113,113,.25);
+  border-radius: 14px;
+  padding: 13px 14px;
+  background: rgba(239,68,68,.1);
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.wama-app-login-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 54px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0 20px;
+  background: #00e5d6;
+  color: #0b0c0e;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.wama-app-provisional-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  border-top: 1px solid rgba(255,255,255,.09);
+  padding-top: 18px;
+}
+
+.wama-app-provisional-note strong {
+  color: #f5f6f7;
+  font-size: 12px;
+}
+
+.wama-app-provisional-note span {
+  color: #8e99a5;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* iOS / Android safe areas inside the actual software */
+.wama-standalone .expense-hub-root,
+.wama-standalone .wama-software-root {
+  padding-top: var(--wama-safe-top);
+  padding-bottom: var(--wama-safe-bottom);
+}
+
+.wama-standalone .expense-hub-header,
+.wama-standalone .wama-software-header {
+  min-height: calc(80px + var(--wama-safe-top));
+  padding-top: var(--wama-safe-top);
+}
+
+.wama-standalone .expense-hub-mobile-nav,
+.wama-standalone .wama-software-mobile-nav {
+  bottom: max(12px, var(--wama-safe-bottom));
+}
+
+@media (max-width: 840px) {
+  .wama-app-entry {
+    padding: 0;
+  }
+
+  .wama-app-entry-shell {
+    min-height: 100svh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .wama-app-entry-header {
+    min-height: calc(72px + var(--wama-safe-top));
+    padding:
+      max(14px, var(--wama-safe-top))
+      max(16px, var(--wama-safe-right))
+      12px
+      max(16px, var(--wama-safe-left));
+  }
+
+  .wama-app-mode-badge {
+    width: 42px;
+    height: 42px;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+    color: #00e5d6;
+    font-size: 0;
+  }
+
+  .wama-app-entry-grid {
+    display: block;
+    min-height: auto;
+  }
+
+  .wama-app-entry-intro {
+    display: none;
+  }
+
+  .wama-app-login-card {
+    width: 100%;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    padding:
+      28px
+      max(18px, var(--wama-safe-right))
+      max(32px, var(--wama-safe-bottom))
+      max(18px, var(--wama-safe-left));
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .wama-app-login-heading {
+    margin-top: 24px;
+  }
+
+  .wama-app-login-heading h2 {
+    font-size: 31px;
+  }
+}

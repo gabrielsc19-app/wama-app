@@ -1,12 +1,12 @@
 {
-  "id": "/acceso",
+  "id": "/app",
   "name": "WAMA | Warn and Manage",
   "short_name": "WAMA",
   "description": "Gestiona ventas, gastos y operación desde una plataforma modular.",
-  "start_url": "/acceso?source=pwa",
+  "start_url": "/app?source=pwa",
   "scope": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone"],
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#0B0C0E",
   "theme_color": "#0B0C0E",
@@ -14,43 +14,13 @@
   "dir": "ltr",
   "categories": ["business", "productivity", "finance"],
   "icons": [
-    {
-      "src": "/wama-icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/wama-icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/wama-icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/wama-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/wama-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/wama-icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
-    {
-      "name": "Acceso a portales",
-      "short_name": "Portales",
-      "url": "/acceso?source=shortcut",
-      "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Expense Hub",
-      "short_name": "Expense",
-      "url": "/expense-hub?source=shortcut",
-      "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Sales Hub",
-      "short_name": "Sales",
-      "url": "/sales-hub/crm?source=shortcut",
-      "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }]
-    }
+    { "name": "Abrir WAMA", "short_name": "WAMA", "url": "/app", "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Expense Hub", "short_name": "Expense", "url": "/expense-hub", "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }] },
+    { "name": "Sales Hub", "short_name": "Sales", "url": "/sales-hub/crm", "icons": [{ "src": "/wama-icon-192.png", "sizes": "192x192" }] }
   ]
 }

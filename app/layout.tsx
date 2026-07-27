@@ -7,10 +7,10 @@ export const metadata: Metadata = {
   applicationName: "WAMA",
   manifest: "/manifest.json",
   title: {
-    default: "WAMA | Plataforma modular",
+    default: "WAMA | Warn and Manage",
     template: "%s | WAMA",
   },
-  description: "Gestiona tu empresa módulo por módulo.",
+  description: "Gestiona ventas, gastos y operación desde una sola plataforma.",
   icons: {
     icon: [
       { url: "/wama-icon-192.png", sizes: "192x192", type: "image/png" },
@@ -18,24 +18,15 @@ export const metadata: Metadata = {
     ],
     shortcut: [{ url: "/wama-icon-192.png", type: "image/png" }],
     apple: [
-      {
-        url: "/apple-touch-icon-wama.png",
-        sizes: "180x180",
-        type: "image/png",
-      },
+      { url: "/apple-touch-icon-wama.png", sizes: "180x180", type: "image/png" },
     ],
   },
   appleWebApp: {
     capable: true,
     title: "WAMA",
     statusBarStyle: "black-translucent",
-    startupImage: [],
   },
-  formatDetection: {
-    telephone: false,
-    email: false,
-    address: false,
-  },
+  formatDetection: { telephone: false, email: false, address: false },
   openGraph: {
     title: "WAMA | Warn and Manage",
     description: "Gestiona tu empresa módulo por módulo.",
@@ -51,14 +42,11 @@ export const viewport: Viewport = {
   colorScheme: "dark light",
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
   viewportFit: "cover",
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-CL">
       <body>

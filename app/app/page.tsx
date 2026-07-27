@@ -1,135 +1,306 @@
-import WamaShell from "../../src/components/brand/WamaShell";
-import WamaButton from "../../src/components/brand/WamaButton";
-import WamaCard from "../../src/components/brand/WamaCard";
+"use client";
 
-const modules = [
-  {
-    name: "Operación",
-    description:
-      "Alertas, casos, responsables, evidencias, SLA y reportes operativos.",
-    href: "/operacion",
-    status: "Activo",
-    metric: "18",
-    metricLabel: "alertas abiertas",
-  },
-  {
-    name: "Sales Hub",
-    description:
-      "Target accounts, contactos, deals, pipeline, propuestas y actividades.",
-    href: "/sales-hub",
-    status: "Demo funcional",
-    metric: "$128M",
-    metricLabel: "pipeline comercial",
-  },
-  {
-    name: "Finanzas",
-    description:
-      "Documentos, cartola, conciliación, pendientes y dashboard financiero.",
-    href: "/finanzas",
-    status: "Base funcional",
-    metric: "42",
-    metricLabel: "documentos pendientes",
-  },
-];
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  ArrowRight,
+  BriefcaseBusiness,
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  ReceiptText,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
-const shortcuts = [
-  {
-    title: "Clientes",
-    href: "/clientes",
-    description: "Empresas, contactos y cuentas asociadas.",
-  },
-  {
-    title: "Usuarios",
-    href: "/usuarios",
-    description: "Roles, accesos y equipo interno.",
-  },
-  {
-    title: "Reportes",
-    href: "/reportes",
-    description: "Vista ejecutiva consolidada.",
-  },
-];
+const SALES_EMAIL = "demo@vertexfacilities.com";
+const SALES_PASSWORD = "WamaTrial2026!";
+const EXPENSE_EMAIL = "demo@wamaapp.com";
+const EXPENSE_PASSWORD = "WamaExpense2026!";
 
-export default function AppPortalPage() {
+type Hub = "sales" | "expense";
+
+type StoredClient = {
+  id: string;
+  companyName: string;
+  email: string;
+  password: string;
+};
+
+function isStandalone() {
+  if (typeof window === "undefined") return false;
   return (
-    <WamaShell>
-      <section className="mx-auto max-w-7xl px-6 py-14">
-        <div className="mb-10 flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div>
-            <div className="mb-5 inline-flex rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-4 py-2 text-sm font-semibold text-[#00E5D6]">
-              Portal interno
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
+export default function WamaAppEntryPage() {
+  const router = useRouter();
+  const [ready, setReady] = useState(false);
+  const [hub, setHub] = useState<Hub>("expense");
+  const [email, setEmail] = useState(EXPENSE_EMAIL);
+  const [password, setPassword] = useState(EXPENSE_PASSWORD);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const [standalone, setStandalone] = useState(false);
+
+  useEffect(() => {
+    const appMode = isStandalone();
+    setStandalone(appMode);
+
+    const lastHub = window.localStorage.getItem("wamaLastHub") as Hub | null;
+    const expenseSession = window.localStorage.getItem("wamaExpenseSession");
+    const salesSession = window.localStorage.getItem("wamaActiveClient");
+
+    if (lastHub === "expense" && expenseSession) {
+      router.replace("/expense-hub");
+      return;
+    }
+
+    if (lastHub === "sales" && salesSession) {
+      router.replace("/sales-hub/crm");
+      return;
+    }
+
+    if (expenseSession && !salesSession) {
+      router.replace("/expense-hub");
+      return;
+    }
+
+    if (salesSession && !expenseSession) {
+      router.replace("/sales-hub/crm");
+      return;
+    }
+
+    setReady(true);
+  }, [router]);
+
+  const copy = useMemo(
+    () =>
+      hub === "expense"
+        ? {
+            eyebrow: "Expense Hub",
+            title: "Rinde, aprueba y controla gastos.",
+            description: "Captura documentos desde el celular y sigue cada rendición hasta su aprobación.",
+            icon: ReceiptText,
+          }
+        : {
+            eyebrow: "Sales Hub",
+            title: "Gestiona clientes y oportunidades.",
+            description: "Trabaja tu pipeline, actividades, propuestas y cierres desde un solo lugar.",
+            icon: BriefcaseBusiness,
+          },
+    [hub],
+  );
+
+  function selectHub(nextHub: Hub) {
+    setHub(nextHub);
+    setError("");
+    if (nextHub === "expense") {
+      setEmail(EXPENSE_EMAIL);
+      setPassword(EXPENSE_PASSWORD);
+    } else {
+      setEmail(SALES_EMAIL);
+      setPassword(SALES_PASSWORD);
+    }
+  }
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+
+    const normalized = email.trim().toLowerCase();
+
+    if (hub === "expense") {
+      if (normalized !== EXPENSE_EMAIL || password !== EXPENSE_PASSWORD) {
+        setError("Revisa el correo y la clave provisoria de Expense Hub.");
+        return;
+      }
+
+      window.localStorage.setItem(
+        "wamaExpenseSession",
+        JSON.stringify({
+          email: normalized,
+          companyName: "Empresa Demo SpA",
+          role: "Administrador",
+        }),
+      );
+      window.localStorage.setItem("wamaLastHub", "expense");
+
+      const changed = window.localStorage.getItem(`wamaPasswordChanged:${normalized}`);
+      if (!changed) {
+        window.localStorage.setItem(
+          "wamaPasswordContext",
+          JSON.stringify({
+            email: normalized,
+            name: "Usuario Expense",
+            companyName: "Empresa Demo SpA",
+            module: "expense",
+            redirectTo: "/expense-hub",
+          }),
+        );
+        router.push("/cambiar-clave");
+        return;
+      }
+
+      router.push("/expense-hub");
+      return;
+    }
+
+    if (normalized !== SALES_EMAIL || password !== SALES_PASSWORD) {
+      setError("Revisa el correo y la clave provisoria de Sales Hub.");
+      return;
+    }
+
+    const client: StoredClient = {
+      id: "vertex-facilities-demo",
+      companyName: "Vertex Facilities",
+      email: normalized,
+      password: SALES_PASSWORD,
+    };
+
+    window.localStorage.setItem("wamaActiveClient", JSON.stringify(client));
+    window.localStorage.setItem("wamaLastHub", "sales");
+
+    const changed = window.localStorage.getItem(`wamaPasswordChanged:${normalized}`);
+    if (!changed) {
+      window.localStorage.setItem(
+        "wamaPasswordContext",
+        JSON.stringify({
+          email: normalized,
+          name: "Usuario Sales",
+          companyName: "Vertex Facilities",
+          module: "sales",
+          redirectTo: "/sales-hub/crm",
+        }),
+      );
+      router.push("/cambiar-clave");
+      return;
+    }
+
+    router.push("/sales-hub/crm");
+  }
+
+  if (!ready) {
+    return (
+      <main className="wama-app-entry wama-app-entry-loading">
+        <div className="wama-app-splash-mark">W</div>
+        <p>WARN AND MANAGE</p>
+      </main>
+    );
+  }
+
+  const Icon = copy.icon;
+
+  return (
+    <main className="wama-app-entry">
+      <section className="wama-app-entry-shell">
+        <header className="wama-app-entry-header">
+          <div className="wama-app-brand">
+            <div className="wama-app-brand-mark">W</div>
+            <div>
+              <strong>WAMA</strong>
+              <span>WARN AND MANAGE</span>
             </div>
-
-            <h1 className="text-5xl font-black leading-tight tracking-[-0.04em] text-[#F5F6F7] md:text-6xl">
-              Selecciona tu módulo de trabajo.
-            </h1>
-
-            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#C4C7CC]">
-              WAMA separa la información por módulos para mantener orden,
-              trazabilidad y foco operativo, comercial y financiero.
-            </p>
           </div>
 
-          <WamaButton href="/" variant="secondary">
-            Volver al sitio
-          </WamaButton>
-        </div>
+          <span className="wama-app-mode-badge">
+            <ShieldCheck className="h-4 w-4" />
+            {standalone ? "Aplicación instalada" : "Acceso al software"}
+          </span>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          {modules.map((module) => (
-            <WamaCard key={module.name} className="p-7">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <span className="rounded-full border border-[#00E5D6]/30 bg-[#00E5D6]/10 px-3 py-1 text-xs font-bold text-[#00E5D6]">
-                    {module.status}
-                  </span>
+        <div className="wama-app-entry-grid">
+          <section className="wama-app-entry-intro">
+            <div className="wama-app-entry-kicker">
+              <Sparkles className="h-4 w-4" />
+              TU ESPACIO DE TRABAJO
+            </div>
+            <h1>Entra directamente a WAMA.</h1>
+            <p>
+              La aplicación instalada abre el software, recuerda tu último Hub y elimina la navegación comercial.
+            </p>
 
-                  <h2 className="mt-5 text-3xl font-black text-[#F5F6F7]">
-                    {module.name}
-                  </h2>
+            <div className="wama-app-feature-list">
+              <div><span>01</span><p>Acceso con correo y clave provisoria.</p></div>
+              <div><span>02</span><p>Cambio obligatorio de contraseña.</p></div>
+              <div><span>03</span><p>Entrada directa al último Hub utilizado.</p></div>
+            </div>
+          </section>
+
+          <section className="wama-app-login-card">
+            <div className="wama-app-hub-tabs" role="tablist" aria-label="Selecciona un Hub">
+              <button
+                type="button"
+                onClick={() => selectHub("expense")}
+                className={hub === "expense" ? "is-active" : ""}
+              >
+                <ReceiptText className="h-5 w-5" />
+                Expense
+              </button>
+              <button
+                type="button"
+                onClick={() => selectHub("sales")}
+                className={hub === "sales" ? "is-active" : ""}
+              >
+                <BriefcaseBusiness className="h-5 w-5" />
+                Sales
+              </button>
+            </div>
+
+            <div className="wama-app-login-heading">
+              <div className="wama-app-login-icon"><Icon className="h-6 w-6" /></div>
+              <div>
+                <p>{copy.eyebrow}</p>
+                <h2>{copy.title}</h2>
+              </div>
+            </div>
+
+            <p className="wama-app-login-description">{copy.description}</p>
+
+            <form onSubmit={submit} className="wama-app-login-form">
+              <label>
+                <span>Correo</span>
+                <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  inputMode="email"
+                  autoComplete="username"
+                />
+              </label>
+
+              <label>
+                <span>Clave</span>
+                <div className="wama-app-password-field">
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    type={showPassword ? "text" : "password"}
+                    autoComplete="current-password"
+                  />
+                  <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label="Mostrar u ocultar clave">
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
                 </div>
+              </label>
 
-                <div className="text-right">
-                  <strong className="block text-3xl font-black text-[#F5F6F7]">
-                    {module.metric}
-                  </strong>
-                  <span className="text-xs text-[#C4C7CC]">
-                    {module.metricLabel}
-                  </span>
-                </div>
-              </div>
+              {error ? <div className="wama-app-login-error">{error}</div> : null}
 
-              <p className="mt-5 min-h-[84px] text-sm leading-7 text-[#C4C7CC]">
-                {module.description}
-              </p>
+              <button type="submit" className="wama-app-login-submit">
+                <LockKeyhole className="h-4 w-4" />
+                Entrar a {copy.eyebrow}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </form>
 
-              <div className="mt-7">
-                <WamaButton href={module.href}>Abrir módulo</WamaButton>
-              </div>
-            </WamaCard>
-          ))}
-        </div>
-
-        <div className="mt-8 grid gap-5 md:grid-cols-3">
-          {shortcuts.map((shortcut) => (
-            <WamaCard key={shortcut.title} className="p-6">
-              <h3 className="text-2xl font-black text-[#F5F6F7]">
-                {shortcut.title}
-              </h3>
-
-              <p className="mt-3 min-h-[56px] text-sm leading-7 text-[#C4C7CC]">
-                {shortcut.description}
-              </p>
-
-              <div className="mt-5">
-                <WamaButton href={shortcut.href} variant="secondary">
-                  Abrir
-                </WamaButton>
-              </div>
-            </WamaCard>
-          ))}
+            <div className="wama-app-provisional-note">
+              <strong>Primer ingreso</strong>
+              <span>WAMA solicitará reemplazar la clave provisoria antes de abrir el Hub.</span>
+            </div>
+          </section>
         </div>
       </section>
-    </WamaShell>
+    </main>
   );
 }

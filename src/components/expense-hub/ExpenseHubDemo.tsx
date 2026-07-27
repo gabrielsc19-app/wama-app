@@ -58,10 +58,10 @@ export default function ExpenseHubDemo() {
     flash(`Rendición ${status.toLowerCase()}`);
   };
 
-  return <div className="min-h-screen bg-[#F3F5F6] text-[#0B0C0E] pb-24 lg:pb-0">
+  return <div className="expense-hub-root min-h-screen bg-[#F3F5F6] text-[#0B0C0E] pb-24 lg:pb-0">
     <aside className={`fixed inset-y-0 left-0 z-50 w-[286px] border-r border-white/10 bg-[#0B0C0E] text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-full flex-col">
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-6"><Link href="/" className="text-2xl font-black tracking-[-.06em]">WAMA<span className="text-[#00E5D6]">.</span></Link><button onClick={()=>setMenuOpen(false)} className="lg:hidden"><X/></button></div>
+        <div className="flex h-20 items-center justify-between border-b border-white/10 px-6"><Link href="/app" className="text-2xl font-black tracking-[-.06em]">WAMA<span className="text-[#00E5D6]">.</span></Link><button onClick={()=>setMenuOpen(false)} className="lg:hidden"><X/></button></div>
         <div className="px-5 py-6"><div className="rounded-2xl border border-[#00E5D6]/15 bg-[#00E5D6]/[.08] p-4"><p className="text-[11px] font-black uppercase tracking-[.18em] text-[#00E5D6]">Expense Hub</p><p className="mt-2 text-sm font-black">Empresa Demo SpA</p><p className="mt-1 text-xs text-[#9EA6B0]">Plan activo · 10 usuarios</p></div></div>
         <nav className="flex-1 space-y-1 px-4">{nav.map(({id,label,icon:Icon}) => <button key={id} onClick={()=>go(id)} className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm font-bold ${view===id ? "bg-[#00E5D6] text-[#0B0C0E]" : "text-[#BFC5CC] hover:bg-white/[.06] hover:text-white"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
         <div className="border-t border-white/10 p-4"><Link href="/modulos/expense-hub" className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-[#BFC5CC]"><ArrowLeft className="h-5 w-5"/>Volver al módulo</Link><div className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-bold text-[#BFC5CC]"><Settings className="h-5 w-5"/>Configuración</div></div>
@@ -70,7 +70,7 @@ export default function ExpenseHubDemo() {
     {menuOpen && <button onClick={()=>setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden"/>}
 
     <div className="lg:pl-[286px]">
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#DDE1E6] bg-white/95 px-5 backdrop-blur-xl sm:px-8">
+      <header className="expense-hub-header sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#DDE1E6] bg-white/95 px-5 backdrop-blur-xl sm:px-8">
         <div className="flex items-center gap-3"><button onClick={()=>setMenuOpen(true)} className="rounded-xl border border-[#DDE1E6] p-2 lg:hidden"><Menu className="h-5 w-5"/></button><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Expense Hub</p><h1 className="text-xl font-black tracking-[-.035em]">{active}</h1></div></div>
         <div className="flex items-center gap-3"><button className="relative rounded-full border border-[#DDE1E6] bg-white p-3"><Bell className="h-5 w-5"/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FF9E45]"/></button><div className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-[#0B0C0E] text-sm font-black text-white">GS</div><div><p className="text-sm font-black">Gabriel Sánchez</p><p className="text-xs text-[#737C87]">Administrador</p></div></div></div>
       </header>
@@ -85,7 +85,7 @@ export default function ExpenseHubDemo() {
       </main>
     </div>
 
-    <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden">{nav.filter(n=>n.mobile).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
+    <nav className="expense-hub-mobile-nav fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden">{nav.filter(n=>n.mobile).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>
     {selected && <ExpenseDrawer expense={selected} onClose={()=>setSelected(null)} onUpdate={updateExpense}/>} 
   </div>;
 }
