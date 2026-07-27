@@ -36,7 +36,7 @@ export default function DownloadAppPage() {
         <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:py-24">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-12">
             <div>
-              <div className="flex items-center gap-4"><Image src="/wama-icon-192.png?v=1" alt="WAMA" width={64} height={64} className="rounded-2xl shadow-lg" priority /><div><p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA Mobile</p><p className="mt-1 text-sm font-bold text-[#66707C]">Warn and Manage</p></div></div>
+              <div className="flex items-center gap-4"><Image src="/wama-icon-192.png" alt="WAMA" width={64} height={64} className="rounded-2xl shadow-lg" priority /><div><p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA Mobile</p><p className="mt-1 text-sm font-bold text-[#66707C]">Warn and Manage</p></div></div>
               <h1 className="mt-4 text-[2.6rem] font-black leading-[0.95] tracking-[-0.06em] sm:mt-6 sm:text-5xl md:text-7xl">Tu empresa, también en tu celular.</h1>
               <p className="mt-5 max-w-xl text-base leading-7 text-[#66707C] sm:mt-7 sm:text-lg sm:leading-8">Instala WAMA como aplicación en iPhone, iPad, Android, tablet o computador. Conserva los accesos rápidos y trabaja a pantalla completa.</p>
 

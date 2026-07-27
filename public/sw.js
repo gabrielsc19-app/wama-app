@@ -88,8 +88,8 @@ self.addEventListener("push", function (event) {
 
   const options = {
     body: data.body || "Nueva notificación",
-    icon: data.icon || "/wama-icon-192.png?v=1",
-    badge: data.badge || "/wama-icon-192.png?v=1",
+    icon: data.icon || "/wama-icon-192.png",
+    badge: data.badge || "/wama-icon-192.png",
     tag: data.tag || "wama-notification",
     renotify: true,
     requireInteraction: false,

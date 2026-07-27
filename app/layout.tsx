@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.wamaapp.com"),
   applicationName: "WAMA",
-  manifest: "/manifest.json?v=1",
+  manifest: "/manifest.json",
   title: {
     default: "WAMA | Plataforma modular",
     template: "%s | WAMA",
@@ -13,13 +13,13 @@ export const metadata: Metadata = {
   description: "Gestiona tu empresa módulo por módulo.",
   icons: {
     icon: [
-      { url: "/wama-icon-192.png?v=1", sizes: "192x192", type: "image/png" },
-      { url: "/wama-icon-512.png?v=1", sizes: "512x512", type: "image/png" },
+      { url: "/wama-icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/wama-icon-512.png", sizes: "512x512", type: "image/png" },
     ],
-    shortcut: [{ url: "/wama-icon-192.png?v=1", type: "image/png" }],
+    shortcut: [{ url: "/wama-icon-192.png", type: "image/png" }],
     apple: [
       {
-        url: "/apple-touch-icon-wama.png?v=1",
+        url: "/apple-touch-icon-wama.png",
         sizes: "180x180",
         type: "image/png",
       },
