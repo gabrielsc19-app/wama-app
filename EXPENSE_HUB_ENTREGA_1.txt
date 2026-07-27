@@ -1,0 +1,20 @@
+WAMA EXPENSE HUB — ENTREGA 1
+
+Incluye:
+- Nueva landing comercial: /modulos/expense-hub
+- Demo funcional interactiva: /expense-hub
+- Integración de Expense Hub en /modulos
+- Precio visible: USD 20/mes por 10 usuarios
+- Prueba gratuita de 14 días
+- Dashboard, nueva rendición, mis rendiciones, aprobaciones y revisión de Finanzas
+- Regla visual de evidencia original inmutable y comparación OCR vs. monto declarado
+
+Instalación:
+1. Descomprimir el ZIP.
+2. Copiar su contenido sobre C:\Users\gabri\wama-app y aceptar reemplazos.
+3. Ejecutar npm run dev.
+4. Abrir http://localhost:3000/modulos/expense-hub
+5. Abrir http://localhost:3000/expense-hub
+
+Nota de validación:
+La entrega se preparó sobre el proyecto enviado. No fue posible ejecutar npm install/build dentro del entorno de generación por disponibilidad de dependencias, por lo que la validación final debe realizarse localmente con npm run build.

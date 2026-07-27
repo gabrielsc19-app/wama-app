@@ -1,0 +1,15 @@
+WAMA V7 — Cierre web + PWA
+
+Cambios:
+- Carruseles Sales y Expense corregidos para evitar contenido fuera de márgenes.
+- Importes, tarjetas, documentos y dashboards ahora responden al ancho disponible.
+- Botones principales reemplazados por CTA cian WAMA.
+- Página /acceso completamente rediseñada con flujos y beneficios por Hub.
+- Página /descargar-app con instalación PWA en Android, iPhone, iPad, tablet y computador.
+- Manifest actualizado de FixLoop/Pumay a WAMA.
+- Registro de service worker incorporado.
+- Primer ingreso con clave provisoria y creación obligatoria de nueva contraseña.
+- Accesos separados para Sales Hub y Expense Hub.
+
+Nota:
+La instalación disponible es PWA. Los enlaces públicos de App Store y Google Play requieren compilar y publicar las aplicaciones nativas con cuentas de desarrollador Apple y Google.

@@ -1,0 +1,20 @@
+WAMA V9 — CARRUSELES BLANCO + NEGRO
+
+Cambios:
+- Rediseño completo del componente WamaInteractiveFlow.
+- Mezcla visual de panel editorial blanco y escena interactiva negra/grafito.
+- Expense Hub y Sales Hub mantienen 6 pasos interactivos independientes.
+- Montos con tamaño responsive mediante clamp(), tabular-nums y nowrap.
+- Dashboard ejecutivo rediseñado para evitar desbordes.
+- Gráfico separado del monto y tarjetas de resumen debajo.
+- Comparación OCR/Declarado segura en móvil, tablet y escritorio.
+- Nombre de archivos con truncado y tooltip.
+- Botones principales en cian WAMA.
+
+Archivo principal modificado:
+src/components/marketing/WamaInteractiveFlow.tsx
+
+Validación recomendada antes de productivo:
+npm install
+npm run dev
+npm run build

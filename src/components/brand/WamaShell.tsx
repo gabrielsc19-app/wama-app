@@ -16,7 +16,7 @@ export default function WamaShell({
             aria-label="Ir al inicio de WAMA"
             className="flex items-center"
           >
-            <WamaLogo />
+            <WamaLogo priority />
           </Link>
 
           <nav className="hidden items-center gap-8 text-sm font-bold text-[#C4C7CC] md:flex">
@@ -30,6 +30,10 @@ export default function WamaShell({
 
             <Link href="/acceso" className="transition hover:text-[#00E5D6]">
               Acceso portal
+            </Link>
+
+            <Link href="/descargar-app" className="transition hover:text-[#00E5D6]">
+              Descargar app
             </Link>
           </nav>
 

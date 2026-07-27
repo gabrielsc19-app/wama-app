@@ -1,0 +1,19 @@
+<svg width="420" height="180" viewBox="0 0 420 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="420" height="180" rx="32" fill="#0B0C0E"/>
+  <rect x="1" y="1" width="418" height="178" rx="31" stroke="#C4C7CC" stroke-opacity="0.16" stroke-width="2"/>
+
+  <g transform="translate(174 24)">
+    <rect width="72" height="72" rx="18" fill="#111318"/>
+    <rect x="1" y="1" width="70" height="70" rx="17" stroke="#C4C7CC" stroke-opacity="0.2" stroke-width="2"/>
+    <path d="M18 23L26.1 50L36 29L45.9 50L54 23" stroke="#F5F6F7" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M36 29L41 40" stroke="#00E5D6" stroke-width="5.4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="210" y="127" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="42" font-weight="850" fill="#F5F6F7" letter-spacing="3">
+    WAMA
+  </text>
+
+  <text x="210" y="153" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="13" font-weight="650" fill="#00E5D6" letter-spacing="1.6">
+    WARN AND MANAGE
+  </text>
+</svg>

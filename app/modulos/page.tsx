@@ -15,6 +15,17 @@ const modules = [
   },
   {
     number: "02",
+    eyebrow: "Nuevo · Disponible",
+    name: "WAMA Expense Hub",
+    title: "Rinde y controla gastos con ayuda de IA.",
+    description:
+      "Digitaliza boletas, facturas, viáticos, anticipos y reembolsos con aprobación y trazabilidad completa.",
+    result: "Más control. Menos tiempo revisando gastos.",
+    href: "/modulos/expense-hub",
+    action: "Conocer Expense Hub",
+  },
+  {
+    number: "03",
     eyebrow: "Próximamente",
     name: "WAMA Ops",
     title: "Controla la operación en tiempo real.",
@@ -25,7 +36,7 @@ const modules = [
     action: "Conocer Operación",
   },
   {
-    number: "03",
+    number: "04",
     eyebrow: "Próximamente",
     name: "WAMA Finance",
     title: "Mantén el control financiero de tu empresa.",
@@ -36,7 +47,7 @@ const modules = [
     action: "Conocer Finanzas",
   },
   {
-    number: "04",
+    number: "05",
     eyebrow: "En desarrollo",
     name: "WAMA Reports",
     title: "Convierte la gestión en decisiones.",

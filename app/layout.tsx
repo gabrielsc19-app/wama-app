@@ -1,6 +1,8 @@
+import PwaRegister from "./components/PwaRegister";
 import "./globals.css";
 
 export const metadata = {
+  manifest: "/manifest.json",
   title: "WAMA | Plataforma modular",
   description: "Gestiona tu empresa módulo por módulo.",
   icons: {
@@ -27,7 +29,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>{children}</body>
+      <body><PwaRegister />{children}</body>
     </html>
   );
 }

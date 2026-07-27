@@ -1,0 +1,28 @@
+WAMA STORYTELLING V5 ESTABLE
+
+Corrección crítica:
+- Se eliminó el enlace anidado en el logo principal que provocaba el error de React/Next.js y detenía el servidor.
+
+Incluye:
+- Home comercial con storytelling interactivo para Sales Hub y Expense Hub.
+- Landing individual para Sales Hub.
+- Landing individual para Expense Hub.
+- Flujos visuales automáticos y control manual por pasos.
+- Portales separados para Sales Hub y Expense Hub.
+- Expense Hub funcional conservado.
+- Videos y recursos existentes conservados.
+
+Rutas principales:
+/
+/modulos/sales-hub
+/modulos/expense-hub
+/acceso
+/acceso/sales-hub
+/acceso/expense-hub
+/expense-hub
+
+Instalación:
+1. Copiar todo el contenido sobre C:\Users\gabri\wama-app
+2. Conservar .env.local
+3. Ejecutar npm install
+4. Ejecutar npm run dev

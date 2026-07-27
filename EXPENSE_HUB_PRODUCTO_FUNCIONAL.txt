@@ -1,0 +1,38 @@
+WAMA EXPENSE HUB — PRODUCTO FUNCIONAL
+
+Entrega preparada sobre la base original.
+
+INCLUYE
+- Dashboard dinámico con datos persistentes en el navegador.
+- Flujo móvil de nueva rendición con cámara o carga de archivo.
+- Vista previa del documento.
+- Lectura OCR simulada preparada para reemplazarse por servicio real.
+- Edición y confirmación de datos.
+- Detección de diferencias entre OCR y monto declarado.
+- Mis rendiciones con búsqueda y seguimiento.
+- Mi dinero: anticipo, rendido y saldo disponible.
+- Aprobaciones de jefatura.
+- Revisión financiera de diferencias.
+- Acciones: solicitar corrección, rechazar, aprobar y marcar pagada.
+- Historial de auditoría por rendición.
+- Persistencia mediante localStorage para probar el flujo completo.
+- Diseño responsive para celular, tablet, iPad y PC.
+- Navegación inferior optimizada para móvil.
+- PWA instalable mediante manifest.json.
+
+RUTA PRINCIPAL
+http://localhost:3000/expense-hub
+
+INSTALACIÓN
+1. Reemplazar el proyecto por esta carpeta.
+2. Ejecutar npm install.
+3. Ejecutar npm run dev.
+4. Abrir la ruta principal.
+
+IMPORTANTE PARA PRODUCCIÓN REAL
+La interfaz y el flujo de producto están funcionales. Para operación multiempresa real faltará conectar:
+- Supabase (auth, base de datos, storage y RLS).
+- OCR real.
+- Notificaciones push reales.
+- Suscripciones y cobros.
+Estas integraciones requieren credenciales del entorno y se conectan sobre esta base sin cambiar la experiencia diseñada.

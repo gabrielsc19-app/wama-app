@@ -1,0 +1,25 @@
+WAMA — RELEASE PRODUCTOS Y PORTALES V2
+
+CAMBIOS INCLUIDOS
+- Home actualizada con WAMA Sales y WAMA Expense Hub como productos disponibles.
+- Video corporativo de Expense Hub en public/videos/wama-expense-demo-v1.mp4.
+- Video Sales Hub y video Expense Hub visibles en paralelo en la página principal.
+- Portal independiente Sales Hub: /acceso/sales-hub.
+- Portal independiente Expense Hub: /acceso/expense-hub.
+- Selector general de portales: /acceso.
+- Acceso demo Expense Hub:
+  correo: demo@wamaapp.com
+  clave: WamaExpense2026!
+- Expense Hub funcional: /expense-hub.
+
+PUBLICACIÓN
+1. Copiar todo el contenido sobre C:\Users\gabri\wama-app.
+2. Conservar .env.local.
+3. npm install
+4. npm run build
+5. git add .
+6. git commit -m "Publicar Sales y Expense Hub con portales independientes"
+7. git push origin main
+
+NOTA
+El acceso demo actual usa almacenamiento local. Supabase multiempresa y autenticación real corresponden a la siguiente capa de producción operativa.

@@ -1,0 +1,18 @@
+WAMA Expense Hub v1 - candidato de publicación
+
+IMPLEMENTADO
+- Ruta funcional /expense-hub.
+- Dashboard dinámico con datos persistidos en el navegador.
+- Nuevo gasto desde cámara o carga de archivo.
+- Vista previa y confirmación de datos.
+- Mis rendiciones con estados, búsqueda y detalle.
+- Mi dinero y control de anticipos.
+- Flujo de aprobaciones para supervisor.
+- Revisión financiera y comparación OCR/declarado.
+- Auditoría visible por rendición.
+- Marcar como pagada.
+- Navegación móvil y escritorio.
+- Página principal actualizada para destacar Expense Hub.
+
+IMPORTANTE
+Esta versión usa persistencia local del navegador. Supabase, OCR externo, autenticación multiempresa y notificaciones push reales corresponden a la siguiente integración de backend.

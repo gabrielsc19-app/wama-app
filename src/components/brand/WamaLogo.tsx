@@ -1,11 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
 
 type WamaLogoVariant = "principal" | "horizontal" | "isotipo";
 
 type WamaLogoProps = {
   variant?: WamaLogoVariant;
-  href?: string;
   className?: string;
   priority?: boolean;
 };
@@ -41,13 +39,12 @@ const logoMap: Record<
 
 export default function WamaLogo({
   variant = "horizontal",
-  href = "/",
   className = "",
   priority = false,
 }: WamaLogoProps) {
   const logo = logoMap[variant];
 
-  const image = (
+  return (
     <Image
       src={logo.src}
       width={logo.width}
@@ -56,13 +53,5 @@ export default function WamaLogo({
       priority={priority}
       className={className}
     />
-  );
-
-  if (!href) return image;
-
-  return (
-    <Link href={href} aria-label="Ir al inicio de WAMA">
-      {image}
-    </Link>
   );
 }

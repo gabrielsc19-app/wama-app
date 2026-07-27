@@ -7,7 +7,7 @@ import { findTrialClient, trialClients } from "../../../src/lib/wamaTrialClients
 export default function SalesHubAccessPage() {
   const router = useRouter();
 
-  const [email, setEmail] = useState("demo@andesfacility.cl");
+  const [email, setEmail] = useState("demo@vertexfacilities.com");
   const [password, setPassword] = useState("WamaTrial2026!");
   const [error, setError] = useState("");
 
@@ -24,6 +24,12 @@ export default function SalesHubAccessPage() {
     }
 
     window.localStorage.setItem("wamaActiveClient", JSON.stringify(client));
+    const changed = window.localStorage.getItem(`wamaPasswordChanged:${client.email}`);
+    if (!changed) {
+      window.localStorage.setItem("wamaPasswordContext", JSON.stringify({ email: client.email, name: client.companyName, companyName: client.companyName, module: "sales", redirectTo: "/sales-hub/crm" }));
+      router.push("/cambiar-clave");
+      return;
+    }
     router.push("/sales-hub/crm");
   }
 
@@ -88,7 +94,7 @@ export default function SalesHubAccessPage() {
           <h2 className="mt-3 text-4xl font-black">Iniciar sesión</h2>
 
           <p className="mt-3 text-sm leading-6 text-[#C4C7CC]">
-            WAMA no muestra información de empresas antes del inicio de sesión.
+            En el primer ingreso usarás una clave provisoria y WAMA te pedirá crear una nueva clave personal.
           </p>
 
           <div className="mt-8 grid gap-5">
@@ -122,13 +128,25 @@ export default function SalesHubAccessPage() {
 
           <button
             type="submit"
-            className="mt-7 w-full rounded-full bg-[#00E5D6] px-6 py-4 text-sm font-black text-[#0B0C0E]"
+            className="mt-7 w-full rounded-full bg-[#00E5D6] px-6 py-4 text-sm font-black text-[#0B0C0E] transition hover:bg-white"
           >
             Acceder al Sales Hub
           </button>
 
+          <button
+            type="button"
+            onClick={() => {
+              const client = trialClients[0];
+              window.localStorage.setItem("wamaActiveClient", JSON.stringify(client));
+              router.push("/sales-hub/crm");
+            }}
+            className="mt-3 w-full rounded-full border border-white/15 px-6 py-4 text-sm font-black text-white transition hover:border-[#00E5D6]/60 hover:text-[#00E5D6]"
+          >
+            Entrar directamente a la demo
+          </button>
+
           <div className="mt-5 rounded-2xl border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-4 text-sm leading-6 text-[#C4C7CC]">
-            <strong className="text-[#F5F6F7]">Demo:</strong> selecciona una
+            <strong className="text-[#F5F6F7]">Clave provisoria:</strong> selecciona una
             empresa de prueba o ingresa manualmente el correo y clave asignados.
           </div>
         </form>

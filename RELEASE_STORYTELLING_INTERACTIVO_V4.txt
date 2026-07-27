@@ -1,0 +1,26 @@
+WAMA — RELEASE STORYTELLING INTERACTIVO V4
+
+Cambios incluidos:
+- Home comercial rediseñada para mostrar procesos, no capturas repetidas.
+- Flujo interactivo automático y seleccionable para Expense Hub.
+- Flujo interactivo automático y seleccionable para Sales Hub.
+- Expense Hub explica: foto móvil, OCR/IA, confirmación, aprobación, Finanzas y dashboard.
+- Sales Hub explica: prospecto, seguimiento, propuesta, negociación, cierre y dashboard.
+- Nueva landing comercial completa para Sales Hub.
+- Nuevo bloque explicativo dentro de la landing de Expense Hub.
+- Animaciones CSS livianas, sin agregar dependencias nuevas.
+- Diseño responsive para celular, tablet y computador.
+
+Rutas principales:
+/
+/modulos/sales-hub
+/modulos/expense-hub
+/acceso/sales-hub
+/acceso/expense-hub
+
+Validación recomendada:
+npm install
+npm run dev
+npm run build
+
+Nota: El build no pudo ejecutarse en el entorno de entrega porque las dependencias no alcanzaron a instalarse dentro del tiempo disponible. No se agregaron dependencias nuevas.

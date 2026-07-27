@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cleaning-checklist/auto-close",
+      "schedule": "10 4 * * *"
+    }
+  ]
+}
