@@ -12,6 +12,7 @@ import {
   Menu,
   ShieldCheck,
   Sparkles,
+  ReceiptText,
   Users,
   X,
 } from "lucide-react";
@@ -20,6 +21,7 @@ import { useState } from "react";
 const items = [
   { href: "/empresa", label: "Mi empresa", icon: Building2 },
   { href: "/empresa/ia", label: "WAMA AI", icon: Bot },
+  { href: "/expense-hub", label: "Rendiciones", icon: ReceiptText },
   { href: "/empresa/licencias", label: "Licencias", icon: BadgeDollarSign },
   { href: "/empresa/proyectos", label: "Proyectos", icon: FolderKanban },
   { href: "/empresa/usuarios", label: "Usuarios", icon: Users },

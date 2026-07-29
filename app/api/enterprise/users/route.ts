@@ -1,0 +1,47 @@
+import { NextResponse } from "next/server";
+import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+
+export async function GET(request: Request) {
+  try {
+    const user = await requireWamaUser(request);
+    const { admin, membership } = await getUserTenantContext(user.id);
+    const { data: memberships, error } = await admin.from("wama_tenant_memberships")
+      .select("id,role,status,profile_id,wama_profiles(id,full_name,email,status),wama_project_members(project_id,wama_projects(id,name,code))")
+      .eq("tenant_id", membership.tenant_id).order("joined_at");
+    if (error) throw error;
+    const { data: licenses } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key,name),wama_module_user_assignments(profile_id,status)").eq("tenant_id", membership.tenant_id);
+    return NextResponse.json({ users: memberships || [], licenses: licenses || [], currentRole: membership.role });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Error" }, { status: 401 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const user = await requireWamaUser(request);
+    const { admin, profile, membership } = await getUserTenantContext(user.id);
+    if (!isTenantAdmin(membership.role)) return NextResponse.json({ error: "Solo owner o admin puede invitar usuarios." }, { status: 403 });
+    const body = await request.json() as { email?: string; fullName?: string; role?: string; projectIds?: string[] };
+    const email = body.email?.trim().toLowerCase(); const fullName = body.fullName?.trim();
+    if (!email || !fullName) return NextResponse.json({ error: "Nombre y correo son obligatorios." }, { status: 400 });
+
+    const { data: license } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key)").eq("tenant_id", membership.tenant_id).eq("status", "trial").limit(1).single();
+    if (!license) return NextResponse.json({ error: "La empresa no tiene una licencia activa." }, { status: 400 });
+    const { count } = await admin.from("wama_module_user_assignments").select("id", { count: "exact", head: true }).eq("tenant_module_license_id", license.id).eq("status", "active");
+    const capacity = license.included_seats + license.extra_seat_blocks * license.extra_block_size;
+    if ((count || 0) >= capacity) return NextResponse.json({ error: `No quedan cupos. La licencia permite ${capacity} usuarios únicos en Expense.` }, { status: 409 });
+
+    const origin = new URL(request.url).origin;
+    const { data: invite, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/invitacion/aceptar`, data: { full_name: fullName } });
+    if (inviteError || !invite.user) return NextResponse.json({ error: inviteError?.message || "No se pudo enviar la invitación." }, { status: 400 });
+    const { data: invitedProfile, error: profileError } = await admin.from("wama_profiles").upsert({ auth_user_id: invite.user.id, full_name: fullName, email, status: "invited" }, { onConflict: "auth_user_id" }).select("id").single();
+    if (profileError || !invitedProfile) throw profileError;
+    await admin.from("wama_tenant_memberships").upsert({ tenant_id: membership.tenant_id, profile_id: invitedProfile.id, role: body.role || "member", status: "invited" }, { onConflict: "tenant_id,profile_id" });
+    await admin.from("wama_module_user_assignments").upsert({ tenant_module_license_id: license.id, profile_id: invitedProfile.id, assigned_by: profile.id, status: "active" }, { onConflict: "tenant_module_license_id,profile_id" });
+    if (body.projectIds?.length) await admin.from("wama_project_members").upsert(body.projectIds.map(projectId => ({ project_id: projectId, profile_id: invitedProfile.id, role: body.role || "member" })), { onConflict: "project_id,profile_id" });
+    await admin.from("wama_invitations").upsert({ tenant_id: membership.tenant_id, email, full_name: fullName, role: body.role || "member", invited_by: profile.id, auth_user_id: invite.user.id, status: "pending" }, { onConflict: "tenant_id,email" });
+    return NextResponse.json({ ok: true, email, used: (count || 0) + 1, capacity });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Error inesperado." }, { status: 500 });
+  }
+}

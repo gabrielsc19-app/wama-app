@@ -46,7 +46,7 @@ export const trialClients: WamaTrialClient[] = [
     rut: "Empresa ficticia",
     industry: "Facility management y servicios integrales",
     logoText: "VF",
-    trialDays: 14,
+    trialDays: 15,
     userLimit: 10,
     monthlyPrice: "US$10 por módulo / mes",
     deals: [

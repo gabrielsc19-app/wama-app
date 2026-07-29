@@ -1,77 +1,13 @@
 "use client";
-
-import { useEffect, useState } from "react";
-import { FolderKanban, Plus } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import { FolderKanban, Plus, Users } from "lucide-react";
 import EnterpriseShell from "../../../src/components/enterprise/EnterpriseShell";
 import { SectionCard, StatusPill } from "../../../src/components/enterprise/PortalUI";
-import {
-  loadEnterprisePortalData,
-  type EnterprisePortalData,
-} from "../../../src/core/portal/portalData";
+import { supabase } from "../../lib/supabase";
 
-export default function ProjectsPage() {
-  const [data, setData] = useState<EnterprisePortalData | null>(null);
-
-  useEffect(() => {
-    void loadEnterprisePortalData().then(setData);
-  }, []);
-
-  return (
-    <EnterpriseShell
-      title="Proyectos"
-      subtitle="Organiza módulos y datos por proyecto, sede, contrato o iniciativa."
-    >
-      <SectionCard
-        title="Proyectos de la empresa"
-        eyebrow="Organización opcional"
-        action={
-          <button className="inline-flex items-center gap-2 rounded-full bg-[#0B0C0E] px-4 py-2 text-sm font-black text-white">
-            <Plus className="h-4 w-4" />
-            Nuevo proyecto
-          </button>
-        }
-      >
-        {!data ? (
-          <p>Cargando...</p>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {data.projects.map((project) => (
-              <article
-                key={project.id}
-                className="rounded-2xl border border-[#DCE1E6] p-5"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E9FFFB]">
-                      <FolderKanban className="h-5 w-5 text-[#008F87]" />
-                    </span>
-                    <div>
-                      <p className="text-xs font-black text-[#008F87]">
-                        {project.code}
-                      </p>
-                      <h3 className="mt-1 font-black">{project.name}</h3>
-                    </div>
-                  </div>
-                  <StatusPill>{project.status}</StatusPill>
-                </div>
-
-                <p className="mt-4 text-sm leading-6 text-[#69717D]">
-                  {project.description || "Sin descripción"}
-                </p>
-
-                <div className="mt-5 flex gap-2 text-xs font-black">
-                  <span className="rounded-full bg-[#F1F3F5] px-3 py-1">
-                    Expense
-                  </span>
-                  <span className="rounded-full bg-[#F1F3F5] px-3 py-1">
-                    Operations
-                  </span>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-    </EnterpriseShell>
-  );
-}
+type Project={id:string;code:string;name:string;description:string|null;status:string;wama_project_members?:Array<{profile_id:string;role:string}>};
+type User={profile_id:string;wama_profiles:{full_name:string;email:string}|null};
+export default function ProjectsPage(){const [projects,setProjects]=useState<Project[]>([]);const [users,setUsers]=useState<User[]>([]);const [role,setRole]=useState("");const [open,setOpen]=useState(false);const [message,setMessage]=useState("");const [loading,setLoading]=useState(false);const [form,setForm]=useState({name:"",code:"",description:"",memberProfileIds:[] as string[]});
+ async function token(){const {data}=await supabase.auth.getSession();return data.session?.access_token||""} async function load(){const t=await token();if(!t)return;const [p,u]=await Promise.all([fetch("/api/enterprise/projects",{headers:{Authorization:`Bearer ${t}`}}),fetch("/api/enterprise/users",{headers:{Authorization:`Bearer ${t}`}})]);const pd=await p.json();const ud=await u.json();setProjects(pd.projects||[]);setRole(pd.currentRole||"");setUsers(ud.users||[])} useEffect(()=>{void load()},[]);
+ async function create(e:FormEvent){e.preventDefault();setLoading(true);const t=await token();const r=await fetch("/api/enterprise/projects",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify(form)});const d=await r.json();setLoading(false);if(!r.ok){setMessage(d.error||"No se pudo crear.");return}setOpen(false);setMessage("Proyecto creado. Asignar usuarios a este proyecto no consume licencias adicionales.");setForm({name:"",code:"",description:"",memberProfileIds:[]});await load()}
+ const canAdmin=["owner","admin"].includes(role);return <EnterpriseShell title="Proyectos" subtitle="Organiza las rendiciones por proyecto, contrato, sede o iniciativa."><div className="space-y-6">{message&&<div className="rounded-2xl bg-[#DFFFFA] p-4 text-sm font-bold text-[#08645F]">{message}</div>}<SectionCard title="Proyectos de la empresa" eyebrow="Acceso sin consumo adicional" action={canAdmin?<button onClick={()=>setOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-[#0B0C0E] px-4 py-2 text-sm font-black text-white"><Plus className="h-4 w-4"/>Nuevo proyecto</button>:null}><div className="grid gap-4 md:grid-cols-2">{projects.map(project=><article key={project.id} className="rounded-2xl border border-[#DCE1E6] p-5"><div className="flex items-start justify-between gap-4"><div className="flex gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#E9FFFB]"><FolderKanban className="h-5 w-5 text-[#008F87]"/></span><div><p className="text-xs font-black text-[#008F87]">{project.code}</p><h3 className="mt-1 font-black">{project.name}</h3></div></div><StatusPill>{project.status}</StatusPill></div><p className="mt-4 text-sm leading-6 text-[#69717D]">{project.description||"Sin descripción"}</p><div className="mt-5 flex items-center gap-2 text-xs font-black"><Users className="h-4 w-4"/>{project.wama_project_members?.length||0} usuarios · Expense activo</div></article>)}{projects.length===0&&<p className="text-sm text-[#69717D]">Aún no hay proyectos. Puedes crear uno o trabajar las rendiciones sin proyecto.</p>}</div></SectionCard></div>{open&&<div className="fixed inset-0 z-[80] grid place-items-center bg-black/45 p-4"><form onSubmit={create} className="w-full max-w-xl rounded-[2rem] bg-white p-7"><h2 className="text-2xl font-black">Nuevo proyecto</h2><p className="mt-2 text-sm text-[#69717D]">Los 10 cupos pertenecen a Expense. Un usuario puede participar en todos los proyectos sin consumir cupos extra.</p><div className="mt-6 grid gap-4"><input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Nombre del proyecto" className="rounded-2xl border p-4"/><input value={form.code} onChange={e=>setForm({...form,code:e.target.value})} placeholder="Código opcional" className="rounded-2xl border p-4"/><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Descripción" className="min-h-24 rounded-2xl border p-4"/><div><p className="mb-2 text-sm font-black">Asignar usuarios ahora</p><div className="max-h-48 space-y-2 overflow-auto">{users.map(u=><label key={u.profile_id} className="flex gap-3 rounded-xl border p-3"><input type="checkbox" checked={form.memberProfileIds.includes(u.profile_id)} onChange={e=>setForm({...form,memberProfileIds:e.target.checked?[...form.memberProfileIds,u.profile_id]:form.memberProfileIds.filter(id=>id!==u.profile_id)})}/>{u.wama_profiles?.full_name} · {u.wama_profiles?.email}</label>)}</div></div></div><div className="mt-6 flex gap-3"><button type="button" onClick={()=>setOpen(false)} className="flex-1 rounded-full border px-5 py-3 font-black">Cancelar</button><button disabled={loading} className="flex-1 rounded-full bg-[#00E5D6] px-5 py-3 font-black">{loading?"Creando…":"Crear proyecto"}</button></div></form></div>}</EnterpriseShell>}

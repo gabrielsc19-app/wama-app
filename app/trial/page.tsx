@@ -58,7 +58,7 @@ export default function TrialPage() {
       rut: "Pendiente de configurar",
       industry: "Empresa en periodo de prueba",
       logoText: logoText || "W",
-      trialDays: 14,
+      trialDays: 15,
       userLimit: users,
       monthlyPrice: "US$10 por módulo / mes",
       trialStartedAt: today.toISOString(),
@@ -107,7 +107,7 @@ export default function TrialPage() {
           <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-20 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:py-28">
             <div className="lg:sticky lg:top-32">
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">
-                Prueba gratis por 14 días
+                Prueba gratis por 15 días
               </p>
 
               <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl">
@@ -120,7 +120,7 @@ export default function TrialPage() {
               </p>
 
               <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
-                <Benefit number="01" text="14 días de prueba sin pago inicial" />
+                <Benefit number="01" text="15 días de prueba sin pago inicial" />
                 <Benefit number="02" text="Hasta 10 usuarios incluidos" />
                 <Benefit number="03" text="Acceso inmediato al portal" />
                 <Benefit number="04" text="Implementación por módulos" />

@@ -1,0 +1,11 @@
+import { NextResponse } from "next/server";
+import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+
+export async function GET(request: Request) {
+  try { const user=await requireWamaUser(request); const {admin,membership}=await getUserTenantContext(user.id); const {data,error}=await admin.from("wama_projects").select("*,wama_project_members(profile_id,role,wama_profiles(full_name,email))").eq("tenant_id",membership.tenant_id).neq("status","archived").order("created_at",{ascending:false}); if(error)throw error; return NextResponse.json({projects:data||[],currentRole:membership.role}); }
+  catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:401});}
+}
+export async function POST(request: Request) {
+  try { const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id); if(!isTenantAdmin(membership.role))return NextResponse.json({error:"Sin permisos."},{status:403}); const body=await request.json() as {name?:string;code?:string;description?:string;memberProfileIds?:string[]}; if(!body.name?.trim())return NextResponse.json({error:"Nombre obligatorio."},{status:400}); const code=body.code?.trim()||`PR-${Date.now().toString().slice(-5)}`; const {data:project,error}=await admin.from("wama_projects").insert({tenant_id:membership.tenant_id,code,name:body.name.trim(),description:body.description?.trim()||null,status:"active",created_by:profile.id}).select("*").single(); if(error||!project)throw error; const {data:license}=await admin.from("wama_tenant_module_licenses").select("id,wama_module_catalog(module_key)").eq("tenant_id",membership.tenant_id).in("status",["trial","active"]).limit(1).single(); if(license)await admin.from("wama_project_modules").insert({project_id:project.id,tenant_module_license_id:license.id}); const members=[profile.id,...(body.memberProfileIds||[])].filter((v,i,a)=>a.indexOf(v)===i); await admin.from("wama_project_members").upsert(members.map(profile_id=>({project_id:project.id,profile_id,role:profile_id===profile.id?"owner":"member"})),{onConflict:"project_id,profile_id"}); return NextResponse.json({ok:true,project}); }
+  catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500});}
+}

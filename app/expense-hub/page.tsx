@@ -1,10 +1,3 @@
-import ExpenseHubDemo from "../../src/components/expense-hub/ExpenseHubDemo";
-
-export const metadata = {
-  title: "Expense Hub | WAMA",
-  description: "Rendiciones, anticipos, aprobaciones y control financiero desde WAMA.",
-};
-
-export default function ExpenseHubPage() {
-  return <ExpenseHubDemo />;
-}
+import PilotExpenseHub from "../../src/components/pilot/PilotExpenseHub";
+export const metadata={title:"Expense · Rendiciones | WAMA",description:"Rendiciones de gastos para empresas piloto WAMA."};
+export default function ExpenseHubPage(){return <PilotExpenseHub/>}
