@@ -36,15 +36,19 @@ export default function PortalPage() {
     );
   }
 
-  const moduleHref =
-    client.moduleName === "Operación"
+  const isExpense = client.moduleName === "Rendiciones de gastos" || client.moduleName === "Expense Hub";
+
+  const moduleHref = isExpense
+    ? "/expense-hub"
+    : client.moduleName === "Operación"
       ? "/operacion"
       : client.moduleName === "Finanzas"
         ? "/finanzas"
         : "/sales-hub/crm";
 
-  const dashboardHref =
-    client.moduleName === "Sales Hub"
+  const dashboardHref = isExpense
+    ? "/expense-hub"
+    : client.moduleName === "Sales Hub"
       ? "/sales-hub/crm/dashboard"
       : client.moduleName === "Finanzas"
         ? "/finanzas"
@@ -91,8 +95,7 @@ export default function PortalPage() {
             </h2>
 
             <p className="mt-7 max-w-2xl text-lg leading-8 text-[#626A76]">
-              Entra al módulo activo y comienza a trabajar. La configuración
-              avanzada de empresa y usuarios se realizará dentro del portal.
+              Entra al módulo activo y comienza a trabajar. En Rendiciones de Gastos podrás cargar comprobantes, asignar proyectos, enviar a aprobación y revisar el estado de cada gasto.
             </p>
 
             <div className="mt-10 flex flex-col gap-3 sm:flex-row">
@@ -107,7 +110,7 @@ export default function PortalPage() {
                 href={dashboardHref}
                 className="inline-flex items-center justify-center rounded-full border-2 border-[#0B0C0E] bg-white px-8 py-4 text-sm font-black text-[#0B0C0E]"
               >
-                Ver reportes
+                Revisar actividad
               </Link>
             </div>
 

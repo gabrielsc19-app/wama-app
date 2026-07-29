@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import WamaShell from "../../src/components/brand/WamaShell";
 
-const modules = ["Sales Hub", "Operación", "Finanzas"];
+const modules = ["Rendiciones de gastos", "Sales Hub", "Operación", "Finanzas"];
 
 export default function TrialPage() {
   const router = useRouter();
@@ -13,7 +13,7 @@ export default function TrialPage() {
   const [contactName, setContactName] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
-  const [selectedModule, setSelectedModule] = useState("Sales Hub");
+  const [selectedModule, setSelectedModule] = useState("Rendiciones de gastos");
   const [requestedUsers, setRequestedUsers] = useState("10");
   const [error, setError] = useState("");
 
@@ -31,8 +31,8 @@ export default function TrialPage() {
       return;
     }
 
-    if (!Number.isFinite(users) || users < 1) {
-      setError("La cantidad de usuarios debe ser mayor a cero.");
+    if (!Number.isFinite(users) || users < 1 || users > 10) {
+      setError("La cantidad de usuarios debe estar entre 1 y 10 durante la prueba.");
       return;
     }
 
@@ -47,12 +47,13 @@ export default function TrialPage() {
       .slice(0, 2)
       .toUpperCase();
 
-    const temporaryPassword = "WamaTrial2026!";
+    const temporaryPassword = selectedModule === "Rendiciones de gastos" ? "WamaExpense2026!" : "WamaTrial2026!";
 
     const trialClient = {
       id: `trial-${Date.now()}`,
       companyName: cleanCompany,
       moduleName: selectedModule,
+      moduleKey: selectedModule === "Rendiciones de gastos" ? "expense" : selectedModule === "Sales Hub" ? "sales" : selectedModule.toLowerCase(),
       email: cleanEmail,
       password: temporaryPassword,
       rut: "Pendiente de configurar",
@@ -60,7 +61,7 @@ export default function TrialPage() {
       logoText: logoText || "W",
       trialDays: 15,
       userLimit: users,
-      monthlyPrice: "US$10 por módulo / mes",
+      monthlyPrice: "USD 10 por módulo / mes",
       trialStartedAt: today.toISOString(),
       trialEndsAt: trialEndsAt.toISOString(),
       contactName: cleanName,
@@ -115,7 +116,7 @@ export default function TrialPage() {
               </h1>
 
               <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">
-                Crea tu portal, define el primer módulo y comienza con un acceso
+                Crea tu portal, activa Rendiciones de Gastos y comienza con un acceso
                 administrador para tu empresa.
               </p>
 
@@ -123,7 +124,7 @@ export default function TrialPage() {
                 <Benefit number="01" text="15 días de prueba sin pago inicial" />
                 <Benefit number="02" text="Hasta 10 usuarios incluidos" />
                 <Benefit number="03" text="Acceso inmediato al portal" />
-                <Benefit number="04" text="Implementación por módulos" />
+                <Benefit number="04" text="Rendiciones de gastos listas para usar" />
               </div>
             </div>
 
@@ -204,7 +205,7 @@ export default function TrialPage() {
                     <input
                       type="number"
                       min="1"
-                      max="100"
+                      max="10"
                       value={requestedUsers}
                       onChange={(event) => setRequestedUsers(event.target.value)}
                       className={inputClass}
@@ -215,8 +216,7 @@ export default function TrialPage() {
 
               {Number(requestedUsers) > 10 && (
                 <div className="mt-5 border-l-4 border-[#00AFA4] bg-[#E7FFFC] px-4 py-3 text-sm leading-6 text-[#315A57]">
-                  El plan base incluye 10 usuarios. Los usuarios adicionales se
-                  configuran después de activar el portal.
+                  La prueba incluye un máximo de 10 usuarios para el módulo seleccionado.
                 </div>
               )}
 
@@ -234,7 +234,7 @@ export default function TrialPage() {
               </button>
 
               <p className="mt-5 text-center text-xs leading-6 text-[#7C8490]">
-                Se creará un acceso temporal con clave WamaTrial2026!
+                Recibirás un acceso temporal para ingresar al portal y completar la configuración.
               </p>
             </form>
           </div>
