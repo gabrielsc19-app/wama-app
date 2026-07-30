@@ -14,7 +14,7 @@ export default function HomePage() {
               <h1 className="mt-5 max-w-5xl text-[2.65rem] font-black leading-[0.96] tracking-[-0.065em] sm:mt-7 sm:text-6xl md:text-7xl">Gestiona tu empresa módulo por módulo.</h1>
               <p className="mt-6 max-w-3xl text-base leading-7 text-[#B7BEC8] sm:mt-8 sm:text-lg sm:leading-8">Ventas y gastos en productos independientes, conectados y preparados para crecer junto a tu empresa.</p>
               <div className="mt-8 grid grid-cols-1 gap-3 sm:mt-10 sm:flex sm:flex-row">
-                <Link href="/acceso" className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5">Acceder a un portal</Link>
+                <Link href="/trial" className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5">Activa tu prueba gratis</Link>
                 <a href="#productos" className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white transition hover:border-[#00E5D6]/60 hover:text-[#00E5D6]">Ver productos</a>
               </div>
             </div>
@@ -22,7 +22,7 @@ export default function HomePage() {
               <p className="text-xs font-black uppercase tracking-[0.22em] text-[#00E5D6]">Productos disponibles</p>
               <h2 className="mt-5 text-3xl font-black tracking-[-0.04em]">Sales Hub + Expense Hub</h2>
               <p className="mt-4 max-w-lg text-base leading-7 text-[#AEB6C0]">Dos portales especializados. Una misma experiencia WAMA.</p>
-              <Link href="/acceso" className="mt-7 inline-flex text-sm font-black transition hover:text-[#00E5D6]">Elegir portal →</Link>
+              <Link href="/acceso" className="mt-7 inline-flex text-sm font-black transition hover:text-[#00E5D6]">Probar la demo →</Link>
             </div>
           </div>
         </section>
@@ -34,8 +34,8 @@ export default function HomePage() {
             <p className="mt-4 max-w-3xl text-base leading-7 text-[#66707C] sm:mt-6 sm:text-lg sm:leading-8">Cada Hub cuenta una historia distinta: desde la primera acción del usuario hasta la decisión final de la empresa.</p>
 
             <div className="mt-9 space-y-8 sm:mt-16 sm:space-y-12">
-              <ProductStory eyebrow="WAMA Expense Hub" title="De una foto tomada con el celular a un gasto aprobado y controlado." description="Captura, lectura inteligente, confirmación, aprobación y control financiero en una sola experiencia." href="/acceso/expense-hub" action="Entrar al portal Expense" kind="expense" />
-              <ProductStory eyebrow="WAMA Sales" title="De un prospecto nuevo a una oportunidad cerrada con seguimiento real." description="Clientes, actividades, propuestas, negociación y resultados comerciales conectados en un único flujo." href="/acceso/sales-hub" action="Entrar al portal Sales" kind="sales" reverse />
+              <ProductStory eyebrow="WAMA Expense Hub" title="De una foto tomada con el celular a un gasto aprobado y controlado." description="Captura, lectura inteligente, confirmación, aprobación y control financiero en una sola experiencia." href="/acceso/expense-hub" action="Probar demo Expense" kind="expense" />
+              <ProductStory eyebrow="WAMA Sales" title="De un prospecto nuevo a una oportunidad cerrada con seguimiento real." description="Clientes, actividades, propuestas, negociación y resultados comerciales conectados en un único flujo." href="/acceso/sales-hub" action="Probar demo Sales" kind="sales" reverse />
             </div>
           </div>
         </section>
@@ -56,7 +56,7 @@ export default function HomePage() {
         <section className="bg-[#0B0C0E] text-white">
           <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
             <h2 className="max-w-5xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">Elige tu producto y comienza a trabajar.</h2>
-            <div className="mt-10 flex flex-col gap-3 sm:flex-row"><Link href="/acceso" className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]">Acceder a los portales</Link><Link href="/trial" className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white">Prueba gratis 14 días</Link></div>
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row"><Link href="/trial" className="inline-flex items-center justify-center rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]">Probar demo</Link><Link href="/trial" className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white">Prueba gratis 14 días</Link></div>
           </div>
         </section>
       </main>
