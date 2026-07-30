@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Resend } from "resend";
+import { sendWamaEmail } from "./googleGmail";
 import { getWamaAdmin } from "./wamaAdmin";
 
 export type TrialProvisionInput = {
@@ -27,30 +27,35 @@ function temporaryPassword() {
 }
 
 function escapeHtml(value: string) {
-  return value.replace(/[&<>'"]/g, (char) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    "'": "&#39;",
-    '"': "&quot;",
-  })[char] ?? char);
+  return value.replace(
+    /[&<>'"]/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;",
+      })[char] ?? char,
+  );
 }
 
 export async function provisionExpenseTrial(input: TrialProvisionInput) {
-  const resendKey = process.env.RESEND_API_KEY;
-  if (!resendKey) {
-    throw new Error("Falta configurar RESEND_API_KEY para enviar el correo de acceso.");
-  }
-
   const admin = getWamaAdmin();
   const ownerEmail = input.ownerEmail.trim().toLowerCase();
   const password = temporaryPassword();
   const trialEnds = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString();
   const slug = `${slugify(input.companyName)}-${Date.now().toString().slice(-6)}`;
 
-  const { data: existingUsers } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+  const { data: existingUsers } = await admin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000,
+  });
+
   if (existingUsers?.users.some((user) => user.email?.toLowerCase() === ownerEmail)) {
-    throw new Error("Este correo ya tiene una cuenta WAMA. Ingresa desde Acceso al portal o utiliza otro correo para la prueba.");
+    throw new Error(
+      "Este correo ya tiene una cuenta WAMA. Ingresa desde Acceso al portal o utiliza otro correo para la prueba.",
+    );
   }
 
   const { data: createdAuth, error: authError } = await admin.auth.admin.createUser({
@@ -67,6 +72,7 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
       active_module: "expense",
     },
   });
+
   if (authError || !createdAuth.user) {
     throw new Error(authError?.message || "No se pudo crear el acceso del administrador.");
   }
@@ -88,7 +94,11 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
       })
       .select("id,code,name,trial_ends_at")
       .single();
-    if (tenantError || !tenant) throw new Error(tenantError?.message || "No se pudo crear la empresa.");
+
+    if (tenantError || !tenant) {
+      throw new Error(tenantError?.message || "No se pudo crear la empresa.");
+    }
+
     tenantId = tenant.id;
 
     const { data: profile, error: profileError } = await admin
@@ -101,23 +111,34 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
       })
       .select("id")
       .single();
-    if (profileError || !profile) throw new Error(profileError?.message || "No se pudo crear el perfil.");
 
-    const { error: membershipError } = await admin.from("wama_tenant_memberships").insert({
-      tenant_id: tenant.id,
-      profile_id: profile.id,
-      role: "owner",
-      status: "active",
-      joined_at: new Date().toISOString(),
-    });
-    if (membershipError) throw new Error(membershipError.message);
+    if (profileError || !profile) {
+      throw new Error(profileError?.message || "No se pudo crear el perfil.");
+    }
+
+    const { error: membershipError } = await admin
+      .from("wama_tenant_memberships")
+      .insert({
+        tenant_id: tenant.id,
+        profile_id: profile.id,
+        role: "owner",
+        status: "active",
+        joined_at: new Date().toISOString(),
+      });
+
+    if (membershipError) {
+      throw new Error(membershipError.message);
+    }
 
     const { data: expenseModule, error: moduleError } = await admin
       .from("wama_module_catalog")
       .select("id")
       .eq("module_key", "expense")
       .single();
-    if (moduleError || !expenseModule) throw new Error("No existe Rendiciones de Gastos en el catálogo de módulos.");
+
+    if (moduleError || !expenseModule) {
+      throw new Error("No existe Rendiciones de Gastos en el catálogo de módulos.");
+    }
 
     const { data: license, error: licenseError } = await admin
       .from("wama_tenant_module_licenses")
@@ -131,25 +152,38 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
       })
       .select("id")
       .single();
-    if (licenseError || !license) throw new Error(licenseError?.message || "No se pudo activar Rendiciones de Gastos.");
 
-    const { error: assignmentError } = await admin.from("wama_module_user_assignments").insert({
-      tenant_module_license_id: license.id,
-      profile_id: profile.id,
-      assigned_by: profile.id,
-      status: "active",
-    });
-    if (assignmentError) throw new Error(assignmentError.message);
+    if (licenseError || !license) {
+      throw new Error(
+        licenseError?.message || "No se pudo activar Rendiciones de Gastos.",
+      );
+    }
 
-    await admin.from("wama_invitations").upsert({
-      tenant_id: tenant.id,
-      email: ownerEmail,
-      full_name: input.ownerName,
-      role: "owner",
-      auth_user_id: authUserId,
-      status: "accepted",
-      accepted_at: new Date().toISOString(),
-    }, { onConflict: "tenant_id,email" });
+    const { error: assignmentError } = await admin
+      .from("wama_module_user_assignments")
+      .insert({
+        tenant_module_license_id: license.id,
+        profile_id: profile.id,
+        assigned_by: profile.id,
+        status: "active",
+      });
+
+    if (assignmentError) {
+      throw new Error(assignmentError.message);
+    }
+
+    await admin.from("wama_invitations").upsert(
+      {
+        tenant_id: tenant.id,
+        email: ownerEmail,
+        full_name: input.ownerName,
+        role: "owner",
+        auth_user_id: authUserId,
+        status: "accepted",
+        accepted_at: new Date().toISOString(),
+      },
+      { onConflict: "tenant_id,email" },
+    );
 
     await admin.from("wama_audit_logs").insert({
       tenant_id: tenant.id,
@@ -167,17 +201,27 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
     });
 
     const loginUrl = `${input.origin}/login`;
-    const from = process.env.WAMA_FROM_EMAIL || "WAMA <contacto@wamaapp.com>";
-    const resend = new Resend(resendKey);
     const safeName = escapeHtml(input.ownerName);
     const safeCompany = escapeHtml(input.companyName);
     const safeEmail = escapeHtml(ownerEmail);
     const safePassword = escapeHtml(password);
 
-    const { error: emailError } = await resend.emails.send({
-      from,
+    await sendWamaEmail({
       to: ownerEmail,
       subject: `Tu portal WAMA para ${input.companyName} ya está listo`,
+      text: [
+        `Hola ${input.ownerName},`,
+        "",
+        `Activamos la prueba de Rendiciones de Gastos para ${input.companyName}.`,
+        "La prueba incluye 15 días y hasta 10 usuarios en el módulo.",
+        "",
+        `Correo de acceso: ${ownerEmail}`,
+        `Clave temporal: ${password}`,
+        "",
+        `Ingresar a WAMA: ${loginUrl}`,
+        "",
+        "Al ingresar por primera vez, WAMA te solicitará crear una clave personal.",
+      ].join("\n"),
       html: `
         <div style="margin:0;background:#f4f6f7;padding:40px 16px;font-family:Arial,Helvetica,sans-serif;color:#0b0c0e">
           <div style="max-width:640px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;border:1px solid #dfe3e6">
@@ -199,9 +243,9 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
             </div>
           </div>
           <p style="text-align:center;color:#7c8490;font-size:12px;margin:18px 0 0">WAMA · Warn and Manage · contacto@wamaapp.com</p>
-        </div>`,
+        </div>
+      `,
     });
-    if (emailError) throw new Error(`La empresa fue creada, pero el correo no pudo enviarse: ${emailError.message}`);
 
     return {
       tenant,
@@ -212,7 +256,10 @@ export async function provisionExpenseTrial(input: TrialProvisionInput) {
       moduleName: "Rendiciones de Gastos",
     };
   } catch (error) {
-    if (tenantId) await admin.from("wama_tenants").delete().eq("id", tenantId);
+    if (tenantId) {
+      await admin.from("wama_tenants").delete().eq("id", tenantId);
+    }
+
     await admin.auth.admin.deleteUser(authUserId);
     throw error;
   }
