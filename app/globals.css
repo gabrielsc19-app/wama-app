@@ -674,3 +674,38 @@ html[data-wama-mode="app"] body {
     font-size: 31px;
   }
 }
+
+
+/* WAMA v0.9.1 — experiencia móvil y áreas seguras */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+.expense-hub-root {
+  min-height: 100dvh;
+  overflow-x: clip;
+}
+
+@media (max-width: 639px) {
+  .expense-hub-header h1 {
+    max-width: 12.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .expense-hub-mobile-nav {
+    max-width: calc(100vw - 1.5rem);
+  }
+
+  .expense-hub-root button,
+  .expense-hub-root input,
+  .expense-hub-root select,
+  .expense-hub-root textarea {
+    font-size: 16px;
+  }
+}

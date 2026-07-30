@@ -71,7 +71,7 @@ export default function ExpenseHubDemo() {
     flash(`Rendición ${status.toLowerCase()}`);
   };
 
-  return <div className="expense-hub-root min-h-screen bg-[#F3F5F6] text-[#0B0C0E] pb-24 lg:pb-0">
+  return <div className="expense-hub-root min-h-screen bg-[#F3F5F6] text-[#0B0C0E] pb-[calc(6.75rem+env(safe-area-inset-bottom))] lg:pb-0">
     {!role && <RoleSelector onSelect={selectRole}/>} 
     <aside className={`fixed inset-y-0 left-0 z-50 w-[286px] border-r border-white/10 bg-[#0B0C0E] text-white transition-transform lg:translate-x-0 ${menuOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-full flex-col">
@@ -84,12 +84,12 @@ export default function ExpenseHubDemo() {
     {menuOpen && <button onClick={()=>setMenuOpen(false)} className="fixed inset-0 z-40 bg-black/45 lg:hidden"/>}
 
     <div className="lg:pl-[286px]">
-      <header className="expense-hub-header sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#DDE1E6] bg-white/95 px-5 backdrop-blur-xl sm:px-8">
+      <header className="expense-hub-header sticky top-0 z-30 flex min-h-[4.75rem] items-center justify-between border-b border-[#DDE1E6] bg-white/95 px-4 pb-3 pt-[calc(.75rem+env(safe-area-inset-top))] backdrop-blur-xl sm:h-20 sm:px-8 sm:py-0">
         <div className="flex items-center gap-3"><button onClick={()=>setMenuOpen(true)} className="rounded-xl border border-[#DDE1E6] p-2 lg:hidden"><Menu className="h-5 w-5"/></button><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Expense Hub</p><h1 className="text-xl font-black tracking-[-.035em]">{active}</h1></div></div>
         <div className="flex items-center gap-3"><button className="relative rounded-full border border-[#DDE1E6] bg-white p-3"><Bell className="h-5 w-5"/><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[#FF9E45]"/></button><button onClick={()=>setRole(null)} className="hidden items-center gap-3 sm:flex"><div className="grid h-10 w-10 place-items-center rounded-full bg-[#0B0C0E] text-sm font-black text-white">GS</div><div className="text-left"><p className="text-sm font-black">Gabriel Sánchez</p><p className="text-xs text-[#737C87]">{role ? expenseRoles[role].label : "Sin rol"}</p></div></button></div>
       </header>
       {notice && <div className="fixed right-5 top-24 z-[70] flex items-center gap-2 rounded-2xl bg-[#0B0C0E] px-5 py-4 text-sm font-black text-white shadow-2xl"><Check className="h-4 w-4 text-[#00E5D6]"/>{notice}</div>}
-      <main className="p-5 sm:p-8 lg:p-10">
+      <main className="px-4 py-5 sm:p-8 lg:p-10">
         {view==="dashboard" && <Dashboard expenses={expenses} onNew={()=>go("new")} onOpen={setSelected}/>} 
         {view==="new" && <NewExpense onSubmit={addExpense}/>} 
         {view==="mine" && <ExpenseList expenses={expenses} title="Mis rendiciones" subtitle="Sigue el estado de cada gasto y responde observaciones." onOpen={setSelected}/>} 
@@ -99,7 +99,7 @@ export default function ExpenseHubDemo() {
       </main>
     </div>
 
-    {allowedNav.length > 0 && <nav className={`expense-hub-mobile-nav fixed inset-x-3 bottom-3 z-40 grid rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden ${allowedNav.length===1?"grid-cols-1":allowedNav.length===2?"grid-cols-2":allowedNav.length===3?"grid-cols-3":"grid-cols-4"}`}>{allowedNav.slice(0,4).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>}
+    {allowedNav.length > 0 && <nav className={`expense-hub-mobile-nav fixed inset-x-3 bottom-[calc(.75rem+env(safe-area-inset-bottom))] z-40 grid rounded-2xl border border-[#DDE1E6] bg-white/95 p-2 shadow-2xl backdrop-blur lg:hidden ${allowedNav.length===1?"grid-cols-1":allowedNav.length===2?"grid-cols-2":allowedNav.length===3?"grid-cols-3":"grid-cols-4"}`}>{allowedNav.slice(0,4).map(({id,label,icon:Icon})=><button key={id} onClick={()=>go(id)} className={`flex flex-col items-center gap-1 rounded-xl px-2 py-2 text-[10px] font-black ${view===id?"bg-[#0B0C0E] text-white":"text-[#68717C]"}`}><Icon className="h-5 w-5"/>{label}</button>)}</nav>}
     {selected && <ExpenseDrawer expense={selected} onClose={()=>setSelected(null)} onUpdate={updateExpense}/>} 
   </div>;
 }
@@ -134,7 +134,7 @@ function RoleSelector({onSelect}:{onSelect:(role:ExpenseRole)=>void}) {
 function Dashboard({expenses,onNew,onOpen}:{expenses:Expense[];onNew:()=>void;onOpen:(e:Expense)=>void}) {
   const total=expenses.reduce((s,e)=>s+e.amount,0), pending=expenses.filter(e=>["Pendiente","En revisión","Observada"].includes(e.status)), alerts=expenses.filter(e=>e.amount!==e.detectedAmount);
   return <>
-    <section className="flex flex-col justify-between gap-6 xl:flex-row xl:items-end"><div><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Resumen general</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Control claro. Menos trabajo manual.</h2><p className="mt-4 max-w-2xl text-base leading-7 text-[#69717D]">Captura, aprueba y controla gastos desde teléfono, tablet o computador.</p></div><button onClick={onNew} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0B0C0E] px-7 py-4 text-sm font-black text-white"><Camera className="h-4 w-4"/>Rendir un gasto</button></section>
+    <section className="flex flex-col justify-between gap-6 xl:flex-row xl:items-end"><div><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Resumen general</p><h2 className="mt-2 text-[2rem] font-black leading-[1.02] tracking-[-.05em] sm:mt-3 sm:text-5xl">Control claro. Menos trabajo manual.</h2><p className="mt-4 max-w-2xl text-base leading-7 text-[#69717D]">Captura, aprueba y controla gastos desde teléfono, tablet o computador.</p></div><button onClick={onNew} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#0B0C0E] px-7 py-4 text-sm font-black text-white"><Camera className="h-4 w-4"/>Rendir un gasto</button></section>
     <section className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><Kpi icon={CircleDollarSign} label="Gasto registrado" value={money(total)} helper={`${expenses.length} rendiciones`}/><Kpi icon={Clock3} label="Pendiente" value={money(pending.reduce((s,e)=>s+e.amount,0))} helper={`${pending.length} por revisar`}/><Kpi icon={CheckCircle2} label="Aprobado / pagado" value={money(expenses.filter(e=>["Aprobada","Pagada"].includes(e.status)).reduce((s,e)=>s+e.amount,0))} helper="Flujo actualizado"/><Kpi icon={AlertTriangle} label="Alertas" value={String(alerts.length)} helper="Diferencias OCR" warning/></section>
     <section className="mt-6 grid gap-6 xl:grid-cols-[1.25fr_.75fr]"><div className="rounded-[1.75rem] border border-[#DDE1E6] bg-white p-6 sm:p-8"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Actividad reciente</p><h3 className="mt-2 text-2xl font-black">Últimas rendiciones</h3></div><div className="mt-6 divide-y divide-[#E6E9EC]">{expenses.slice(0,5).map(e=><button key={e.id} onClick={()=>onOpen(e)} className="block w-full text-left"><ExpenseRow expense={e}/></button>)}</div></div><div className="rounded-[1.75rem] bg-[#0B0C0E] p-6 text-white sm:p-8"><div className="flex items-center justify-between"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#00E5D6]">WAMA analiza</p><h3 className="mt-2 text-2xl font-black">Alertas inteligentes</h3></div><ShieldCheck className="h-7 w-7 text-[#00E5D6]"/></div><div className="mt-7 space-y-4"><Insight title="Diferencias de monto" text={`${alerts.length} rendiciones requieren validación entre OCR y monto declarado.`}/><Insight title="Pendientes" text={`${pending.length} rendiciones esperan una acción.`}/><Insight title="Evidencia protegida" text="Los documentos originales se conservan junto al historial de cambios."/></div></div></section>
   </>;
@@ -147,6 +147,7 @@ function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
   const [file,setFile]=useState<File|null>(null);
   const [processing,setProcessing]=useState(false);
   const [processLabel,setProcessLabel]=useState("");
+  const [processStage,setProcessStage]=useState(0);
   const [ocrError,setOcrError]=useState("");
   const [quotaError,setQuotaError]=useState(false);
   const [confidence,setConfidence]=useState<number|null>(null);
@@ -184,7 +185,11 @@ function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
       declared:total,
       reason:data.merchant?`Gasto en ${data.merchant}`:"",
     }));
-    setConfidence(Number(data.confidence||0));
+    const rawConfidence = Number(data.confidence ?? 0);
+    const normalizedConfidence = Number.isFinite(rawConfidence)
+      ? Math.max(0, Math.min(100, Math.round(rawConfidence <= 1 ? rawConfidence * 100 : rawConfidence)))
+      : 0;
+    setConfidence(normalizedConfidence);
     setWarnings(Array.isArray(data.warnings)?data.warnings:[]);
     setDocumentMeta({
       documentType:String(data.documentType||""),
@@ -200,28 +205,30 @@ function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
   };
 
   const analyzeFile=async(selected:File)=>{
-    setProcessing(true);setOcrError("");setQuotaError(false);setWarnings([]);
+    setProcessing(true);setProcessStage(1);setOcrError("");setQuotaError(false);setWarnings([]);
     try{
       setProcessLabel("Preparando documento…");
       const optimized=await prepareImage(selected);
       setFile(optimized);
-      setProcessLabel("WAMA está leyendo el documento…");
+      setProcessStage(2);setProcessLabel("WAMA está leyendo el documento…");
       const body=new FormData(); body.append("file",optimized);
       const response=await fetch("/api/expense/ocr",{method:"POST",body});
-      setProcessLabel("Extrayendo comercio, fecha y monto…");
+      setProcessStage(3);setProcessLabel("Extrayendo comercio, fecha y monto…");
       const payload=await response.json();
       if(!response.ok){
         const err=new Error(payload.error||"No fue posible leer el documento.") as Error & {code?:string};
         err.code=payload.code;
         throw err;
       }
+      setProcessStage(4);setProcessLabel("Validando impuestos y consistencia…");
+      await new Promise((resolve)=>window.setTimeout(resolve,350));
       applyOcr(payload.data);
     }catch(error){
       const code=(error as Error & {code?:string})?.code;
       setQuotaError(code==="quota_exceeded");
       setOcrError(error instanceof Error?error.message:"Error inesperado de OCR.");
     } finally {
-      setProcessing(false);setProcessLabel("");
+      setProcessing(false);setProcessStage(0);setProcessLabel("");
     }
   };
 
@@ -245,13 +252,46 @@ function NewExpense({onSubmit}:{onSubmit:(e:Expense)=>void}) {
 
   return <div className="mx-auto max-w-5xl pb-10"><p className="text-sm font-black uppercase tracking-[.18em] text-[#008F87]">Nueva rendición</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em] sm:text-5xl">Saca la foto. WAMA hace el resto.</h2><p className="mt-4 text-[#69717D]">La lectura comienza automáticamente. Solo revisa los datos y envía.</p>
     <div className="mt-6 grid grid-cols-3 gap-2 rounded-2xl border border-[#DDE1E6] bg-white p-2">{["Documento","Confirmación","Enviar"].map((label,index)=><div key={label} className={`rounded-xl px-2 py-3 text-center text-xs font-black sm:text-sm ${step===index+1?"bg-[#0B0C0E] text-white":step>index+1?"bg-[#DFFBF8] text-[#008F87]":"text-[#8A939E]"}`}>{index+1}. {label}</div>)}</div>
-    <div className="mt-5 rounded-[2rem] border border-[#DDE1E6] bg-white p-5 sm:p-8">
+    <div className="mt-5 rounded-[1.5rem] border border-[#DDE1E6] bg-white p-4 sm:rounded-[2rem] sm:p-8">
       {step===1&&<div><div className="flex items-center gap-4"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#DFFBF8] text-[#008F87]"><Camera className="h-7 w-7"/></div><div><h3 className="text-2xl font-black">Fotografía el documento</h3><p className="mt-1 text-sm text-[#69717D]">Boleta, factura o comprobante. JPG, PNG, WEBP o PDF.</p></div></div>
         <label className="mt-5 flex cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed border-[#AEB6C0] bg-[#F8F9FA] p-4 text-left">{preview?<img src={preview} alt="Vista previa" className="h-28 w-24 shrink-0 rounded-xl object-cover"/>:<div className="grid h-24 w-24 shrink-0 place-items-center rounded-xl bg-white text-[#008F87]"><Upload className="h-8 w-8"/></div>}<div className="min-w-0"><p className="truncate font-black">{fileName||"Tomar foto o seleccionar archivo"}</p><p className="mt-1 text-sm text-[#69717D]">El análisis comienza automáticamente.</p></div><input className="hidden" type="file" accept="image/*,.pdf" capture="environment" onChange={readFile}/></label>
-        {processing&&<div className="mt-5 rounded-2xl bg-[#0B0C0E] p-5 text-white"><div className="flex items-center gap-3"><span className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-[#00E5D6]"/><div><p className="font-black">{processLabel||"Analizando documento…"}</p><p className="mt-1 text-xs text-[#B9C0C7]">No cierres WAMA. Esto puede tardar algunos segundos.</p></div></div></div>}
+        {processing&&<div className="mt-5 overflow-hidden rounded-[1.6rem] bg-[#0B0C0E] p-5 text-white shadow-[0_22px_60px_rgba(11,12,14,.24)] sm:p-6">
+          <div className="flex items-start gap-4">
+            <span className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#00E5D6] text-[#0B0C0E]">
+              <Sparkles className="h-6 w-6"/>
+              <span className="absolute inset-0 animate-ping rounded-2xl border border-[#00E5D6]/50"/>
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase tracking-[.16em] text-[#00E5D6]">WAMA AI</p>
+              <p className="mt-1 text-lg font-black">{processLabel||"Analizando documento…"}</p>
+              <div className="mt-5 grid gap-3">
+                {[
+                  "Preparando imagen",
+                  "Leyendo comercio, fecha y monto",
+                  "Revisando impuestos y cuadratura",
+                  "Clasificando el gasto",
+                ].map((label,index)=>{
+                  const stage=index+1;
+                  const complete=processStage>stage;
+                  const active=processStage===stage;
+                  return <div key={label} className="flex items-center gap-3 text-sm">
+                    <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${complete?"border-[#00E5D6] bg-[#00E5D6] text-[#0B0C0E]":active?"border-[#00E5D6] text-[#00E5D6]":"border-white/20 text-white/30"}`}>
+                      {complete?<Check className="h-3.5 w-3.5"/>:<span className={`h-2 w-2 rounded-full ${active?"animate-pulse bg-[#00E5D6]":"bg-white/20"}`}/>}
+                    </span>
+                    <span className={complete||active?"font-bold text-white":"text-white/40"}>{label}</span>
+                  </div>;
+                })}
+              </div>
+              <p className="mt-5 text-xs leading-5 text-[#AEB6BF]">Mantén WAMA abierto mientras protegemos y analizamos el documento.</p>
+            </div>
+          </div>
+        </div>}
         {ocrError&&!processing&&<div className={`mt-5 rounded-2xl border p-5 ${quotaError?"border-[#F0BF68] bg-[#FFF8E9]":"border-[#F2B5B5] bg-[#FFF1F1]"}`}><div className="flex gap-3"><AlertTriangle className={`mt-0.5 h-5 w-5 shrink-0 ${quotaError?"text-[#A56500]":"text-[#A33030]"}`}/><div><p className="font-black">{quotaError?"OCR temporalmente sin saldo":"No pudimos leer el documento"}</p><p className="mt-2 text-sm leading-6 text-[#5F6670]">{ocrError}</p>{quotaError&&<p className="mt-2 text-xs leading-5 text-[#7A6135]">Activa saldo en la cuenta API de OpenAI y vuelve a intentar. La fotografía permanece cargada.</p>}<div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={retry} className="rounded-full bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Reintentar OCR</button><button type="button" onClick={()=>setStep(2)} className="rounded-full border border-[#C8CED5] px-5 py-3 text-sm font-black">Continuar manualmente</button></div></div></div></div>}
       </div>}
-      {step===2&&<div><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">Datos detectados</p><h3 className="mt-2 text-3xl font-black">Revisa y confirma</h3>{confidence!==null&&<p className="mt-2 text-sm text-[#69717D]">Confianza de lectura: <strong>{confidence}%</strong></p>}</div>{confidence!==null&&<span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${confidence>=80?"bg-[#E4F9EA] text-[#217A39]":"bg-[#FFF2DF] text-[#9A6200]"}`}>{confidence>=80?"Lectura confiable":"Revisar campos"}</span>}</div>
+      {step===2&&<div><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">Datos detectados</p><h3 className="mt-2 text-3xl font-black">Revisa y confirma</h3>{confidence!==null&&<div className="mt-3 flex items-center gap-3">
+          <div className="h-2 w-28 overflow-hidden rounded-full bg-[#E3E7EA]"><div className={`h-full rounded-full ${confidence>=85?"bg-[#19A65A]":confidence>=70?"bg-[#E7A11A]":"bg-[#D84B4B]"}`} style={{width:`${confidence}%`}}/></div>
+          <p className="text-sm text-[#69717D]"><strong>{confidence}%</strong> de confianza</p>
+        </div>}</div>{confidence!==null&&<span className={`w-fit rounded-full px-4 py-2 text-xs font-black ${confidence>=80?"bg-[#E4F9EA] text-[#217A39]":"bg-[#FFF2DF] text-[#9A6200]"}`}>{confidence>=85?"Alta confianza":confidence>=70?"Revisión recomendada":"Revisión necesaria"}</span>}</div>
         {documentMeta.engine&&<div className={`mt-5 rounded-2xl border p-4 ${documentMeta.validationStatus==="validated"?"border-[#A7E6C0] bg-[#F0FBF4]":documentMeta.validationStatus==="invalid"?"border-[#F2B5B5] bg-[#FFF1F1]":"border-[#F0BF68] bg-[#FFF8E9]"}`}><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">Motor documental chileno</p><p className="mt-1 font-black">{documentMeta.documentType||"Documento chileno"}{documentMeta.siiDocumentCode?` · Código SII ${documentMeta.siiDocumentCode}`:""}</p></div><span className={`w-fit rounded-full px-3 py-1.5 text-xs font-black ${documentMeta.validationStatus==="validated"?"bg-[#DDF7E7] text-[#217A39]":documentMeta.validationStatus==="invalid"?"bg-[#FDE8E8] text-[#A33030]":"bg-[#FFF0D5] text-[#9A6200]"}`}>{documentMeta.validationStatus==="validated"?"Validado":documentMeta.validationStatus==="invalid"?"Inconsistencia detectada":"Revisión recomendada"}</span></div><div className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><ChileCheck label="RUT emisor" value={documentMeta.rutValid}/><ChileCheck label="Cuadratura" value={documentMeta.totalsMatch}/><div><p className="text-xs text-[#69717D]">Duplicado</p><p className="mt-1 font-black">Clave generada</p></div><div><p className="text-xs text-[#69717D]">Motor</p><p className="mt-1 truncate font-black">{documentMeta.engine}</p></div></div></div>}
         {warnings.length>0&&<div className="mt-5 rounded-xl border border-[#F0BF68] bg-[#FFF8E9] p-4 text-sm text-[#7A6135]">{warnings.map((w,i)=><p key={i}>• {w}</p>)}</div>}
         <div className="mt-6 grid gap-4 sm:grid-cols-2"><Input label="Comercio" value={form.merchant} onChange={v=>setForm({...form,merchant:v})}/><Input label="RUT" value={form.rut} onChange={v=>setForm({...form,rut:v})}/><Input label="Fecha" type="date" value={form.date} onChange={v=>setForm({...form,date:v})}/><Input label="Folio" value={form.folio} onChange={v=>setForm({...form,folio:v})}/><Select label="Categoría" value={form.category} options={["Combustible","Movilización","Alimentación","Alojamiento","Insumos","Servicios","Peajes","Estacionamiento","Mantención","Otros"]} onChange={v=>setForm({...form,category:v})}/><Select label="Centro de costo" value={form.costCenter} options={["Operaciones","Comercial","Administración","TI","Mantención","Proyecto"]} onChange={v=>setForm({...form,costCenter:v})}/><Input label="Monto OCR" value={form.detected} disabled onChange={()=>{}}/><Input label="Monto declarado" value={form.declared} type="number" onChange={v=>setForm({...form,declared:v})}/></div><label className="mt-4 block"><span className="text-xs font-black uppercase tracking-[.12em] text-[#69717D]">Motivo</span><textarea value={form.reason} onChange={e=>setForm({...form,reason:e.target.value})} className="mt-2 min-h-28 w-full rounded-xl border border-[#D5DAE0] p-4 outline-none focus:border-[#00B8AD]"/></label>

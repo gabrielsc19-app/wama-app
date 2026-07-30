@@ -32,6 +32,26 @@ type MembershipRow = {
   wama_tenants: TenantRow | TenantRow[] | null;
 };
 
+
+type PortalTenantRpcRow = {
+  membership_id: string;
+  tenant_id: string;
+  profile_id: string;
+  membership_role: TenantMembership["role"];
+  membership_status: TenantMembership["status"];
+  joined_at: string;
+  tenant_code: string;
+  tenant_name: string;
+  tenant_slug: string;
+  tenant_logo_url: string | null;
+  tenant_country_code: string;
+  tenant_timezone: string;
+  tenant_status: Tenant["status"];
+  tenant_trial_ends_at: string | null;
+  tenant_created_at: string;
+  tenant_updated_at: string;
+};
+
 type ProjectRow = {
   id: string;
   tenant_id: string;
@@ -98,55 +118,33 @@ async function getCurrentProfileId(): Promise<string> {
 }
 
 export async function getMyTenants(): Promise<TenantWithMembership[]> {
-  const profileId = await getCurrentProfileId();
-
-  const { data, error } = await supabase
-    .from("wama_tenant_memberships")
-    .select(
-      `
-        id,
-        tenant_id,
-        profile_id,
-        role,
-        status,
-        joined_at,
-        wama_tenants!inner (
-          id,
-          code,
-          name,
-          slug,
-          logo_url,
-          country_code,
-          timezone,
-          status,
-          trial_ends_at,
-          created_at,
-          updated_at
-        )
-      `,
-    )
-    .eq("profile_id", profileId)
-    .eq("status", "active")
-    .order("joined_at", { ascending: true });
+  const { data, error } = await supabase.rpc("wama_my_portal_tenants");
 
   if (error) {
     throw new Error(error.message || "No fue posible cargar las empresas.");
   }
 
-  return ((data ?? []) as unknown as MembershipRow[]).flatMap((row) => {
-    const tenantRow = Array.isArray(row.wama_tenants)
-      ? row.wama_tenants[0]
-      : row.wama_tenants;
-
-    if (!tenantRow) return [];
-
-    return [
-      {
-        ...mapTenant(tenantRow),
-        membership: mapMembership(row),
-      },
-    ];
-  });
+  return ((data ?? []) as PortalTenantRpcRow[]).map((row) => ({
+    id: row.tenant_id,
+    code: row.tenant_code,
+    name: row.tenant_name,
+    slug: row.tenant_slug,
+    logoUrl: row.tenant_logo_url,
+    countryCode: row.tenant_country_code,
+    timezone: row.tenant_timezone,
+    status: row.tenant_status,
+    trialEndsAt: row.tenant_trial_ends_at,
+    createdAt: row.tenant_created_at,
+    updatedAt: row.tenant_updated_at,
+    membership: {
+      id: row.membership_id,
+      tenantId: row.tenant_id,
+      profileId: row.profile_id,
+      role: row.membership_role,
+      status: row.membership_status,
+      joinedAt: row.joined_at,
+    },
+  }));
 }
 
 export async function getTenantById(tenantId: string): Promise<Tenant> {

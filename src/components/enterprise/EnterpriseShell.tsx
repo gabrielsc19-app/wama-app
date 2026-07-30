@@ -19,18 +19,18 @@ import {
 import { useState } from "react";
 
 const items = [
-  { href: "/empresa", label: "Mi empresa", icon: Building2 },
-  { href: "/empresa/ia", label: "WAMA AI", icon: Bot },
-  { href: "/expense-hub", label: "Rendiciones", icon: ReceiptText },
-  { href: "/empresa/licencias", label: "Licencias", icon: BadgeDollarSign },
+  { href: "/empresa", label: "Portal", icon: Building2 },
+  { href: "/expense-hub", label: "Expense Hub", icon: ReceiptText },
   { href: "/empresa/proyectos", label: "Proyectos", icon: FolderKanban },
   { href: "/empresa/usuarios", label: "Usuarios", icon: Users },
+  { href: "/empresa/licencias", label: "Licencias", icon: BadgeDollarSign },
+  { href: "/empresa/ia", label: "WAMA AI", icon: Bot },
+  { href: "/empresa/facturacion", label: "Facturación", icon: CreditCard },
   { href: "/empresa/trust", label: "Trust Center", icon: ShieldCheck },
   { href: "/empresa/seguridad", label: "Seguridad", icon: ShieldCheck },
-  { href: "/empresa/facturacion", label: "Facturación", icon: CreditCard },
 ];
 
-const mobileItems = items.slice(0, 5);
+const mobileItems = [items[0], items[1], items[2], items[3], items[5]];
 
 export default function EnterpriseShell({
   children,
@@ -79,7 +79,7 @@ export default function EnterpriseShell({
 
       <section className="lg:pl-[286px]">
         <header className="sticky top-0 z-30 border-b border-[#DCE1E6] bg-white/95 backdrop-blur-xl">
-          <div className="flex min-h-20 items-center gap-4 px-5 sm:px-8">
+          <div className="flex min-h-[4.75rem] items-center gap-3 px-4 pb-3 pt-[calc(.75rem+env(safe-area-inset-top))] sm:min-h-20 sm:px-8 sm:py-0">
             <button onClick={() => setOpen(true)} className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[#DCE1E6] lg:hidden" aria-label="Abrir menú"><Menu className="h-5 w-5" /></button>
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#008F87]">Centro de administración</p>
@@ -89,7 +89,7 @@ export default function EnterpriseShell({
             <Link href="/empresa/ia" className="hidden items-center gap-2 rounded-full border border-[#DCE1E6] bg-white px-5 py-3 text-sm font-black sm:inline-flex"><Sparkles className="h-4 w-4 text-[#00AFA5]" /> WAMA AI</Link>
           </div>
         </header>
-        <div className="mx-auto max-w-[1500px] p-4 sm:p-8">{children}</div>
+        <div className="mx-auto max-w-[1500px] px-4 py-5 sm:p-8">{children}</div>
       </section>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#DCE1E6] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
