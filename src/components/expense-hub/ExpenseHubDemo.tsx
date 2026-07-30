@@ -6,7 +6,7 @@ import { ExpenseRole, expenseRoles } from "@/src/lib/expenseRoles";
 import {
   AlertTriangle, ArrowLeft, Bell, Camera, Check, CheckCircle2, ChevronRight,
   CircleDollarSign, Clock3, FileText, Home, LayoutDashboard, Menu, Plus,
-  ReceiptText, Search, Settings, ShieldCheck, Upload, UserRound, WalletCards, X
+  ReceiptText, Search, Settings, ShieldCheck, Sparkles, Upload, UserRound, WalletCards, X
 } from "lucide-react";
 
 type View = "dashboard" | "new" | "mine" | "money" | "approvals" | "finance";
