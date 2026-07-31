@@ -7,11 +7,22 @@ import EnterpriseShell from "../../src/components/enterprise/EnterpriseShell";
 import MobileInstallButton from "../../src/components/enterprise/MobileInstallButton";
 import { SectionCard, StatCard, StatusPill } from "../../src/components/enterprise/PortalUI";
 import { loadEnterprisePortalData, type EnterprisePortalData } from "../../src/core/portal/portalData";
+import { supabase } from "../lib/supabase";
+import { useRouter } from "next/navigation";
 
 export default function CompanyPage() {
+  const router = useRouter();
   const [data, setData] = useState<EnterprisePortalData | null>(null);
+  const [loadError, setLoadError] = useState("");
 
-  useEffect(() => { void loadEnterprisePortalData().then(setData); }, []);
+  useEffect(() => {
+    void (async () => {
+      const {data:auth} = await supabase.auth.getSession();
+      if (!auth.session) { router.replace("/login"); return; }
+      try { setData(await loadEnterprisePortalData()); }
+      catch (reason) { setLoadError(reason instanceof Error ? reason.message : "No fue posible cargar tu empresa."); }
+    })();
+  }, [router]);
 
   const usedSeats = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.used_seats, 0) ?? 0, [data]);
   const capacity = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.seat_capacity, 0) ?? 0, [data]);
@@ -19,7 +30,7 @@ export default function CompanyPage() {
 
   return (
     <EnterpriseShell title="Mi empresa" subtitle="Vista general del portal, licencias y estado de la organización.">
-      {!data ? <Loading /> : <div className="space-y-6 sm:space-y-8">
+      {loadError ? <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-white p-7 text-center"><h2 className="text-xl font-black">No pudimos abrir tu empresa</h2><p className="mt-3 text-sm leading-6 text-[#69717D]">{loadError}</p><button onClick={async()=>{await supabase.auth.signOut();router.replace("/login");}} className="mt-5 rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black text-[#0B0C0E]">Volver a iniciar sesión</button></div> : !data ? <Loading /> : <div className="space-y-6 sm:space-y-8">
         <section className="overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">

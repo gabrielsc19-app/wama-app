@@ -3,6 +3,42 @@ import { getUserTenantContext, requireWamaUser } from "../../../../src/lib/serve
 
 export const runtime = "nodejs";
 
+export async function GET(request: Request) {
+  try {
+    const user = await requireWamaUser(request);
+    const { admin, membership } = await getUserTenantContext(user.id);
+    const url = new URL(request.url);
+    const renditionId = url.searchParams.get("renditionId");
+    if (!renditionId) return NextResponse.json({error:"Falta la rendición."},{status:400});
+
+    const {data:report} = await admin
+      .from("wama_expense_reports")
+      .select("id")
+      .eq("id", renditionId)
+      .eq("tenant_id", membership.tenant_id)
+      .single();
+    if (!report) return NextResponse.json({error:"Rendición no encontrada."},{status:404});
+
+    const {data:evidence, error} = await admin
+      .from("wama_expense_evidence")
+      .select("id,file_name,mime_type,file_size,storage_path,created_at,is_current")
+      .eq("report_id", renditionId)
+      .eq("tenant_id", membership.tenant_id)
+      .order("created_at", {ascending:false});
+    if (error) throw error;
+
+    const files = await Promise.all((evidence || []).map(async (item) => {
+      const {data:signed, error:signedError} = await admin.storage
+        .from("expense-evidence")
+        .createSignedUrl(item.storage_path, 900);
+      return {...item, url:signedError ? null : signed.signedUrl};
+    }));
+    return NextResponse.json({evidence:files});
+  } catch(error) {
+    return NextResponse.json({error:error instanceof Error?error.message:"No se pudo abrir la evidencia."},{status:500});
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const user = await requireWamaUser(request);
