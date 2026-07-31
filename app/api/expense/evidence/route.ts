@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
     const {data:report} = await admin
       .from("wama_expense_reports")
-      .select("id")
+      .select("id,document_url")
       .eq("id", renditionId)
       .eq("tenant_id", membership.tenant_id)
       .single();
@@ -33,6 +33,38 @@ export async function GET(request: Request) {
         .createSignedUrl(item.storage_path, 900);
       return {...item, url:signedError ? null : signed.signedUrl};
     }));
+
+    // Compatibilidad con rendiciones creadas antes de la tabla de evidencias.
+    // Esas versiones guardaban el respaldo únicamente en document_url.
+    if (files.length === 0 && report.document_url) {
+      const legacyPath = String(report.document_url);
+      let legacyUrl: string | null = null;
+
+      if (/^https?:\/\//i.test(legacyPath) || legacyPath.startsWith("data:")) {
+        legacyUrl = legacyPath;
+      } else {
+        const normalizedPath = legacyPath
+          .replace(/^expense-evidence\//, "")
+          .replace(/^\//, "");
+        const {data:signed, error:signedError} = await admin.storage
+          .from("expense-evidence")
+          .createSignedUrl(normalizedPath, 900);
+        if (!signedError) legacyUrl = signed.signedUrl;
+      }
+
+      const cleanPath = legacyPath.split("?")[0].toLowerCase();
+      const mimeType = cleanPath.endsWith(".pdf") ? "application/pdf" : "image/jpeg";
+      files.push({
+        id:`legacy-${report.id}`,
+        file_name:cleanPath.split("/").pop() || "evidencia-original",
+        mime_type:mimeType,
+        file_size:0,
+        storage_path:legacyPath,
+        created_at:new Date(0).toISOString(),
+        is_current:true,
+        url:legacyUrl,
+      });
+    }
     return NextResponse.json({evidence:files});
   } catch(error) {
     return NextResponse.json({error:error instanceof Error?error.message:"No se pudo abrir la evidencia."},{status:500});
