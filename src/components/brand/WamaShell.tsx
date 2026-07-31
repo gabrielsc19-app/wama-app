@@ -9,7 +9,7 @@ import WamaGuideBubble from "./WamaGuideBubble";
 const mobileItems = [
   { href: "/", label: "Inicio", icon: Home },
   { href: "/modulos", label: "Módulos", icon: Layers3 },
-  { href: "/acceso", label: "Portales", icon: LogIn },
+  { href: "/login", label: "Ingresar", icon: LogIn },
   { href: "/descargar-app", label: "Instalar", icon: Download },
 ];
 
@@ -27,12 +27,12 @@ export default function WamaShell({ children }: { children: React.ReactNode }) {
           <nav className="hidden items-center gap-8 text-sm font-bold text-[#C4C7CC] md:flex">
             <Link href="/modulos" className="transition hover:text-[#00E5D6]">Módulos</Link>
             <Link href="/reportes" className="transition hover:text-[#00E5D6]">Reportes</Link>
-            <Link href="/acceso" className="transition hover:text-[#00E5D6]">Acceso portal</Link>
+            <Link href="/acceso" className="transition hover:text-[#00E5D6]">Portales</Link>
             <Link href="/descargar-app" className="inline-flex items-center gap-2 transition hover:text-[#00E5D6]"><Download className="h-4 w-4" />Descargar app</Link>
           </nav>
 
           <div className="hidden items-center gap-3 md:flex">
-            <Link href="/acceso" className="rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-black transition hover:border-[#00E5D6]/50 hover:text-[#00E5D6]">Acceso portal</Link>
+            <Link href="/login" className="rounded-full border border-white/15 bg-white/[0.04] px-6 py-3 text-sm font-black transition hover:border-[#00E5D6]/50 hover:text-[#00E5D6]">Iniciar sesión</Link>
             <Link href="/trial" className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5">Prueba gratis</Link>
           </div>
 
