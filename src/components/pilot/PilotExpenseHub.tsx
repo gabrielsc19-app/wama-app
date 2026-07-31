@@ -10,6 +10,12 @@ type Project = { id:string; name:string; code:string };
 type OcrData = { merchant?:string; date?:string; totalAmount?:number|null; suggestedCategory?:string; suggestedCostCenter?:string; confidence?:number; warnings?:string[]; documentType?:string; folio?:string; rut?:string; reviewRequired?:boolean };
 
 const money = (n:number) => new Intl.NumberFormat("es-CL", { style:"currency", currency:"CLP", maximumFractionDigits:0 }).format(n);
+
+function normalizeConfidence(value: unknown): number {
+  const raw = Number(value ?? 0);
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(100, Math.round(raw <= 1 ? raw * 100 : raw)));
+}
 const initialForm = () => ({ merchant:"", expenseDate:new Date().toISOString().slice(0,10), category:"Movilización", amountClp:"", description:"", costCenter:"", projectId:"" });
 
 export default function PilotExpenseHub() {
@@ -77,7 +83,13 @@ export default function PilotExpenseHub() {
     const r=await fetch("/api/expense/renditions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({...form,amountClp:Number(form.amountClp)})});
     const d=await r.json();
     if(!r.ok){setError(d.error||"No se pudo crear.");return;}
-    setMessage("Rendición enviada correctamente."); closeModal(); await load();
+    if(file){
+      const evidence=new FormData(); evidence.append("file",file); evidence.append("renditionId",d.rendition.id);
+      const upload=await fetch("/api/expense/evidence",{method:"POST",headers:{Authorization:`Bearer ${t}`},body:evidence});
+      const uploadData=await upload.json();
+      if(!upload.ok){setError(uploadData.error||"La rendición fue creada, pero no se pudo guardar la evidencia.");await load();return;}
+    }
+    setMessage("Rendición y evidencia guardadas correctamente."); closeModal(); await load();
   }
 
   async function review(id:string,status:string){const t=await token();const r=await fetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({id,status})});if(r.ok){setMessage(`Rendición ${status}.`);await load();}}
@@ -95,7 +107,7 @@ export default function PilotExpenseHub() {
       </div>
     </header>
 
-    <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-8">
+    <div className="mx-auto max-w-7xl space-y-5 px-3 py-4 sm:space-y-6 sm:p-8">
       <section className="grid overflow-hidden rounded-[2rem] bg-[#0B0C0E] text-white lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="p-6 sm:p-9"><p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Foto + OpenAI</p><h2 className="mt-3 text-3xl font-black tracking-[-.05em] sm:text-4xl">Rinde un gasto en segundos.</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-[#B7BEC8]">Toma una foto o selecciona una boleta, factura o PDF. WAMA usa OpenAI para extraer comercio, fecha, monto, categoría y centro de costo.</p></div>
         <div className="grid grid-cols-2 gap-3 p-5 lg:w-[380px]"><button onClick={()=>cameraInput.current?.click()} className="rounded-2xl bg-[#00E5D6] p-5 text-left font-black text-[#0B0C0E]"><Camera className="mb-8 h-7 w-7"/>Tomar foto</button><button onClick={()=>galleryInput.current?.click()} className="rounded-2xl border border-white/15 bg-white/5 p-5 text-left font-black"><ImageUp className="mb-8 h-7 w-7 text-[#00E5D6]"/>Subir archivo</button></div>
@@ -103,7 +115,7 @@ export default function PilotExpenseHub() {
       <input ref={cameraInput} className="hidden" type="file" accept="image/*" capture="environment" onChange={e=>{chooseFile(e.target.files?.[0]);setOpen(true);e.currentTarget.value="";}}/>
       <input ref={galleryInput} className="hidden" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={e=>{chooseFile(e.target.files?.[0]);setOpen(true);e.currentTarget.value="";}}/>
 
-      <section className="grid gap-4 md:grid-cols-3"><Card label="Rendiciones" value={String(items.length)}/><Card label="Pendientes" value={String(pending)}/><Card label="Monto registrado" value={money(total)}/></section>
+      <section className="grid gap-3 sm:grid-cols-3 sm:gap-4"><Card label="Rendiciones" value={String(items.length)}/><Card label="Pendientes" value={String(pending)}/><Card label="Monto registrado" value={money(total)}/></section>
       {message&&<div className="rounded-2xl bg-[#DFFFFA] p-4 text-sm font-bold text-[#08645F]">{message}</div>}
       {error&&!open&&<div className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
 
@@ -121,7 +133,7 @@ export default function PilotExpenseHub() {
             <div className="overflow-hidden rounded-3xl border bg-white">{preview?<img src={preview} alt="Documento seleccionado" className="h-72 w-full object-contain bg-[#EEF1F3]"/>:<div className="flex h-72 flex-col items-center justify-center"><FileImage className="h-12 w-12 text-[#008F87]"/><strong className="mt-3">{file.name}</strong></div>}</div>
             <div className="mt-3 flex gap-2"><button type="button" onClick={()=>galleryInput.current?.click()} className="flex-1 rounded-full border bg-white px-4 py-3 text-xs font-black">Cambiar archivo</button><button type="button" onClick={()=>readWithOpenAI()} disabled={reading} className="flex-1 rounded-full bg-[#0B0C0E] px-4 py-3 text-xs font-black text-white disabled:opacity-60">{reading?"Leyendo…":"Leer nuevamente"}</button></div>
             {reading&&<div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#DFFFFA] p-4 text-sm font-bold text-[#08645F]"><Loader2 className="h-5 w-5 animate-spin"/>OpenAI está leyendo el documento…</div>}
-            {ocr&&<div className="mt-4 rounded-2xl border border-[#BCEFEA] bg-white p-4"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#008F87]"/><strong className="text-sm">Lectura inteligente completada</strong></div><p className="mt-2 text-xs text-[#69717D]">Confianza: {Math.round((ocr.confidence||0)*100)}%{ocr.reviewRequired?" · Requiere revisión":" · Validación alta"}</p>{ocr.warnings?.length?<p className="mt-2 text-xs text-amber-700">{ocr.warnings.join(" · ")}</p>:null}</div>}
+            {ocr&&<div className="mt-4 rounded-2xl border border-[#BCEFEA] bg-white p-4"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#008F87]"/><strong className="text-sm">Lectura inteligente completada</strong></div><p className="mt-2 text-xs text-[#69717D]">Confianza: {normalizeConfidence(ocr.confidence)}%{ocr.reviewRequired?" · Requiere revisión":" · Validación alta"}</p>{ocr.warnings?.length?<p className="mt-2 text-xs text-amber-700">{ocr.warnings.join(" · ")}</p>:null}</div>}
           </div>}
         </section>
         <section className="p-5 sm:p-7"><div className="grid gap-4 sm:grid-cols-2">
