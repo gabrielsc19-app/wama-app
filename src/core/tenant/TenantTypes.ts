@@ -14,6 +14,7 @@ export type Tenant = {
   timezone: string;
   status: TenantStatus;
   trialEndsAt: string | null;
+  onboardingCompleted: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -36,6 +37,7 @@ export type UpdateTenantInput = {
   logoUrl?: string | null;
   countryCode?: string;
   timezone?: string;
+  onboardingCompleted?: boolean;
 };
 
 export type CreateProjectInput = {

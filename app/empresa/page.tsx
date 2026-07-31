@@ -9,6 +9,7 @@ import { SectionCard, StatCard, StatusPill } from "../../src/components/enterpri
 import { loadEnterprisePortalData, type EnterprisePortalData } from "../../src/core/portal/portalData";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
+import { trialDaysRemaining } from "../../src/lib/trialDisplay";
 
 export default function CompanyPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function CompanyPage() {
     void (async () => {
       const {data:auth} = await supabase.auth.getSession();
       if (!auth.session) { router.replace("/login"); return; }
-      try { setData(await loadEnterprisePortalData()); }
+      try { const portal = await loadEnterprisePortalData(); if (!portal.tenant.onboardingCompleted) { router.replace("/empresa/onboarding"); return; } setData(portal); }
       catch (reason) { setLoadError(reason instanceof Error ? reason.message : "No fue posible cargar tu empresa."); }
     })();
   }, [router]);
@@ -27,6 +28,7 @@ export default function CompanyPage() {
   const usedSeats = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.used_seats, 0) ?? 0, [data]);
   const capacity = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.seat_capacity, 0) ?? 0, [data]);
   const activeProjects = useMemo(() => data?.projects.filter((project) => project.status === "active").length ?? 0, [data]);
+  const trialDays = useMemo(() => data ? trialDaysRemaining(data.tenant.trialEndsAt, data.tenant.timezone) : null, [data]);
 
   return (
     <EnterpriseShell title="Mi empresa" subtitle="Vista general del portal, licencias y estado de la organización.">
@@ -34,12 +36,12 @@ export default function CompanyPage() {
         <section className="overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">{data.tenant.name.slice(0, 2).toUpperCase()}</div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">{data.tenant.logoUrl ? <img src={data.tenant.logoUrl} alt={`Logo ${data.tenant.name}`} className="h-full w-full object-contain bg-white p-2"/> : data.tenant.name.slice(0, 2).toUpperCase()}</div>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00E5D6]">Portal empresarial</p>
                 <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] sm:text-4xl">{data.tenant.name}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[#AEB6BF]">Controla usuarios, módulos, proyectos, seguridad e inteligencia empresarial desde un solo lugar.</p>
-                <div className="mt-4 flex flex-wrap gap-2"><StatusPill>{data.tenant.status === "trial" ? "Trial activo" : "Activo"}</StatusPill><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">{data.tenant.code}</span><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">Rol: {data.tenant.membership.role}</span><MobileInstallButton /></div>
+                <div className="mt-4 flex flex-wrap gap-2"><StatusPill>{data.tenant.status === "trial" ? `Trial · ${trialDays ?? 0} días restantes` : "Activo"}</StatusPill><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">{data.licenses.map((license)=>license.module_key === "expense" ? "Expense Hub" : license.module_key === "sales" ? "Sales Hub" : license.module_name).join(" · ")}</span><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">Rol: {data.tenant.membership.role}</span><MobileInstallButton /></div>
               </div>
             </div>
             <div className="flex items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.05] p-5 sm:min-w-[260px]">
@@ -58,7 +60,7 @@ export default function CompanyPage() {
 
         <Link href="/empresa/ia" className="group grid gap-5 overflow-hidden rounded-[2rem] bg-[#DFFFFA] p-6 transition hover:-translate-y-0.5 sm:p-8 lg:grid-cols-[auto_1fr_auto] lg:items-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B0C0E] text-[#00E5D6]"><Bot className="h-7 w-7" /></span>
-          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Buenos días. Tu empresa está operando con normalidad.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes 13 cupos disponibles, ningún riesgo crítico y 3 usuarios que conviene revisar por baja actividad.</p></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Tu empresa está lista para operar.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes {Math.max(0, capacity-usedSeats)} cupos disponibles en tus módulos activos{data.tenant.status === "trial" ? ` y ${trialDays ?? 0} días restantes de prueba` : ""}.</p></div>
           <span className="inline-flex items-center gap-2 font-black text-[#008F87]">Ver recomendaciones <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></span>
         </Link>
 

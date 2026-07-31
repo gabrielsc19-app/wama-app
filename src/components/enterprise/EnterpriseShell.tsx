@@ -17,6 +17,10 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
+import { useEffect } from "react";
+import { getMyTenants } from "../../core/tenant";
+import { getMyLicensingSummary } from "../../core/licensing/licensingService";
+import { trialDaysRemaining } from "../../lib/trialDisplay";
 
 const items = [
   { href: "/empresa", label: "Mi empresa", icon: Building2 },
@@ -43,6 +47,9 @@ export default function EnterpriseShell({
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [identity, setIdentity] = useState<{name:string;logo:string|null;module:string;days:number|null}|null>(null);
+
+  useEffect(() => { void Promise.all([getMyTenants(), getMyLicensingSummary()]).then(([tenants,licenses])=>{const tenant=tenants[0];if(!tenant)return;setIdentity({name:tenant.name,logo:tenant.logoUrl,module:licenses.map((license)=>license.module_key === "expense" ? "EXPENSE HUB" : license.module_key === "sales" ? "SALES HUB" : license.module_name.toUpperCase()).join(" · "),days:trialDaysRemaining(tenant.trialEndsAt,tenant.timezone)});}).catch(()=>undefined); }, []);
 
   const isActive = (href: string) => href === "/empresa" ? pathname === href : pathname.startsWith(href);
 
@@ -51,8 +58,8 @@ export default function EnterpriseShell({
       <aside className={`fixed inset-y-0 left-0 z-50 w-[286px] border-r border-[#DCE1E6] bg-[#0B0C0E] text-white transition-transform lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex h-20 items-center justify-between border-b border-white/10 px-6">
           <Link href="/empresa" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">W</span>
-            <span><strong className="block text-lg leading-none">WAMA</strong><small className="text-[10px] font-bold tracking-[0.18em] text-[#9CA5AF]">PORTAL EMPRESARIAL</small></span>
+            <span className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">{identity?.logo ? <img src={identity.logo} alt="Logo de empresa" className="h-full w-full object-contain bg-white p-1"/> : "W"}</span>
+            <span className="min-w-0"><strong className="block max-w-[170px] truncate text-lg leading-none">{identity?.name || "WAMA"}</strong><small className="text-[9px] font-bold tracking-[0.14em] text-[#9CA5AF]">{identity?.module || "PORTAL EMPRESARIAL"}</small></span>
           </Link>
           <button className="lg:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X className="h-5 w-5" /></button>
         </div>
@@ -69,9 +76,9 @@ export default function EnterpriseShell({
         </nav>
 
         <div className="absolute bottom-5 left-4 right-4 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00E5D6]">WAMA Trust</p>
-          <p className="mt-2 text-sm font-bold">Protección multiempresa activa</p>
-          <p className="mt-1 text-xs leading-5 text-[#9CA5AF]">Datos, licencias y permisos aislados por empresa.</p>
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00E5D6]">{identity?.module || "WAMA Trust"}</p>
+          <p className="mt-2 text-sm font-bold">{identity?.days === null || identity?.days === undefined ? "Protección multiempresa activa" : `Prueba · ${identity.days} días restantes`}</p>
+          <p className="mt-1 text-xs leading-5 text-[#9CA5AF]">{identity?.name || "Datos, licencias y permisos aislados por empresa."}</p>
         </div>
       </aside>
 
