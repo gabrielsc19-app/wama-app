@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { provisionExpenseTrial } from "../../../../src/lib/server/provisionTrial";
+import { provisionTrial, type TrialModuleKey } from "../../../../src/lib/server/provisionTrial";
 
 export const runtime = "nodejs";
 
@@ -16,6 +16,7 @@ export async function POST(request: Request) {
       ownerEmail?: string;
       ownerPhone?: string;
       website?: string;
+      moduleKey?: TrialModuleKey;
     };
 
     if (body.website) return NextResponse.json({ ok: true });
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
     const ownerName = body.ownerName?.trim() || "";
     const ownerEmail = body.ownerEmail?.trim().toLowerCase() || "";
     const ownerPhone = body.ownerPhone?.trim() || "";
+    const moduleKey = body.moduleKey === "sales" ? "sales" : "expense";
 
     if (!companyName || !ownerName || !ownerEmail) {
       return NextResponse.json({ error: "Completa empresa, responsable y correo administrador." }, { status: 400 });
@@ -33,13 +35,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Ingresa un correo válido." }, { status: 400 });
     }
 
-    const result = await provisionExpenseTrial({
+    const result = await provisionTrial({
       companyName,
       companyRut,
       ownerName,
       ownerEmail,
       ownerPhone,
       origin: new URL(request.url).origin,
+      moduleKey,
     });
 
     return NextResponse.json({ ok: true, ...result });

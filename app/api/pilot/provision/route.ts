@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { provisionExpenseTrial } from "../../../../src/lib/server/provisionTrial";
+import { provisionTrial, type TrialModuleKey } from "../../../../src/lib/server/provisionTrial";
 
 export const runtime = "nodejs";
 
@@ -12,6 +12,7 @@ export async function POST(request: Request) {
       ownerName?: string;
       ownerEmail?: string;
       ownerPhone?: string;
+      moduleKey?: TrialModuleKey;
     };
 
     if (!process.env.WAMA_PILOT_SETUP_SECRET || body.secret !== process.env.WAMA_PILOT_SETUP_SECRET) {
@@ -25,13 +26,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Completa empresa, responsable y correo." }, { status: 400 });
     }
 
-    const result = await provisionExpenseTrial({
+    const result = await provisionTrial({
       companyName,
       companyRut: body.companyRut?.trim(),
       ownerName,
       ownerEmail,
       ownerPhone: body.ownerPhone?.trim(),
       origin: new URL(request.url).origin,
+      moduleKey: body.moduleKey === "sales" ? "sales" : "expense",
     });
 
     return NextResponse.json({ ok: true, ...result });

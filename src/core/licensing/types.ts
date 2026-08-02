@@ -30,6 +30,9 @@ export type LicensingSummaryRow = {
   used_seats: number;
   available_seats: number;
   monthly_total_usd: number;
+  starts_at: string;
+  renews_at: string | null;
+  trial_days_remaining: number;
 };
 
 export type TenantProvisionInput = {

@@ -51,6 +51,9 @@ export async function getMyLicensingSummary(): Promise<LicensingSummaryRow[]> {
     used_seats: toNumber(row.used_seats),
     available_seats: toNumber(row.available_seats),
     monthly_total_usd: toNumber(row.monthly_total_usd),
+    starts_at: String(row.starts_at),
+    renews_at: row.renews_at ? String(row.renews_at) : null,
+    trial_days_remaining: toNumber(row.trial_days_remaining),
   }));
 }
 

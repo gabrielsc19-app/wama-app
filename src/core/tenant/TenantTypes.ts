@@ -15,6 +15,7 @@ export type Tenant = {
   status: TenantStatus;
   trialEndsAt: string | null;
   onboardingCompleted: boolean;
+  onboardingCompletedAt: string | null;
   createdAt: string;
   updatedAt: string;
 };

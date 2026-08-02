@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Bot, CheckCircle2, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, ShieldCheck, TrendingUp } from "lucide-react";
 import EnterpriseShell from "../../src/components/enterprise/EnterpriseShell";
 import MobileInstallButton from "../../src/components/enterprise/MobileInstallButton";
 import { SectionCard, StatCard, StatusPill } from "../../src/components/enterprise/PortalUI";
 import { loadEnterprisePortalData, type EnterprisePortalData } from "../../src/core/portal/portalData";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
-import { trialDaysRemaining } from "../../src/lib/trialDisplay";
 
 export default function CompanyPage() {
   const router = useRouter();
@@ -20,7 +19,7 @@ export default function CompanyPage() {
     void (async () => {
       const {data:auth} = await supabase.auth.getSession();
       if (!auth.session) { router.replace("/login"); return; }
-      try { const portal = await loadEnterprisePortalData(); if (!portal.tenant.onboardingCompleted) { router.replace("/empresa/onboarding"); return; } setData(portal); }
+      try { setData(await loadEnterprisePortalData()); }
       catch (reason) { setLoadError(reason instanceof Error ? reason.message : "No fue posible cargar tu empresa."); }
     })();
   }, [router]);
@@ -28,7 +27,7 @@ export default function CompanyPage() {
   const usedSeats = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.used_seats, 0) ?? 0, [data]);
   const capacity = useMemo(() => data?.licenses.reduce((sum, item) => sum + item.seat_capacity, 0) ?? 0, [data]);
   const activeProjects = useMemo(() => data?.projects.filter((project) => project.status === "active").length ?? 0, [data]);
-  const trialDays = useMemo(() => data ? trialDaysRemaining(data.tenant.trialEndsAt, data.tenant.timezone) : null, [data]);
+  const commercialLicenses = useMemo(() => data?.licenses.filter((item) => item.module_key === "expense" || item.module_key === "sales") ?? [], [data]);
 
   return (
     <EnterpriseShell title="Mi empresa" subtitle="Vista general del portal, licencias y estado de la organización.">
@@ -36,12 +35,12 @@ export default function CompanyPage() {
         <section className="overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">{data.tenant.logoUrl ? <img src={data.tenant.logoUrl} alt={`Logo ${data.tenant.name}`} className="h-full w-full object-contain bg-white p-2"/> : data.tenant.name.slice(0, 2).toUpperCase()}</div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">{data.tenant.name.slice(0, 2).toUpperCase()}</div>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00E5D6]">Portal empresarial</p>
                 <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] sm:text-4xl">{data.tenant.name}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-[#AEB6BF]">Controla usuarios, módulos, proyectos, seguridad e inteligencia empresarial desde un solo lugar.</p>
-                <div className="mt-4 flex flex-wrap gap-2"><StatusPill>{data.tenant.status === "trial" ? `Trial · ${trialDays ?? 0} días restantes` : "Activo"}</StatusPill><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">{data.licenses.map((license)=>license.module_key === "expense" ? "Expense Hub" : license.module_key === "sales" ? "Sales Hub" : license.module_name).join(" · ")}</span><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">Rol: {data.tenant.membership.role}</span><MobileInstallButton /></div>
+                <div className="mt-4 flex flex-wrap gap-2"><StatusPill>{data.tenant.status === "trial" ? "Trial activo" : "Activo"}</StatusPill><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">{data.tenant.code}</span><span className="rounded-full border border-white/15 px-3 py-1 text-xs font-bold text-[#C4C7CC]">Rol: {data.tenant.membership.role}</span><MobileInstallButton /></div>
               </div>
             </div>
             <div className="flex items-center gap-4 rounded-3xl border border-white/10 bg-white/[0.05] p-5 sm:min-w-[260px]">
@@ -52,7 +51,7 @@ export default function CompanyPage() {
         </section>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Módulos activos" value={`${data.licenses.length}`} detail="Licencias contratadas" trend="+1 este trimestre" />
+          <StatCard label="Módulos activos" value={`${commercialLicenses.length}`} detail="Expense Hub y Sales Hub" trend="Contratación independiente" />
           <StatCard label="Usuarios asignados" value={`${usedSeats}`} detail={`${capacity - usedSeats} cupos disponibles`} trend="Capacidad saludable" />
           <StatCard label="Proyectos activos" value={`${activeProjects}`} detail="Uso opcional por empresa" trend="Actividad estable" />
           <StatCard label="Seguridad" value="100%" detail="Aislamiento multiempresa activo" trend="Sin alertas críticas" />
@@ -60,14 +59,14 @@ export default function CompanyPage() {
 
         <Link href="/empresa/ia" className="group grid gap-5 overflow-hidden rounded-[2rem] bg-[#DFFFFA] p-6 transition hover:-translate-y-0.5 sm:p-8 lg:grid-cols-[auto_1fr_auto] lg:items-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B0C0E] text-[#00E5D6]"><Bot className="h-7 w-7" /></span>
-          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Tu empresa está lista para operar.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes {Math.max(0, capacity-usedSeats)} cupos disponibles en tus módulos activos{data.tenant.status === "trial" ? ` y ${trialDays ?? 0} días restantes de prueba` : ""}.</p></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Tu empresa está operando con normalidad.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes {Math.max(capacity - usedSeats, 0)} cupos disponibles entre tus módulos activos.</p></div>
           <span className="inline-flex items-center gap-2 font-black text-[#008F87]">Ver recomendaciones <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></span>
         </Link>
 
         <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-          <SectionCard title="Módulos y consumo" eyebrow="Licenciamiento" action={<Link href="/empresa/licencias" className="text-sm font-black text-[#008F87]">Administrar</Link>}>
-            <div className="divide-y divide-[#E4E8EC]">{data.licenses.map((license) => { const use = Math.round((license.used_seats / license.seat_capacity) * 100); return <div key={license.module_key} className="py-5 first:pt-0 last:pb-0"><div className="flex items-center justify-between gap-4"><div><h3 className="font-black">{license.module_name}</h3><p className="text-sm text-[#69717D]">{license.used_seats} de {license.seat_capacity} licencias utilizadas</p></div><strong>{use}%</strong></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[#E8ECEF]"><div className="h-full rounded-full bg-[#00B8AE] transition-all" style={{ width: `${Math.min(use, 100)}%` }} /></div></div>; })}</div>
-            <Link href="/empresa/licencias" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#0B0C0E] px-5 py-4 text-sm font-black text-white">+ Comprar licencias</Link>
+          <SectionCard title="Tus módulos WAMA" eyebrow="Portal modular" action={<Link href="/empresa/licencias" className="text-sm font-black text-[#008F87]">Administrar licencias</Link>}>
+            <div className="grid gap-4 md:grid-cols-2">{(["sales", "expense"] as const).map((moduleKey) => { const license = commercialLicenses.find((item) => item.module_key === moduleKey); const title = moduleKey === "sales" ? "Sales Hub" : "Expense Hub"; const href = moduleKey === "sales" ? "/sales-hub" : "/expense-hub"; return license ? <div key={moduleKey} className="rounded-3xl border border-[#DCE1E6] p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#008F87]">{license.license_status === "trial" ? "Prueba activa" : license.license_status === "active" ? "Plan pagado" : "Requiere atención"}</p><h3 className="mt-1 text-xl font-black">{title}</h3></div><StatusPill>{license.license_status === "trial" ? `${license.trial_days_remaining} días` : license.license_status}</StatusPill></div><p className="mt-4 text-sm text-[#69717D]">{license.used_seats} de {license.seat_capacity} licencias utilizadas · {license.available_seats} disponibles</p><Link href={href} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E]">Ingresar a {title}</Link></div> : <div key={moduleKey} className="rounded-3xl border border-dashed border-[#BFC6CD] bg-[#F7F9FA] p-5"><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#69717D]">Disponible</p><h3 className="mt-1 text-xl font-black">{title}</h3><p className="mt-3 text-sm leading-6 text-[#69717D]">Activa 15 días gratis y recibe 10 licencias propias para este módulo.</p><Link href="/trial" className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Activar prueba</Link></div>; })}</div>
+            <Link href="/empresa/licencias" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#DCE1E6] bg-white px-5 py-4 text-sm font-black text-[#0B0C0E]">Administrar usuarios y licencias</Link>
           </SectionCard>
 
           <SectionCard title="Estado de confianza" eyebrow="WAMA Trust" action={<Link href="/empresa/trust" className="text-sm font-black text-[#008F87]">Ver centro</Link>}>

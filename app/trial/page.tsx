@@ -14,6 +14,7 @@ export default function TrialPage() {
     ownerPhone: "",
     ownerEmail: "",
     website: "",
+    moduleKey: "expense" as "expense" | "sales",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -48,11 +49,11 @@ export default function TrialPage() {
           <div className="relative mx-auto grid max-w-7xl gap-14 px-6 py-16 lg:grid-cols-[0.86fr_1.14fr] lg:items-center lg:py-24">
             <div>
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">Prueba gratis por 15 días</p>
-              <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl">Activa Rendiciones de Gastos en WAMA.</h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">Crea el portal de tu empresa, recibe tus claves por correo y comienza a gestionar gastos con trazabilidad desde el primer día.</p>
+              <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl">Activa el módulo que tu empresa necesita.</h1>
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">Crea un único portal WAMA y prueba Sales Hub o Expense Hub. Después podrás activar el otro módulo desde la misma empresa.</p>
               <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
                 <Benefit number="01" text="15 días de prueba sin pago inicial" />
-                <Benefit number="02" text="10 usuarios incluidos en Rendiciones de Gastos" />
+                <Benefit number="02" text="10 usuarios independientes por módulo" />
                 <Benefit number="03" text="Correo inmediato con acceso administrador" />
                 <Benefit number="04" text="Uso en computador, tablet y aplicación móvil" />
               </div>
@@ -77,6 +78,12 @@ export default function TrialPage() {
                   <p className="mt-4 max-w-xl text-sm leading-7 text-[#69717D]">Completa estos datos una sola vez. WAMA creará la empresa y enviará el acceso al administrador.</p>
 
                   <div className="mt-8 grid gap-5">
+                    <Field label="Módulo que quieres probar">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <ModuleChoice active={form.moduleKey === "expense"} title="Expense Hub" text="Rendiciones de gastos" onClick={() => setForm({ ...form, moduleKey: "expense" })} />
+                        <ModuleChoice active={form.moduleKey === "sales"} title="Sales Hub" text="CRM y oportunidades" onClick={() => setForm({ ...form, moduleKey: "sales" })} />
+                      </div>
+                    </Field>
                     <div className="grid gap-5 md:grid-cols-2">
                       <Field label="Empresa"><input value={form.companyName} onChange={(e) => setForm({ ...form, companyName: e.target.value })} className={inputClass} placeholder="Nombre de la empresa" required /></Field>
                       <Field label="RUT empresa"><input value={form.companyRut} onChange={(e) => setForm({ ...form, companyRut: e.target.value })} className={inputClass} placeholder="76.123.456-7" /></Field>
@@ -91,12 +98,12 @@ export default function TrialPage() {
                     <div className="rounded-2xl border border-[#DDE3E7] bg-[#F7F9FA] p-5">
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#008F87]">Tu prueba incluye</p>
                       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                        <Included text="Rendiciones de Gastos" />
+                        <Included text={form.moduleKey === "expense" ? "Expense Hub" : "Sales Hub / CRM"} />
                         <Included text="15 días de acceso" />
                         <Included text="10 usuarios incluidos" />
                         <Included text="Administrador principal" />
                       </div>
-                      <p className="mt-4 text-xs leading-5 text-[#69717D]">Los 10 usuarios corresponden a toda la empresa dentro de Rendiciones de Gastos. Un usuario puede participar en varios proyectos sin consumir cupos adicionales.</p>
+                      <p className="mt-4 text-xs leading-5 text-[#69717D]">Cada módulo posee sus propias 10 licencias. El administrador ocupa el primer cupo del módulo activado y puede invitar a 9 personas más.</p>
                     </div>
                   </div>
 
@@ -121,4 +128,7 @@ function Benefit({ number, text }: { number: string; text: string }) {
 }
 function Included({ text }: { text: string }) {
   return <div className="flex items-center gap-2 font-bold"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#00E5D6] text-[11px]">✓</span>{text}</div>;
+}
+function ModuleChoice({ active, title, text, onClick }: { active: boolean; title: string; text: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`rounded-2xl border p-4 text-left transition ${active ? "border-[#00AFA4] bg-[#DFFFFA]" : "border-[#D7DBE0] bg-white hover:border-[#00AFA4]"}`}><strong className="block text-sm">{title}</strong><span className="mt-1 block text-xs text-[#69717D]">{text}</span></button>;
 }

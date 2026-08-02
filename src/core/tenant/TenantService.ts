@@ -18,7 +18,7 @@ type TenantRow = {
   timezone: string;
   status: Tenant["status"];
   trial_ends_at: string | null;
-  onboarding_completed: boolean;
+  onboarding_completed_at: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -55,7 +55,8 @@ function mapTenant(row: TenantRow): Tenant {
     timezone: row.timezone,
     status: row.status,
     trialEndsAt: row.trial_ends_at,
-    onboardingCompleted: row.onboarding_completed,
+    onboardingCompleted: Boolean(row.onboarding_completed_at),
+    onboardingCompletedAt: row.onboarding_completed_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -100,32 +101,63 @@ async function getCurrentProfileId(): Promise<string> {
 }
 
 export async function getMyTenants(): Promise<TenantWithMembership[]> {
-  const { data, error } = await supabase.rpc("wama_my_portal_tenants");
+  const profileId = await getCurrentProfileId();
+
+  const { data, error } = await supabase
+    .from("wama_tenant_memberships")
+    .select(
+      `
+        id,
+        tenant_id,
+        profile_id,
+        role,
+        status,
+        joined_at,
+        wama_tenants!inner (
+          id,
+          code,
+          name,
+          slug,
+          logo_url,
+          country_code,
+          timezone,
+          status,
+          trial_ends_at,
+          onboarding_completed_at,
+          created_at,
+          updated_at
+        )
+      `,
+    )
+    .eq("profile_id", profileId)
+    .eq("status", "active")
+    .order("joined_at", { ascending: true });
 
   if (error) {
     throw new Error(error.message || "No fue posible cargar las empresas.");
   }
 
-  return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
-    ...mapTenant({
-      id: String(row.tenant_id), code: String(row.tenant_code), name: String(row.tenant_name),
-      slug: String(row.tenant_slug), logo_url: row.tenant_logo_url ? String(row.tenant_logo_url) : null,
-      country_code: String(row.tenant_country_code), timezone: String(row.tenant_timezone),
-      status: row.tenant_status as Tenant["status"], trial_ends_at: row.tenant_trial_ends_at ? String(row.tenant_trial_ends_at) : null,
-      onboarding_completed: Boolean(row.tenant_onboarding_completed), created_at: String(row.tenant_created_at), updated_at: String(row.tenant_updated_at),
-    }),
-    membership: {
-      id: String(row.membership_id), tenantId: String(row.tenant_id), profileId: String(row.profile_id),
-      role: row.membership_role as TenantMembership["role"], status: row.membership_status as TenantMembership["status"], joinedAt: String(row.joined_at),
-    },
-  }));
+  return ((data ?? []) as unknown as MembershipRow[]).flatMap((row) => {
+    const tenantRow = Array.isArray(row.wama_tenants)
+      ? row.wama_tenants[0]
+      : row.wama_tenants;
+
+    if (!tenantRow) return [];
+
+    return [
+      {
+        ...mapTenant(tenantRow),
+        membership: mapMembership(row),
+      },
+    ];
+  });
 }
 
 export async function getTenantById(tenantId: string): Promise<Tenant> {
   const { data, error } = await supabase
     .from("wama_tenants")
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed, created_at, updated_at",
+      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .eq("id", tenantId)
     .single();
@@ -143,7 +175,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant> {
   const { data, error } = await supabase
     .from("wama_tenants")
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed, created_at, updated_at",
+      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .eq("slug", normalizedSlug)
     .single();
@@ -159,7 +191,7 @@ export async function updateTenant(
   tenantId: string,
   input: UpdateTenantInput,
 ): Promise<Tenant> {
-  const payload: Record<string, string | null | boolean> = {};
+  const payload: Record<string, string | null> = {};
 
   if (input.name !== undefined) payload.name = input.name.trim();
   if (input.logoUrl !== undefined) payload.logo_url = input.logoUrl;
@@ -167,7 +199,11 @@ export async function updateTenant(
     payload.country_code = input.countryCode.trim().toUpperCase();
   }
   if (input.timezone !== undefined) payload.timezone = input.timezone.trim();
-  if (input.onboardingCompleted !== undefined) payload.onboarding_completed = input.onboardingCompleted;
+  if (input.onboardingCompleted !== undefined) {
+    payload.onboarding_completed_at = input.onboardingCompleted
+      ? new Date().toISOString()
+      : null;
+  }
 
   if (Object.keys(payload).length === 0) {
     return getTenantById(tenantId);
@@ -178,7 +214,7 @@ export async function updateTenant(
     .update(payload)
     .eq("id", tenantId)
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed, created_at, updated_at",
+      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .single();
 
