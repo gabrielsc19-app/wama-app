@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Bot, CheckCircle2, ShieldCheck, TrendingUp } from "lucide-react";
+import { ArrowRight, Bot, CheckCircle2, ShieldCheck, Sparkles, TrendingUp } from "lucide-react";
 import EnterpriseShell from "../../src/components/enterprise/EnterpriseShell";
 import MobileInstallButton from "../../src/components/enterprise/MobileInstallButton";
 import { SectionCard, StatCard, StatusPill } from "../../src/components/enterprise/PortalUI";
@@ -35,7 +35,13 @@ export default function CompanyPage() {
         <section className="overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">{data.tenant.name.slice(0, 2).toUpperCase()}</div>
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">
+                {data.tenant.logoUrl ? (
+                  <img src={data.tenant.logoUrl} alt={`Logo de ${data.tenant.name}`} className="h-full w-full object-contain bg-white p-1" />
+                ) : (
+                  data.tenant.name.slice(0, 2).toUpperCase()
+                )}
+              </div>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-[#00E5D6]">Portal empresarial</p>
                 <h2 className="mt-2 text-3xl font-black tracking-[-0.05em] sm:text-4xl">{data.tenant.name}</h2>
@@ -59,13 +65,36 @@ export default function CompanyPage() {
 
         <Link href="/empresa/ia" className="group grid gap-5 overflow-hidden rounded-[2rem] bg-[#DFFFFA] p-6 transition hover:-translate-y-0.5 sm:p-8 lg:grid-cols-[auto_1fr_auto] lg:items-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#0B0C0E] text-[#00E5D6]"><Bot className="h-7 w-7" /></span>
-          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Tu empresa está operando con normalidad.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes {Math.max(capacity - usedSeats, 0)} cupos disponibles entre tus módulos activos.</p></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-[#008F87]">WAMA AI</p><h2 className="mt-1 text-2xl font-black tracking-[-0.04em]">Buenos días. Tu empresa está operando con normalidad.</h2><p className="mt-2 text-sm leading-6 text-[#50606A]">Tienes 13 cupos disponibles, ningún riesgo crítico y 3 usuarios que conviene revisar por baja actividad.</p></div>
           <span className="inline-flex items-center gap-2 font-black text-[#008F87]">Ver recomendaciones <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" /></span>
         </Link>
 
         <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
           <SectionCard title="Tus módulos WAMA" eyebrow="Portal modular" action={<Link href="/empresa/licencias" className="text-sm font-black text-[#008F87]">Administrar licencias</Link>}>
-            <div className="grid gap-4 md:grid-cols-2">{(["sales", "expense"] as const).map((moduleKey) => { const license = commercialLicenses.find((item) => item.module_key === moduleKey); const title = moduleKey === "sales" ? "Sales Hub" : "Expense Hub"; const href = moduleKey === "sales" ? "/sales-hub" : "/expense-hub"; return license ? <div key={moduleKey} className="rounded-3xl border border-[#DCE1E6] p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#008F87]">{license.license_status === "trial" ? "Prueba activa" : license.license_status === "active" ? "Plan pagado" : "Requiere atención"}</p><h3 className="mt-1 text-xl font-black">{title}</h3></div><StatusPill>{license.license_status === "trial" ? `${license.trial_days_remaining} días` : license.license_status}</StatusPill></div><p className="mt-4 text-sm text-[#69717D]">{license.used_seats} de {license.seat_capacity} licencias utilizadas · {license.available_seats} disponibles</p><Link href={href} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E]">Ingresar a {title}</Link></div> : <div key={moduleKey} className="rounded-3xl border border-dashed border-[#BFC6CD] bg-[#F7F9FA] p-5"><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#69717D]">Disponible</p><h3 className="mt-1 text-xl font-black">{title}</h3><p className="mt-3 text-sm leading-6 text-[#69717D]">Activa 15 días gratis y recibe 10 licencias propias para este módulo.</p><Link href="/trial" className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Activar prueba</Link></div>; })}</div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {(["sales", "expense"] as const).map((moduleKey) => {
+                const license = commercialLicenses.find((item) => item.module_key === moduleKey);
+                const title = moduleKey === "sales" ? "Sales Hub" : "Expense Hub";
+                const href = moduleKey === "sales" ? "/sales-hub" : "/expense-hub";
+
+                return license ? (
+                  <div key={moduleKey} className="rounded-3xl border border-[#DCE1E6] p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#008F87]">{license.license_status === "trial" ? "Prueba activa" : license.license_status === "active" ? "Plan pagado" : "Requiere atención"}</p><h3 className="mt-1 text-xl font-black">{title}</h3></div>
+                      <StatusPill>{license.license_status === "trial" ? `${license.trial_days_remaining} días` : license.license_status}</StatusPill>
+                    </div>
+                    <p className="mt-4 text-sm text-[#69717D]">{license.used_seats} de {license.seat_capacity} licencias utilizadas · {license.available_seats} disponibles</p>
+                    <Link href={href} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] shadow-[0_10px_24px_rgba(0,229,214,.22)] transition hover:bg-[#00CFC2]">Ingresar a {title}</Link>
+                  </div>
+                ) : (
+                  <div key={moduleKey} className="rounded-3xl border border-dashed border-[#BFC6CD] bg-[#F7F9FA] p-5">
+                    <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#69717D]">Disponible</p><h3 className="mt-1 text-xl font-black">{title}</h3>
+                    <p className="mt-3 text-sm leading-6 text-[#69717D]">Activa 15 días gratis y recibe 10 licencias propias para este módulo.</p>
+                    <Link href={`/trial?module=${moduleKey}`} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Activar prueba</Link>
+                  </div>
+                );
+              })}
+            </div>
             <Link href="/empresa/licencias" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#DCE1E6] bg-white px-5 py-4 text-sm font-black text-[#0B0C0E]">Administrar usuarios y licencias</Link>
           </SectionCard>
 
