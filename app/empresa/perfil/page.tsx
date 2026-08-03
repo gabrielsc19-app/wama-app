@@ -1,8 +1,8 @@
 "use client";
 
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
-import { EnterpriseShell } from "../../../src/components/enterprise/EnterpriseShell";
-import { loadEnterprisePortalData, type EnterprisePortalData } from "../../../src/lib/enterprisePortal";
+import EnterpriseShell from "../../../src/components/enterprise/EnterpriseShell";
+import { loadEnterprisePortalData, type EnterprisePortalData } from "../../../src/core/portal/portalData";
 import { updateTenant } from "../../../src/core/tenant/TenantService";
 
 const MAX_LOGO_BYTES = 2 * 1024 * 1024;
