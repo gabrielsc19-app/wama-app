@@ -14,7 +14,7 @@ const probability:Record<Stage,number>={"Marca objetivo":10,"Primer contacto":20
 const blank={company:"",contact:"",email:"",phone:"",website:"",product:"",need:"",saleType:"Recurrente" as SaleType,amount:0,stage:"Marca objetivo" as Stage,owner:"",source:"Contacto directo",comment:""};
 
 export default function SalesHubCrmPage(){
- const[deals,setDeals]=useState<Deal[]>([]),[settings,setSettings]=useState<Settings|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[showNew,setShowNew]=useState(false),[selected,setSelected]=useState<Deal|null>(null),[form,setForm]=useState(blank),[pendingFiles,setPendingFiles]=useState<File[]>([]),[detailFiles,setDetailFiles]=useState<File[]>([]),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[query,setQuery]=useState(""),[dragged,setDragged]=useState<string|null>(null),[configIndustry,setConfigIndustry]=useState(""),[configCurrency,setConfigCurrency]=useState<Currency>("UF"),[productText,setProductText]=useState("");
+ const[deals,setDeals]=useState<Deal[]>([]),[settings,setSettings]=useState<Settings|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[showNew,setShowNew]=useState(false),[selected,setSelected]=useState<Deal|null>(null),[editing,setEditing]=useState(false),[editDeal,setEditDeal]=useState<Deal|null>(null),[form,setForm]=useState(blank),[pendingFiles,setPendingFiles]=useState<File[]>([]),[detailFiles,setDetailFiles]=useState<File[]>([]),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[query,setQuery]=useState(""),[dragged,setDragged]=useState<string|null>(null),[configIndustry,setConfigIndustry]=useState(""),[configCurrency,setConfigCurrency]=useState<Currency>("UF"),[productText,setProductText]=useState("");
  async function token(){const{data}=await supabase.auth.getSession();return data.session?.access_token||""}
  async function api(path:string,init:RequestInit={}){const t=await token();const headers=new Headers(init.headers);headers.set("Authorization",`Bearer ${t}`);if(init.body&&!(init.body instanceof FormData))headers.set("Content-Type","application/json");const response=await fetch(path,{...init,headers});const data=await response.json();if(!response.ok)throw new Error(data.error||"No se pudo completar la operación.");return data}
  async function load(){setLoading(true);setError("");try{const[s,d]=await Promise.all([api("/api/sales/settings"),api("/api/sales/deals")]);setSettings(s.settings);setDeals(d.deals||[]);if(s.settings){setConfigIndustry(s.settings.industry||"");setConfigCurrency(s.settings.currency);setProductText((s.settings.products||[]).join("\n"))}}catch(e){setError(e instanceof Error?e.message:"Error")}finally{setLoading(false)}}
@@ -28,25 +28,257 @@ export default function SalesHubCrmPage(){
  async function remove(id:string){if(!confirm("¿Eliminar este deal?"))return;try{await api(`/api/sales/deals?id=${id}`,{method:"DELETE"});setDeals(c=>c.filter(d=>d.id!==id));setSelected(null)}catch(e){setError(e instanceof Error?e.message:"Error")}}
  async function openFile(id:string){try{const r=await api(`/api/sales/files?id=${id}`);window.open(r.url,"_blank","noopener,noreferrer")}catch(e){setError(e instanceof Error?e.message:"Error")}}
  async function addFiles(){if(!selected||!detailFiles.length)return;setUploading(true);setError("");try{let added:DealFile[]=[];for(const file of detailFiles){const fd=new FormData();fd.append("dealId",selected.id);fd.append("file",file);const uploaded=await api("/api/sales/files",{method:"POST",body:fd});added=[...added,uploaded.file]}const update=(deal:Deal)=>deal.id===selected.id?{...deal,wama_sales_deal_files:[...(deal.wama_sales_deal_files||[]),...added]}:deal;setDeals(current=>current.map(update));setSelected(current=>current?update(current):current);setDetailFiles([])}catch(e){setError(e instanceof Error?e.message:"No se pudieron adjuntar los archivos.")}finally{setUploading(false)}}
+ async function saveDeal(e:FormEvent){e.preventDefault();if(!editDeal)return;setSaving(true);setError("");try{const r=await api("/api/sales/deals",{method:"PATCH",body:JSON.stringify(editDeal)});const updated:Deal=r.deal;setDeals(current=>current.map(d=>d.id===updated.id?updated:d));setSelected(updated);setEditDeal(updated);setEditing(false)}catch(e){setError(e instanceof Error?e.message:"No se pudo guardar la información.")}finally{setSaving(false)}}
+ function logoUrl(website:string){const raw=website.trim();if(!raw)return"";try{const url=new URL(/^https?:\/\//i.test(raw)?raw:`https://${raw}`);return`https://www.google.com/s2/favicons?domain=${encodeURIComponent(url.hostname)}&sz=128`}catch{return""}}
 
  if(loading)return <main className="grid min-h-screen place-items-center bg-[#F5F6F7] font-black">Cargando Sales Hub…</main>;
  if(!settings||!settings.industry)return <Setup industry={configIndustry} setIndustry={setConfigIndustry} currency={configCurrency} setCurrency={setConfigCurrency} productText={productText} setProductText={setProductText} saving={saving} error={error} onSubmit={saveSettings}/>;
  return <main className="min-h-screen bg-[#F4F7F8] text-[#162027]">
-  <header className="sticky top-0 z-40 bg-white/90 shadow-[0_1px_0_rgba(37,57,68,.08)] backdrop-blur-xl"><div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between"><div><p className="text-xs font-black uppercase tracking-[.24em] text-[#00AFA4]">Sales Hub · {settings.currency}</p><h1 className="text-3xl font-black">CRM comercial</h1><p className="text-sm text-[#63708A]">Deals persistentes, productos configurados y documentos privados.</p></div><div className="flex flex-wrap gap-2"><Link href="/empresa" className="rounded-full border px-5 py-3 text-sm font-black">Volver a módulos</Link><Link href="/empresa/usuarios" className="rounded-full border px-5 py-3 text-sm font-black">Usuarios y licencias</Link><button onClick={()=>{setConfigCurrency(settings.currency);setProductText(settings.products.join("\n"));setSettings(null)}} className="rounded-full border px-5 py-3 text-sm font-black">Configurar ventas</button><button onClick={()=>setShowNew(true)} className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black">+ Nuevo deal</button></div></div></header>
-  <section className="mx-auto max-w-[1800px] p-5"><div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6"><Metric label="Abiertos" value={String(metrics.open)}/><Metric label="Ganados" value={String(metrics.won)}/><Metric label="Perdidos" value={String(metrics.lost)}/><Metric label="Win rate" value={`${metrics.rate}%`}/><Metric label="Pipeline" value={money(metrics.total)}/><Metric label="Ponderado" value={money(metrics.weighted)}/></div>
+  <header className="sticky top-0 z-40 bg-white/90 shadow-[0_1px_0_rgba(37,57,68,.08)] backdrop-blur-xl">
+<div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+<div>
+<p className="text-xs font-black uppercase tracking-[.24em] text-[#00AFA4]">Sales Hub · {settings.currency}</p>
+<h1 className="text-3xl font-black">CRM comercial</h1>
+<p className="text-sm text-[#63708A]">Deals persistentes, productos configurados y documentos privados.</p>
+</div>
+<div className="flex flex-wrap gap-2">
+<Link href="/empresa" className="rounded-full border px-5 py-3 text-sm font-black">Volver a módulos</Link>
+<Link href="/empresa/usuarios" className="rounded-full border px-5 py-3 text-sm font-black">Usuarios y licencias</Link>
+<button onClick={()=>{setConfigCurrency(settings.currency);setProductText(settings.products.join("\n"));setSettings(null)}} className="rounded-full border px-5 py-3 text-sm font-black">Configurar ventas</button>
+<button onClick={()=>setShowNew(true)} className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black">+ Nuevo deal</button>
+</div>
+</div>
+</header>
+  <section className="mx-auto max-w-[1800px] p-5">
+<div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+<Metric label="Abiertos" value={String(metrics.open)}/>
+<Metric label="Ganados" value={String(metrics.won)}/>
+<Metric label="Perdidos" value={String(metrics.lost)}/>
+<Metric label="Win rate" value={`${metrics.rate}%`}/>
+<Metric label="Pipeline" value={money(metrics.total)}/>
+<Metric label="Ponderado" value={money(metrics.weighted)}/>
+</div>
    {error&&<div className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 font-bold text-red-700">{error}</div>}
-   <div className="mb-5 rounded-3xl bg-white p-4 shadow-[0_10px_35px_rgba(25,45,55,.06)]"><input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar empresa, contacto, producto o necesidad…"/></div>
-   <div className="overflow-x-auto pb-6"><div className="grid min-w-[1680px] grid-cols-6 gap-4">{stages.map(stage=>{const list=filtered.filter(d=>d.stage===stage);return <section key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragged)void move(dragged,stage);setDragged(null)}} className="min-h-[540px] rounded-3xl bg-[#EAF0F2] p-3 shadow-[inset_0_0_0_1px_rgba(91,113,123,.08)]"><div className="mb-3 border-t-4 border-[#00E5D6] px-1 pt-3"><div className="flex justify-between gap-2"><h2 className="text-sm font-black uppercase">{stage}</h2><span className="rounded-full bg-white px-2 py-1 text-xs font-black">{probability[stage]}%</span></div><p className="mt-1 text-xs text-[#63708A]">{list.length} oportunidad(es)</p></div><div className="grid gap-3">{list.map(deal=><article key={deal.id} draggable onDragStart={()=>setDragged(deal.id)} onDragEnd={()=>setDragged(null)} className={`group cursor-grab rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(34,57,67,.08)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(34,57,67,.13)] active:cursor-grabbing ${dragged===deal.id?"opacity-50":""}`}><div className="flex items-start gap-3"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#0B0C0E] text-sm font-black text-[#00E5D6]">{deal.company.slice(0,2).toUpperCase()}</div><button className="min-w-0 flex-1 text-left" onClick={()=>setSelected(deal)}><h3 className="truncate text-sm font-black">{deal.company}</h3><p className="mt-1 truncate text-xs font-bold text-[#63708A]">{deal.product||"Sin producto"}</p></button><button type="button" aria-label={`Abrir ${deal.company}`} onClick={()=>setSelected(deal)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#00E5D6] text-lg font-black text-black">+</button></div><p className="mt-3 line-clamp-2 min-h-8 text-xs text-[#63708A]">{deal.need||deal.comment||"Sin comentario registrado"}</p><div className="mt-3 flex items-end justify-between border-t pt-3"><div><span className="block text-[10px] font-black uppercase text-[#89919D]">Responsable</span><span className="text-xs font-bold">{deal.owner||"Sin asignar"}</span></div><strong className="text-sm">{money(Number(deal.amount),deal.currency)}</strong></div>{deal.wama_sales_deal_files?.length>0&&<button onClick={()=>setSelected(deal)} className="mt-2 text-xs font-black text-[#008F86]">📎 {deal.wama_sales_deal_files.length} archivo(s)</button>}</article>)}</div></section>})}</div></div>
+   <div className="mb-5 rounded-3xl bg-white p-4 shadow-[0_10px_35px_rgba(25,45,55,.06)]">
+<input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar empresa, contacto, producto o necesidad…"/>
+</div>
+   <div className="overflow-x-auto pb-6">
+<div className="grid min-w-[1680px] grid-cols-6 gap-4">{stages.map(stage=>{const list=filtered.filter(d=>d.stage===stage);return <section key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragged)void move(dragged,stage);setDragged(null)}} className="min-h-[540px] rounded-3xl bg-[#EAF0F2] p-3 shadow-[inset_0_0_0_1px_rgba(91,113,123,.08)]">
+<div className="mb-3 border-t-4 border-[#00E5D6] px-1 pt-3">
+<div className="flex justify-between gap-2">
+<h2 className="text-sm font-black uppercase">{stage}</h2>
+<span className="rounded-full bg-white px-2 py-1 text-xs font-black">{probability[stage]}%</span>
+</div>
+<p className="mt-1 text-xs text-[#63708A]">{list.length} oportunidad(es)</p>
+</div>
+<div className="grid gap-3">{list.map(deal=>
+<article key={deal.id} draggable onDragStart={()=>setDragged(deal.id)} onDragEnd={()=>setDragged(null)} className={`group cursor-grab rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(34,57,67,.08)] transition hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(34,57,67,.13)] active:cursor-grabbing ${dragged===deal.id?"opacity-50":""}`}>
+<div className="flex items-start gap-3">
+<div className="relative grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#0B0C0E] text-sm font-black text-[#00E5D6]">{deal.company.slice(0,2).toUpperCase()}{logoUrl(deal.website)&&<img src={logoUrl(deal.website)} alt={`Logo de ${deal.company}`} className="absolute inset-0 h-full w-full bg-white object-contain p-1" onError={e=>{e.currentTarget.style.display="none"}}/>}</div>
+<button className="min-w-0 flex-1 text-left" onClick={()=>setSelected(deal)}>
+<h3 className="truncate text-sm font-black">{deal.company}</h3>
+<p className="mt-1 truncate text-xs font-bold text-[#63708A]">{deal.product||"Sin producto"}</p>
+</button>
+<button type="button" aria-label={`Abrir ${deal.company}`} onClick={()=>setSelected(deal)} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#00E5D6] text-lg font-black text-black">+</button>
+</div>
+<p className="mt-3 line-clamp-2 min-h-8 text-xs text-[#63708A]">{deal.need||deal.comment||"Sin comentario registrado"}</p>
+<div className="mt-3 flex items-end justify-between border-t pt-3">
+<div>
+<span className="block text-[10px] font-black uppercase text-[#89919D]">Responsable</span>
+<span className="text-xs font-bold">{deal.owner||"Sin asignar"}</span>
+</div>
+<strong className="text-sm">{money(Number(deal.amount),deal.currency)}</strong>
+</div>{deal.wama_sales_deal_files?.length>0&&<button onClick={()=>setSelected(deal)} className="mt-2 text-xs font-black text-[#008F86]">📎 {deal.wama_sales_deal_files.length} archivo(s)</button>}</article>)}</div>
+</section>})}</div>
+</div>
   </section>
-  {showNew&&<Modal title="Crear oportunidad" close={()=>setShowNew(false)}><form onSubmit={createDeal} className="grid gap-4 md:grid-cols-2"><Input label="Empresa"><input required className="input" value={form.company} onChange={e=>setForm({...form,company:e.target.value})}/></Input><Input label="Producto o servicio"><select required className="input" value={form.product} onChange={e=>setForm({...form,product:e.target.value})}><option value="">Seleccionar</option>{settings.products.map(p=><option key={p}>{p}</option>)}</select></Input><Input label="Contacto"><input className="input" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})}/></Input><Input label="Correo"><input type="email" className="input" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></Input><Input label="Teléfono"><input className="input" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></Input><Input label="Sitio web"><input className="input" value={form.website} onChange={e=>setForm({...form,website:e.target.value})}/></Input><Input label={`Monto (${settings.currency})`}><input type="number" min="0" className="input" value={form.amount} onChange={e=>setForm({...form,amount:Number(e.target.value)})}/></Input><Input label="Tipo de venta"><select className="input" value={form.saleType} onChange={e=>setForm({...form,saleType:e.target.value as SaleType})}><option>Spot</option><option>Recurrente</option><option>Mixta</option></select></Input><Input label="Etapa"><select className="input" value={form.stage} onChange={e=>setForm({...form,stage:e.target.value as Stage})}>{stages.map(s=><option key={s}>{s}</option>)}</select></Input><Input label="Responsable"><input className="input" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})}/></Input><Input label="Adjuntos (máx. 15 MB c/u)"><input type="file" multiple className="input" onChange={e=>setPendingFiles(Array.from(e.target.files||[]))}/></Input><div className="md:col-span-2"><Input label="Necesidad / comentario"><textarea className="input min-h-24" value={form.need} onChange={e=>setForm({...form,need:e.target.value})}/></Input></div><div className="flex justify-end gap-3 md:col-span-2"><button type="button" onClick={()=>setShowNew(false)} className="rounded-full border px-6 py-3 font-black">Cancelar</button><button disabled={saving} className="rounded-full bg-[#00E5D6] px-7 py-3 font-black">{saving?"Guardando…":"Crear y guardar"}</button></div></form></Modal>}
-  {selected&&<Modal title={selected.company} close={()=>{setSelected(null);setDetailFiles([])}}><div className="space-y-5"><section className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-[#102228] to-[#1D3940] p-6 text-white sm:flex-row sm:items-center sm:justify-between"><div><span className="inline-flex rounded-full bg-[#00E5D6] px-3 py-1 text-xs font-black text-[#0B0C0E]">{selected.stage} · {selected.probability}%</span><h3 className="mt-3 text-2xl font-black">{selected.product||"Oportunidad comercial"}</h3><p className="mt-1 text-sm text-white/65">Creada el {new Intl.DateTimeFormat("es-CL",{dateStyle:"long"}).format(new Date(selected.created_at))}</p></div><div className="sm:text-right"><p className="text-xs font-black uppercase tracking-[.16em] text-white/55">Valor del negocio</p><p className="mt-1 text-3xl font-black text-[#00E5D6]">{money(Number(selected.amount),selected.currency)}</p></div></section><div className="grid gap-5 md:grid-cols-2"><Card title="Información del negocio"><Row label="Producto o servicio" value={selected.product||"Sin registrar"}/><Row label="Tipo de venta" value={selected.sale_type||"Sin registrar"}/><Row label="Responsable" value={selected.owner||"Sin asignar"}/><Row label="Origen" value={selected.source||"Sin registrar"}/></Card><Card title="Contacto"><Row label="Nombre" value={selected.contact||"Sin registrar"}/><Row label="Correo" value={selected.email||"Sin registrar"}/><Row label="Teléfono" value={selected.phone||"Sin registrar"}/><Row label="Sitio web" value={selected.website||"Sin registrar"}/></Card></div>{(selected.need||selected.comment)&&<section className="rounded-3xl bg-[#F4F7F8] p-5"><p className="text-xs font-black uppercase tracking-[.14em] text-[#73818A]">Antecedentes</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#34434A]">{selected.need||selected.comment}</p></section>}<section className="rounded-3xl bg-[#F7FAFA] p-5 shadow-[inset_0_0_0_1px_rgba(84,110,120,.10)]"><div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-black uppercase tracking-[.14em] text-[#008F86]">Historial documental</p><h3 className="mt-1 text-lg font-black">Archivos y nuevos antecedentes</h3><p className="mt-1 text-sm text-[#63708A]">Puedes seguir agregando documentos en cualquier momento. Los anteriores siempre se conservan.</p></div><span className="rounded-full bg-white px-3 py-2 text-xs font-black text-[#52616A]">{selected.wama_sales_deal_files?.length||0} archivo(s)</span></div><div className="mt-4 grid gap-2">{selected.wama_sales_deal_files?.length?selected.wama_sales_deal_files.map(f=><button key={f.id} onClick={()=>void openFile(f.id)} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_5px_18px_rgba(35,62,72,.06)] transition hover:-translate-y-0.5"><span className="min-w-0"><strong className="block truncate text-sm">📎 {f.file_name}</strong><small className="mt-1 block text-[#7A8790]">Adjuntado el {new Intl.DateTimeFormat("es-CL",{dateStyle:"medium"}).format(new Date(f.created_at))}</small></span><span className="shrink-0 text-sm font-black text-[#008F86]">Abrir</span></button>):<div className="rounded-2xl bg-white p-5 text-center text-sm text-[#63708A]">Aún no hay archivos. Puedes agregar el primero abajo.</div>}</div><div className="mt-4 rounded-2xl border-2 border-dashed border-[#B7D8D4] bg-white p-4"><Input label="Adjuntar más información (máx. 15 MB por archivo)"><input key={detailFiles.map(f=>`${f.name}-${f.size}`).join("|")} type="file" multiple className="input" onChange={e=>setDetailFiles(Array.from(e.target.files||[]))}/></Input>{detailFiles.length>0&&<p className="mt-2 text-xs font-bold text-[#52616A]">{detailFiles.length} archivo(s) seleccionado(s)</p>}<button type="button" disabled={uploading||!detailFiles.length} onClick={()=>void addFiles()} className="mt-3 w-full rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 disabled:opacity-45">{uploading?"Adjuntando…":"+ Agregar al historial"}</button></div></section><div className="flex justify-end"><button onClick={()=>void remove(selected.id)} className="rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-600">Eliminar deal</button></div></div></Modal>}
+  {showNew&&<Modal title="Crear oportunidad" close={()=>setShowNew(false)}>
+<form onSubmit={createDeal} className="grid gap-4 md:grid-cols-2">
+<Input label="Empresa">
+<input required className="input" value={form.company} onChange={e=>setForm({...form,company:e.target.value})}/>
+</Input>
+<Input label="Producto o servicio">
+<select required className="input" value={form.product} onChange={e=>setForm({...form,product:e.target.value})}>
+<option value="">Seleccionar</option>{settings.products.map(p=>
+<option key={p}>{p}</option>)}</select>
+</Input>
+<Input label="Contacto">
+<input className="input" value={form.contact} onChange={e=>setForm({...form,contact:e.target.value})}/>
+</Input>
+<Input label="Correo">
+<input type="email" className="input" value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/>
+</Input>
+<Input label="Teléfono">
+<input className="input" value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/>
+</Input>
+<Input label="Sitio web">
+<input className="input" value={form.website} onChange={e=>setForm({...form,website:e.target.value})}/>
+</Input>
+<Input label={`Monto (${settings.currency})`}>
+<input type="number" min="0" className="input" value={form.amount} onChange={e=>setForm({...form,amount:Number(e.target.value)})}/>
+</Input>
+<Input label="Tipo de venta">
+<select className="input" value={form.saleType} onChange={e=>setForm({...form,saleType:e.target.value as SaleType})}>
+<option>Spot</option>
+<option>Recurrente</option>
+<option>Mixta</option>
+</select>
+</Input>
+<Input label="Etapa">
+<select className="input" value={form.stage} onChange={e=>setForm({...form,stage:e.target.value as Stage})}>{stages.map(s=>
+<option key={s}>{s}</option>)}</select>
+</Input>
+<Input label="Responsable">
+<input className="input" value={form.owner} onChange={e=>setForm({...form,owner:e.target.value})}/>
+</Input>
+<Input label="Adjuntos (máx. 15 MB c/u)">
+<input type="file" multiple className="input" onChange={e=>setPendingFiles(Array.from(e.target.files||[]))}/>
+</Input>
+<div className="md:col-span-2">
+<Input label="Necesidad / comentario">
+<textarea className="input min-h-24" value={form.need} onChange={e=>setForm({...form,need:e.target.value})}/>
+</Input>
+</div>
+<div className="flex justify-end gap-3 md:col-span-2">
+<button type="button" onClick={()=>setShowNew(false)} className="rounded-full border px-6 py-3 font-black">Cancelar</button>
+<button disabled={saving} className="rounded-full bg-[#00E5D6] px-7 py-3 font-black">{saving?"Guardando…":"Crear y guardar"}</button>
+</div>
+</form>
+</Modal>}
+  {selected&&<Modal title={selected.company} close={()=>{setSelected(null);setDetailFiles([]);setEditing(false);setEditDeal(null)}}>
+<div className="space-y-5">
+<section className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-[#102228] to-[#1D3940] p-6 text-white sm:flex-row sm:items-center sm:justify-between">
+<div className="flex items-center gap-4">
+{logoUrl(selected.website)&&<img src={logoUrl(selected.website)} alt={`Logo de ${selected.company}`} className="h-16 w-16 rounded-2xl bg-white object-contain p-2 shadow-lg" onError={e=>{e.currentTarget.style.display="none"}}/>}
+<div>
+<span className="inline-flex rounded-full bg-[#00E5D6] px-3 py-1 text-xs font-black text-[#0B0C0E]">{selected.stage} · {selected.probability}%</span>
+<h3 className="mt-3 text-2xl font-black">{selected.product||"Oportunidad comercial"}</h3>
+<p className="mt-1 text-sm text-white/65">Creada el {new Intl.DateTimeFormat("es-CL",{dateStyle:"long"}).format(new Date(selected.created_at))}</p>
+</div>
+</div>
+<div className="sm:text-right">
+<p className="text-xs font-black uppercase tracking-[.16em] text-white/55">Valor del negocio</p>
+<p className="mt-1 text-3xl font-black text-[#00E5D6]">{money(Number(selected.amount),selected.currency)}</p>
+</div>
+</section>
+<div className="flex justify-end">
+<button type="button" onClick={()=>{setEditDeal(selected);setEditing(value=>!value)}} className="rounded-full bg-[#E6FAF8] px-5 py-3 text-sm font-black text-[#007F77]">{editing?"Cancelar edición":"Editar información"}</button>
+</div>
+{editing&&editDeal&&<form onSubmit={saveDeal} className="grid gap-4 rounded-3xl bg-[#F7FAFA] p-5 md:grid-cols-2">
+<Input label="Empresa"><input required className="input" value={editDeal.company} onChange={e=>setEditDeal({...editDeal,company:e.target.value})}/></Input>
+<Input label="Producto o servicio"><select className="input" value={editDeal.product} onChange={e=>setEditDeal({...editDeal,product:e.target.value})}>{settings.products.map(p=><option key={p}>{p}</option>)}</select></Input>
+<Input label="Tipo de venta"><select className="input" value={editDeal.sale_type} onChange={e=>setEditDeal({...editDeal,sale_type:e.target.value as SaleType})}><option>Spot</option><option>Recurrente</option><option>Mixta</option></select></Input>
+<Input label="Monto"><input type="number" min="0" className="input" value={editDeal.amount} onChange={e=>setEditDeal({...editDeal,amount:Number(e.target.value)})}/></Input>
+<Input label="Etapa"><select className="input" value={editDeal.stage} onChange={e=>setEditDeal({...editDeal,stage:e.target.value as Stage})}>{stages.map(s=><option key={s}>{s}</option>)}</select></Input>
+<Input label="Responsable"><input className="input" value={editDeal.owner} onChange={e=>setEditDeal({...editDeal,owner:e.target.value})}/></Input>
+<Input label="Nombre del contacto"><input className="input" value={editDeal.contact} onChange={e=>setEditDeal({...editDeal,contact:e.target.value})}/></Input>
+<Input label="Correo"><input type="email" className="input" value={editDeal.email} onChange={e=>setEditDeal({...editDeal,email:e.target.value})}/></Input>
+<Input label="Teléfono"><input className="input" value={editDeal.phone} onChange={e=>setEditDeal({...editDeal,phone:e.target.value})}/></Input>
+<Input label="Sitio web (también obtiene el logo)"><input className="input" value={editDeal.website} onChange={e=>setEditDeal({...editDeal,website:e.target.value})}/></Input>
+<Input label="Origen"><input className="input" value={editDeal.source} onChange={e=>setEditDeal({...editDeal,source:e.target.value})}/></Input>
+<div className="md:col-span-2"><Input label="Antecedentes y comentarios"><textarea className="input min-h-28" value={editDeal.need} onChange={e=>setEditDeal({...editDeal,need:e.target.value})}/></Input></div>
+<button disabled={saving} className="rounded-full bg-[#00E5D6] px-6 py-3 font-black md:col-span-2">{saving?"Guardando…":"Guardar cambios"}</button>
+</form>}
+<div className="grid gap-5 md:grid-cols-2">
+<Card title="Información del negocio">
+<Row label="Producto o servicio" value={selected.product||"Sin registrar"}/>
+<Row label="Tipo de venta" value={selected.sale_type||"Sin registrar"}/>
+<Row label="Responsable" value={selected.owner||"Sin asignar"}/>
+<Row label="Origen" value={selected.source||"Sin registrar"}/>
+</Card>
+<Card title="Contacto">
+<Row label="Nombre" value={selected.contact||"Sin registrar"}/>
+<Row label="Correo" value={selected.email||"Sin registrar"}/>
+<Row label="Teléfono" value={selected.phone||"Sin registrar"}/>
+<Row label="Sitio web" value={selected.website||"Sin registrar"}/>
+</Card>
+</div>{(selected.need||selected.comment)&&<section className="rounded-3xl bg-[#F4F7F8] p-5">
+<p className="text-xs font-black uppercase tracking-[.14em] text-[#73818A]">Antecedentes</p>
+<p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#34434A]">{selected.need||selected.comment}</p>
+</section>}<section className="rounded-3xl bg-[#F7FAFA] p-5 shadow-[inset_0_0_0_1px_rgba(84,110,120,.10)]">
+<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+<div>
+<p className="text-xs font-black uppercase tracking-[.14em] text-[#008F86]">Historial documental</p>
+<h3 className="mt-1 text-lg font-black">Archivos y nuevos antecedentes</h3>
+<p className="mt-1 text-sm text-[#63708A]">Puedes seguir agregando documentos en cualquier momento. Los anteriores siempre se conservan.</p>
+</div>
+<span className="rounded-full bg-white px-3 py-2 text-xs font-black text-[#52616A]">{selected.wama_sales_deal_files?.length||0} archivo(s)</span>
+</div>
+<div className="mt-4 grid gap-2">{selected.wama_sales_deal_files?.length?selected.wama_sales_deal_files.map(f=>
+<button key={f.id} onClick={()=>void openFile(f.id)} className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_5px_18px_rgba(35,62,72,.06)] transition hover:-translate-y-0.5">
+<span className="min-w-0">
+<strong className="block truncate text-sm">📎 {f.file_name}</strong>
+<small className="mt-1 block text-[#7A8790]">Adjuntado el {new Intl.DateTimeFormat("es-CL",{dateStyle:"medium"}).format(new Date(f.created_at))}</small>
+</span>
+<span className="shrink-0 text-sm font-black text-[#008F86]">Abrir</span>
+</button>):<div className="rounded-2xl bg-white p-5 text-center text-sm text-[#63708A]">Aún no hay archivos. Puedes agregar el primero abajo.</div>}</div>
+<div className="mt-4 rounded-2xl border-2 border-dashed border-[#B7D8D4] bg-white p-4">
+<Input label="Adjuntar más información (máx. 15 MB por archivo)">
+<input key={detailFiles.map(f=>`${f.name}-${f.size}`).join("|")} type="file" multiple className="input" onChange={e=>setDetailFiles(Array.from(e.target.files||[]))}/>
+</Input>{detailFiles.length>0&&<p className="mt-2 text-xs font-bold text-[#52616A]">{detailFiles.length} archivo(s) seleccionado(s)</p>}<button type="button" disabled={uploading||!detailFiles.length} onClick={()=>void addFiles()} className="mt-3 w-full rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5 disabled:opacity-45">{uploading?"Adjuntando…":"+ Agregar al historial"}</button>
+</div>
+</section>
+<div className="flex justify-end">
+<button onClick={()=>void remove(selected.id)} className="rounded-full border border-red-200 bg-red-50 px-5 py-3 text-sm font-black text-red-600">Eliminar deal</button>
+</div>
+</div>
+</Modal>}
   <style jsx global>{`.input{width:100%;border:1px solid #d7dbe0;border-radius:1rem;background:white;padding:.85rem 1rem;font-size:.9rem;font-weight:700;outline:none}.input:focus{border-color:#00afa4}button,a,select,input[type=file],article[draggable=true]{cursor:pointer}button:disabled{cursor:not-allowed}`}</style>
  </main>
 }
 
-function Setup(p:{industry:string;setIndustry:(v:string)=>void;currency:Currency;setCurrency:(v:Currency)=>void;productText:string;setProductText:(v:string)=>void;saving:boolean;error:string;onSubmit:(e:FormEvent)=>void}){return <main className="min-h-screen bg-[#F5F6F7] p-5 text-[#0B0C0E]"><div className="mx-auto max-w-5xl py-12"><Link href="/empresa" className="inline-flex cursor-pointer text-sm font-black">← Volver al portal</Link><form onSubmit={p.onSubmit} className="mt-6 rounded-[2rem] border border-[#D7DBE0] bg-white p-7 shadow-sm"><p className="text-xs font-black uppercase tracking-[.24em] text-[#008F87]">Configuración inicial de Sales Hub</p><h1 className="mt-2 text-4xl font-black">Prepara tu CRM según tu negocio</h1><p className="mt-3 text-[#4F5B68]">Selecciona el rubro y la moneda. Solo debes escribir los productos o servicios que realmente vende tu empresa.</p>{p.error&&<div className="mt-5 rounded-xl bg-red-50 p-4 font-bold text-red-700">{p.error}</div>}<div className="mt-8 grid gap-5 md:grid-cols-2"><section className="rounded-3xl border bg-[#F8FAFB] p-5"><span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">01 · Rubro</span><h2 className="mt-2 text-xl font-black">¿A qué se dedica tu empresa?</h2><select required className="input mt-4 cursor-pointer" value={p.industry} onChange={e=>p.setIndustry(e.target.value)}><option value="">Selecciona un rubro</option>{industries.map(i=><option key={i} value={i}>{i}</option>)}</select></section><section className="rounded-3xl border bg-[#F8FAFB] p-5"><span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">02 · Moneda</span><h2 className="mt-2 text-xl font-black">¿Cómo valorizarás tus ventas?</h2><select className="input mt-4 cursor-pointer" value={p.currency} onChange={e=>p.setCurrency(e.target.value as Currency)}><option value="UF">UF</option><option value="USD">Dólar estadounidense (USD)</option><option value="CLP">Pesos chilenos (CLP)</option></select></section><section className="rounded-3xl border bg-[#F8FAFB] p-5 md:col-span-2"><span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">03 · Oferta comercial</span><h2 className="mt-2 text-xl font-black">Productos o servicios que vende</h2><p className="mt-1 text-sm text-[#63708A]">Escribe uno por línea. Estos serán las opciones disponibles al crear un deal.</p><textarea required className="input mt-4 min-h-40" value={p.productText} onChange={e=>p.setProductText(e.target.value)} placeholder={'Ejemplo:\nArriendo de espacios\nPublicidad\nServicios de instalación'}/></section></div><button disabled={p.saving} className="mt-6 w-full cursor-pointer rounded-full bg-[#00E5D6] px-7 py-4 font-black text-[#0B0C0E] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{p.saving?"Guardando…":"Guardar configuración y abrir CRM"}</button></form></div></main>}
-function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/65 p-4"><div className="my-6 w-full max-w-4xl rounded-[2rem] bg-white shadow-2xl"><div className="flex items-center justify-between border-b p-6"><h2 className="text-2xl font-black">{title}</h2><button onClick={close} className="rounded-full bg-[#EEF1F4] px-5 py-3 font-black">Cerrar</button></div><div className="p-6">{children}</div></div></div>}
-function Input({label,children}:{label:string;children:React.ReactNode}){return <label className="grid gap-2"><span className="text-xs font-black uppercase tracking-[.14em] text-[#63708A]">{label}</span>{children}</label>}
-function Metric({label,value}:{label:string;value:string}){return <div className="rounded-2xl bg-white p-4 shadow-[0_8px_25px_rgba(25,45,55,.06)]"><p className="text-xs font-black uppercase text-[#63708A]">{label}</p><p className="mt-2 text-xl font-black">{value}</p></div>}
-function Card({title,children}:{title:string;children:React.ReactNode}){return <div className="rounded-2xl border p-5"><h3 className="mb-3 font-black">{title}</h3>{children}</div>}
-function Row({label,value}:{label:string;value:string}){return <div className="flex justify-between gap-4 border-b py-3 text-sm last:border-0"><span className="text-[#63708A]">{label}</span><strong className="text-right">{value}</strong></div>}
+function Setup(p:{industry:string;setIndustry:(v:string)=>void;currency:Currency;setCurrency:(v:Currency)=>void;productText:string;setProductText:(v:string)=>void;saving:boolean;error:string;onSubmit:(e:FormEvent)=>void}){return <main className="min-h-screen bg-[#F5F6F7] p-5 text-[#0B0C0E]">
+<div className="mx-auto max-w-5xl py-12">
+<Link href="/empresa" className="inline-flex cursor-pointer text-sm font-black">← Volver al portal</Link>
+<form onSubmit={p.onSubmit} className="mt-6 rounded-[2rem] border border-[#D7DBE0] bg-white p-7 shadow-sm">
+<p className="text-xs font-black uppercase tracking-[.24em] text-[#008F87]">Configuración inicial de Sales Hub</p>
+<h1 className="mt-2 text-4xl font-black">Prepara tu CRM según tu negocio</h1>
+<p className="mt-3 text-[#4F5B68]">Selecciona el rubro y la moneda. Solo debes escribir los productos o servicios que realmente vende tu empresa.</p>{p.error&&<div className="mt-5 rounded-xl bg-red-50 p-4 font-bold text-red-700">{p.error}</div>}<div className="mt-8 grid gap-5 md:grid-cols-2">
+<section className="rounded-3xl border bg-[#F8FAFB] p-5">
+<span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">01 · Rubro</span>
+<h2 className="mt-2 text-xl font-black">¿A qué se dedica tu empresa?</h2>
+<select required className="input mt-4 cursor-pointer" value={p.industry} onChange={e=>p.setIndustry(e.target.value)}>
+<option value="">Selecciona un rubro</option>{industries.map(i=>
+<option key={i} value={i}>{i}</option>)}</select>
+</section>
+<section className="rounded-3xl border bg-[#F8FAFB] p-5">
+<span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">02 · Moneda</span>
+<h2 className="mt-2 text-xl font-black">¿Cómo valorizarás tus ventas?</h2>
+<select className="input mt-4 cursor-pointer" value={p.currency} onChange={e=>p.setCurrency(e.target.value as Currency)}>
+<option value="UF">UF</option>
+<option value="USD">Dólar estadounidense (USD)</option>
+<option value="CLP">Pesos chilenos (CLP)</option>
+</select>
+</section>
+<section className="rounded-3xl border bg-[#F8FAFB] p-5 md:col-span-2">
+<span className="text-xs font-black uppercase tracking-[.14em] text-[#008F87]">03 · Oferta comercial</span>
+<h2 className="mt-2 text-xl font-black">Productos o servicios que vende</h2>
+<p className="mt-1 text-sm text-[#63708A]">Escribe uno por línea. Estos serán las opciones disponibles al crear un deal.</p>
+<textarea required className="input mt-4 min-h-40" value={p.productText} onChange={e=>p.setProductText(e.target.value)} placeholder={'Ejemplo:\nArriendo de espacios\nPublicidad\nServicios de instalación'}/>
+</section>
+</div>
+<button disabled={p.saving} className="mt-6 w-full cursor-pointer rounded-full bg-[#00E5D6] px-7 py-4 font-black text-[#0B0C0E] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{p.saving?"Guardando…":"Guardar configuración y abrir CRM"}</button>
+</form>
+</div>
+</main>}
+function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/65 p-4">
+<div className="my-6 w-full max-w-4xl rounded-[2rem] bg-white shadow-2xl">
+<div className="flex items-center justify-between border-b p-6">
+<h2 className="text-2xl font-black">{title}</h2>
+<button onClick={close} className="rounded-full bg-[#EEF1F4] px-5 py-3 font-black">Cerrar</button>
+</div>
+<div className="p-6">{children}</div>
+</div>
+</div>}
+function Input({label,children}:{label:string;children:React.ReactNode}){return <label className="grid gap-2">
+<span className="text-xs font-black uppercase tracking-[.14em] text-[#63708A]">{label}</span>{children}</label>}
+function Metric({label,value}:{label:string;value:string}){return <div className="rounded-2xl bg-white p-4 shadow-[0_8px_25px_rgba(25,45,55,.06)]">
+<p className="text-xs font-black uppercase text-[#63708A]">{label}</p>
+<p className="mt-2 text-xl font-black">{value}</p>
+</div>}
+function Card({title,children}:{title:string;children:React.ReactNode}){return <div className="rounded-2xl border p-5">
+<h3 className="mb-3 font-black">{title}</h3>{children}</div>}
+function Row({label,value}:{label:string;value:string}){return <div className="flex justify-between gap-4 border-b py-3 text-sm last:border-0">
+<span className="text-[#63708A]">{label}</span>
+<strong className="text-right">{value}</strong>
+</div>}
