@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Eye, EyeOff } from "lucide-react";
 import WamaShell from "../../src/components/brand/WamaShell";
 import WamaCard from "../../src/components/brand/WamaCard";
 import { supabase } from "../lib/supabase";
@@ -13,8 +14,11 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [notice, setNotice] = useState("");
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("password") === "updated") setNotice("Tu contraseña fue actualizada. Ya puedes ingresar con tu nueva clave.");
     void supabase.auth.getSession().then(({ data }) => {
       if (!data.session) return;
       const mustChange = Boolean(data.session.user.user_metadata?.must_change_password);
@@ -49,7 +53,9 @@ export default function LoginPage() {
           <h2 className="mt-2 text-3xl font-black text-[#F5F6F7]">Iniciar sesión</h2>
           <form className="mt-7 grid gap-5" onSubmit={submit}>
             <label className="grid gap-2 text-sm font-semibold text-white">Correo<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 outline-none focus:border-[#00E5D6]/60" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-white">Clave<input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 outline-none focus:border-[#00E5D6]/60" /></label>
+            <label className="grid gap-2 text-sm font-semibold text-white">Clave<div className="relative"><input type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" className="w-full rounded-2xl border border-white/10 bg-[#111318] px-4 py-3 pr-12 outline-none focus:border-[#00E5D6]/60" /><button type="button" onClick={() => setShowPassword((current) => !current)} aria-label={showPassword ? "Ocultar clave" : "Mostrar clave"} className="absolute inset-y-0 right-0 grid w-12 cursor-pointer place-items-center text-[#AEB6BF] transition hover:text-[#00E5D6]">{showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}</button></div></label>
+            <div className="-mt-2 text-right"><Link href="/recuperar-clave" className="text-sm font-black text-[#00E5D6] hover:underline">¿Olvidaste tu contraseña?</Link></div>
+            {notice && <div className="rounded-2xl border border-[#00E5D6]/30 bg-[#00E5D6]/10 p-4 text-sm text-[#D9FFFC]">{notice}</div>}
             {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
             <button disabled={loading} className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] disabled:opacity-50">{loading ? "Ingresando…" : "Acceder al portal"}</button>
           </form>
