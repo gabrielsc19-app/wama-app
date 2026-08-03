@@ -22,9 +22,9 @@ import { loadEnterprisePortalData } from "../../core/portal/portalData";
 
 const items = [
   { href: "/empresa", label: "Inicio", icon: Home },
-  { href: "/empresa#mi-empresa", label: "Mi empresa", icon: Building2 },
+  { href: "/empresa/perfil", label: "Mi empresa", icon: Building2 },
   { href: "/empresa/usuarios", label: "Usuarios", icon: Users },
-  { href: "/empresa#modulos", label: "Módulos", icon: Package2 },
+  { href: "/empresa/modulos", label: "Módulos", icon: Package2 },
   { href: "/empresa/facturacion", label: "Facturación", icon: CreditCard },
   { href: "/empresa/ia", label: "WAMA AI", icon: Bot, badge: "BETA" },
   { href: "/empresa/seguridad", label: "Seguridad", icon: ShieldCheck },
