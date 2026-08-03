@@ -1,65 +1,9 @@
-import { NextRequest } from "next/server";
-import { json, readRequestJson, stageProbability, statusForStage, supabaseRest } from "../_shared";
+import { NextResponse } from "next/server";
+import { getUserTenantContext, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
 
-type DealPayload = {
-  account_id?: string;
-  title?: string;
-  stage?: string;
-  amount_uf?: number | string;
-  assigned_to?: string;
-  next_step?: string;
-  next_activity_date?: string;
-  notes?: string;
-  created_by?: string;
-};
-
-export async function GET() {
-  const result = await supabaseRest(
-    "sales_deals?select=*,account:sales_accounts(*)&order=created_at.desc"
-  );
-
-  if (!result.ok) {
-    return json({ ok: false, data: [], error: result.error, details: result.details }, result.status);
-  }
-
-  return json({ ok: true, data: Array.isArray(result.data) ? result.data : [] });
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = (await readRequestJson(request)) as DealPayload;
-    const stage = body.stage || "target_account";
-    const probability = stageProbability(stage);
-    const amountUf = Number(body.amount_uf || 0);
-
-    const payload = {
-      organization_id: 1,
-      account_id: body.account_id || null,
-      title: body.title || "Nuevo deal",
-      stage,
-      probability,
-      amount_uf: Number.isFinite(amountUf) ? amountUf : 0,
-      weighted_amount_uf: Number.isFinite(amountUf) ? (amountUf * probability) / 100 : 0,
-      status: statusForStage(stage),
-      assigned_to: body.assigned_to || "Comercial",
-      next_step: body.next_step || "",
-      next_activity_date: body.next_activity_date || null,
-      notes: body.notes || "",
-      created_by: body.created_by || "WAMA",
-    };
-
-    const result = await supabaseRest("sales_deals", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
-    if (!result.ok) {
-      return json({ ok: false, error: result.error, details: result.details }, result.status);
-    }
-
-    const created = Array.isArray(result.data) ? result.data[0] : result.data;
-    return json({ ok: true, data: created }, 201);
-  } catch (error) {
-    return json({ ok: false, error: error instanceof Error ? error.message : "Error creando deal" }, 500);
-  }
-}
+const probability:Record<string,number>={"Target account":10,"First contact":20,"Qualified lead":30,"Proposal sent":45,Negotiation:65,Closing:85,"Closed won":100,"Closed lost":0,"No califica":0};
+async function context(request:Request){const user=await requireWamaUser(request);return getUserTenantContext(user.id)}
+export async function GET(request:Request){try{const{admin,membership}=await context(request);const{data,error}=await admin.from("wama_sales_deals").select("*,wama_sales_deal_files(id,file_name,mime_type,file_size,created_at)").eq("tenant_id",membership.tenant_id).order("created_at",{ascending:false});if(error)throw error;return NextResponse.json({deals:data||[]});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:401})}}
+export async function POST(request:Request){try{const{admin,profile,membership}=await context(request);const body=await request.json();if(!String(body.company||"").trim())return NextResponse.json({error:"La empresa es obligatoria."},{status:400});const payload={tenant_id:membership.tenant_id,company:String(body.company).trim(),contact:body.contact||"",email:body.email||"",phone:body.phone||"",website:body.website||"",product:body.product||"",need:body.need||"",sale_type:body.saleType||"Recurrente",amount:Number(body.amount)||0,currency:body.currency||"UF",stage:body.stage||"Target account",probability:probability[body.stage]??10,owner:body.owner||"Sin asignar",source:body.source||"Contacto directo",comment:body.comment||"",created_by:profile.id};const{data,error}=await admin.from("wama_sales_deals").insert(payload).select("*").single();if(error)throw error;return NextResponse.json({deal:{...data,wama_sales_deal_files:[]}},{status:201});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500})}}
+export async function PATCH(request:Request){try{const{admin,membership}=await context(request);const body=await request.json();const id=String(body.id||"");const stage=String(body.stage||"");if(!id||!probability.hasOwnProperty(stage))return NextResponse.json({error:"Cambio inválido."},{status:400});const{data,error}=await admin.from("wama_sales_deals").update({stage,probability:probability[stage],updated_at:new Date().toISOString()}).eq("id",id).eq("tenant_id",membership.tenant_id).select("*").single();if(error)throw error;return NextResponse.json({deal:data});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500})}}
+export async function DELETE(request:Request){try{const{admin,membership}=await context(request);const id=new URL(request.url).searchParams.get("id");if(!id)return NextResponse.json({error:"Falta id."},{status:400});const{data:files}=await admin.from("wama_sales_deal_files").select("storage_path").eq("deal_id",id).eq("tenant_id",membership.tenant_id);if(files?.length)await admin.storage.from("sales-deal-files").remove(files.map(f=>f.storage_path));const{error}=await admin.from("wama_sales_deals").delete().eq("id",id).eq("tenant_id",membership.tenant_id);if(error)throw error;return NextResponse.json({ok:true});}catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500})}}
