@@ -10,6 +10,7 @@ export type Tenant = {
   name: string;
   slug: string;
   logoUrl: string | null;
+  website: string | null;
   countryCode: string;
   timezone: string;
   status: TenantStatus;
@@ -36,6 +37,7 @@ export type TenantWithMembership = Tenant & {
 export type UpdateTenantInput = {
   name?: string;
   logoUrl?: string | null;
+  website?: string | null;
   countryCode?: string;
   timezone?: string;
   onboardingCompleted?: boolean;

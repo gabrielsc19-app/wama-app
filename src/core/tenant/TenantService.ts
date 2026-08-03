@@ -14,6 +14,7 @@ type TenantRow = {
   name: string;
   slug: string;
   logo_url: string | null;
+  website: string | null;
   country_code: string;
   timezone: string;
   status: Tenant["status"];
@@ -51,6 +52,7 @@ function mapTenant(row: TenantRow): Tenant {
     name: row.name,
     slug: row.slug,
     logoUrl: row.logo_url,
+    website: row.website,
     countryCode: row.country_code,
     timezone: row.timezone,
     status: row.status,
@@ -119,6 +121,7 @@ export async function getMyTenants(): Promise<TenantWithMembership[]> {
           name,
           slug,
           logo_url,
+          website,
           country_code,
           timezone,
           status,
@@ -157,7 +160,7 @@ export async function getTenantById(tenantId: string): Promise<Tenant> {
   const { data, error } = await supabase
     .from("wama_tenants")
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
+      "id, code, name, slug, logo_url, website, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .eq("id", tenantId)
     .single();
@@ -175,7 +178,7 @@ export async function getTenantBySlug(slug: string): Promise<Tenant> {
   const { data, error } = await supabase
     .from("wama_tenants")
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
+      "id, code, name, slug, logo_url, website, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .eq("slug", normalizedSlug)
     .single();
@@ -195,6 +198,7 @@ export async function updateTenant(
 
   if (input.name !== undefined) payload.name = input.name.trim();
   if (input.logoUrl !== undefined) payload.logo_url = input.logoUrl;
+  if (input.website !== undefined) payload.website = input.website;
   if (input.countryCode !== undefined) {
     payload.country_code = input.countryCode.trim().toUpperCase();
   }
@@ -214,7 +218,7 @@ export async function updateTenant(
     .update(payload)
     .eq("id", tenantId)
     .select(
-      "id, code, name, slug, logo_url, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
+      "id, code, name, slug, logo_url, website, country_code, timezone, status, trial_ends_at, onboarding_completed_at, created_at, updated_at",
     )
     .single();
 
