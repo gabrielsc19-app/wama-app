@@ -6,18 +6,47 @@ export async function GET(request: Request) {
     const user = await requireWamaUser(request);
     const { admin, membership } = await getUserTenantContext(user.id);
     const { data: memberships, error } = await admin.from("wama_tenant_memberships")
-      .select("id,role,status,profile_id,wama_profiles(id,full_name,email,status),wama_project_members(project_id,wama_projects(id,name,code))")
+      .select("id,role,status,profile_id,joined_at")
       .eq("tenant_id", membership.tenant_id).order("joined_at");
     if (error) throw error;
-    const { data: licenses } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key,name),wama_module_user_assignments(profile_id,status)").eq("tenant_id", membership.tenant_id);
+    const profileIds = (memberships || []).map((item) => item.profile_id);
+    const { data: profiles, error: profilesError } = profileIds.length
+      ? await admin.from("wama_profiles").select("id,full_name,email,status").in("id", profileIds)
+      : { data: [], error: null };
+    if (profilesError) throw profilesError;
+    const { data: licenses, error: licensesError } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key,name),wama_module_user_assignments(profile_id,status)").eq("tenant_id", membership.tenant_id);
+    if (licensesError) throw licensesError;
     const assignmentRows = (licenses || []).flatMap((license) => {
       const moduleKey = (license.wama_module_catalog as unknown as { module_key: string } | null)?.module_key;
       return (license.wama_module_user_assignments || []).filter((item:{status:string})=>item.status==="active").map((item:{profile_id:string})=>({profileId:item.profile_id,moduleKey}));
     });
-    const users = (memberships || []).map((item) => ({...item,module_keys:assignmentRows.filter(a=>a.profileId===item.profile_id).map(a=>a.moduleKey).filter(Boolean)}));
+    const owner = (memberships || []).find((item) => item.role === "owner" && item.status === "active");
+    if (owner) {
+      const missing = (licenses || []).filter((license) =>
+        !(license.wama_module_user_assignments || []).some((item:{profile_id:string;status:string}) => item.profile_id === owner.profile_id && item.status === "active")
+      );
+      if (missing.length) {
+        const { error: repairError } = await admin.from("wama_module_user_assignments").upsert(
+          missing.map((license) => ({ tenant_module_license_id: license.id, profile_id: owner.profile_id, assigned_by: owner.profile_id, status: "active" })),
+          { onConflict: "tenant_module_license_id,profile_id" },
+        );
+        if (repairError) throw repairError;
+        missing.forEach((license) => license.wama_module_user_assignments.push({ profile_id: owner.profile_id, status: "active" }));
+        assignmentRows.push(...missing.map((license) => ({
+          profileId: owner.profile_id,
+          moduleKey: (license.wama_module_catalog as unknown as { module_key: string } | null)?.module_key,
+        })));
+      }
+    }
+    const users = (memberships || []).map((item) => ({
+      ...item,
+      wama_profiles: (profiles || []).find((profile) => profile.id === item.profile_id) || null,
+      module_keys: assignmentRows.filter(a=>a.profileId===item.profile_id).map(a=>a.moduleKey).filter(Boolean),
+    }));
     return NextResponse.json({ users, licenses: licenses || [], currentRole: membership.role });
   } catch (error) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : "Error" }, { status: 401 });
+    const message = error instanceof Error ? error.message : "No se pudo cargar el equipo.";
+    return NextResponse.json({ error: message }, { status: message === "UNAUTHORIZED" ? 401 : 500 });
   }
 }
 
