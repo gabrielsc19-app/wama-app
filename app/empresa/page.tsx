@@ -32,12 +32,12 @@ export default function CompanyPage() {
   return (
     <EnterpriseShell title="Mi empresa" subtitle="Vista general del portal, licencias y estado de la organización.">
       {loadError ? <div className="mx-auto max-w-xl rounded-3xl border border-red-200 bg-white p-7 text-center"><h2 className="text-xl font-black">No pudimos abrir tu empresa</h2><p className="mt-3 text-sm leading-6 text-[#69717D]">{loadError}</p><button onClick={async()=>{await supabase.auth.signOut();router.replace("/login");}} className="mt-5 rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black text-[#0B0C0E]">Volver a iniciar sesión</button></div> : !data ? <Loading /> : <div className="space-y-6 sm:space-y-8">
-        <section className="overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
+        <section id="mi-empresa" className="scroll-mt-28 overflow-hidden rounded-[2rem] bg-[#0B0C0E] p-6 text-white shadow-[0_28px_80px_rgba(11,12,14,.16)] sm:p-10">
           <div className="grid gap-8 xl:grid-cols-[1fr_auto] xl:items-center">
             <div className="flex flex-col gap-5 sm:flex-row sm:items-start">
-              <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">
+              <div className="flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-3xl bg-white text-3xl font-black text-[#0B0C0E] ring-1 ring-white/15 sm:h-32 sm:w-32">
                 {data.tenant.logoUrl ? (
-                  <img src={data.tenant.logoUrl} alt={`Logo de ${data.tenant.name}`} className="h-full w-full object-contain bg-white p-1" />
+                  <img src={data.tenant.logoUrl} alt={`Logo de ${data.tenant.name}`} className="h-full w-full object-contain bg-white p-2" />
                 ) : (
                   data.tenant.name.slice(0, 2).toUpperCase()
                 )}
@@ -70,7 +70,7 @@ export default function CompanyPage() {
         </Link>
 
         <div className="grid gap-6 xl:grid-cols-[1.35fr_.65fr]">
-          <SectionCard title="Tus módulos WAMA" eyebrow="Portal modular" action={<Link href="/empresa/licencias" className="text-sm font-black text-[#008F87]">Administrar licencias</Link>}>
+          <div id="modulos" className="scroll-mt-28"><SectionCard title="Tus módulos WAMA" eyebrow="Portal modular" action={<Link href="/empresa/usuarios" className="text-sm font-black text-[#008F87]">Administrar usuarios</Link>}>
             <div className="grid gap-4 md:grid-cols-2">
               {(["sales", "expense"] as const).map((moduleKey) => {
                 const license = commercialLicenses.find((item) => item.module_key === moduleKey);
@@ -95,8 +95,8 @@ export default function CompanyPage() {
                 );
               })}
             </div>
-            <Link href="/empresa/licencias" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#DCE1E6] bg-white px-5 py-4 text-sm font-black text-[#0B0C0E]">Administrar usuarios y licencias</Link>
-          </SectionCard>
+            <Link href="/empresa/usuarios" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#DCE1E6] bg-white px-5 py-4 text-sm font-black text-[#0B0C0E]">Administrar usuarios y asignación por módulo</Link>
+          </SectionCard></div>
 
           <SectionCard title="Estado de confianza" eyebrow="WAMA Trust" action={<Link href="/empresa/trust" className="text-sm font-black text-[#008F87]">Ver centro</Link>}>
             <div className="space-y-4">{[["Aislamiento de datos", "100%"], ["Políticas RLS", "Activo"], ["Auditoría", "Habilitada"], ["Sesión protegida", "98%"]].map(([item, value]) => <div key={item} className="flex items-center gap-3"><CheckCircle2 className="h-5 w-5 text-[#00AFA5]" /><span className="flex-1 text-sm font-bold">{item}</span><span className="text-xs font-black text-[#008F87]">{value}</span></div>)}</div>
