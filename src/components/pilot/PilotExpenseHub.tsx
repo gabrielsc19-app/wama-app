@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { Banknote, Camera, CheckCircle2, ChevronRight, ClipboardCheck, Eye, FileImage, ImageUp, Info, LayoutDashboard, Loader2, ReceiptText, RefreshCw, Sparkles, UploadCloud, WalletCards, X, XCircle } from "lucide-react";
+import { Banknote, Camera, CheckCircle2, ClipboardCheck, Eye, FileImage, ImageUp, LayoutDashboard, Loader2, ReceiptText, RefreshCw, Sparkles, UploadCloud, WalletCards, X, XCircle } from "lucide-react";
 import { supabase } from "../../../app/lib/supabase";
 import EnterpriseShell from "../enterprise/EnterpriseShell";
 
@@ -33,84 +33,26 @@ export default function PilotExpenseHub() {
   const [preview,setPreview] = useState("");
   const [ocr,setOcr] = useState<OcrData|null>(null);
   const [reading,setReading] = useState(false);
+  const [submitting,setSubmitting] = useState(false);
   const [selected,setSelected] = useState<Rendition|null>(null);
   const [evidence,setEvidence] = useState<Evidence[]>([]);
   const [detailLoading,setDetailLoading] = useState(false);
   const [reviewComment,setReviewComment] = useState("");
   const [paymentAmount,setPaymentAmount] = useState("");
-  const [sessionExpired,setSessionExpired] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
+  const submitLock = useRef(false);
 
-  const wait = (milliseconds:number) => new Promise(resolve=>setTimeout(resolve,milliseconds));
-  async function currentSession() {
-    // En iPhone, volver desde la cámara puede dejar el almacenamiento de sesión
-    // momentáneamente ocupado. Esperamos antes de concluir que la sesión terminó.
-    for(let attempt=0;attempt<5;attempt+=1){
-      const {data}=await supabase.auth.getSession();
-      if(data.session)return data.session;
-      if(attempt<4)await wait(300*(attempt+1));
-    }
-    return null;
-  }
-  async function token(forceRefresh=false) {
-    const session=await currentSession();
-    if(!session)return "";
-    if(forceRefresh){
-      const {data,error}=await supabase.auth.refreshSession();
-      return error ? session.access_token : data.session?.access_token||session.access_token;
-    }
-    const expiresSoon=(session.expires_at||0)*1000-Date.now()<120000;
-    if(!expiresSoon) return session.access_token;
-    const refreshed=await supabase.auth.refreshSession();
-    return refreshed.error ? session.access_token : refreshed.data.session?.access_token||session.access_token;
-  }
-  async function authenticatedFetch(input:RequestInfo|URL,init:RequestInit={},showExpired=true) {
-    async function send(forceRefresh=false){
-      const accessToken=await token(forceRefresh);
-      if(!accessToken) return null;
-      const headers=new Headers(init.headers);
-      headers.set("Authorization",`Bearer ${accessToken}`);
-      return fetch(input,{...init,headers});
-    }
-    const isExpired=async(response:Response|null)=>{
-      if(!response||response.status===401)return true;
-      if(response.ok)return false;
-      try{
-        const payload=await response.clone().json();
-        return /unauthorized|invalid.*jwt|jwt.*expired|token.*expired/i.test(String(payload?.error||""));
-      }catch{return false;}
-    };
-    let response=await send(false);
-    if(await isExpired(response)) response=await send(true);
-    if(await isExpired(response)&&showExpired){
-      sessionStorage.setItem("wama-expense-draft",JSON.stringify(form));
-      setSessionExpired(true);
-      return null;
-    }
-    return response;
-  }
+  async function token() { const {data}=await supabase.auth.getSession(); return data.session?.access_token||""; }
   async function load() {
     setLoading(true);
-    const r=await authenticatedFetch("/api/expense/renditions",{},false);
-    if(!r){setLoading(false);return;}
+    const t=await token();
+    if(!t){ location.href="/login"; return; }
+    const r=await fetch("/api/expense/renditions",{headers:{Authorization:`Bearer ${t}`}});
     const d=await r.json();
     setItems(d.renditions||[]); setProjects(d.projects||[]); setRole(d.role||""); setLoading(false);
   }
-  useEffect(()=>{
-    const draft=sessionStorage.getItem("wama-expense-draft");
-    if(draft){
-      try{setForm({...initialForm(),...JSON.parse(draft)});setOpen(true);}catch{}
-    }
-    void load();
-  },[]);
-  useEffect(()=>{
-    const recoverAfterCamera=()=>{
-      if(document.visibilityState==="visible")void currentSession();
-    };
-    document.addEventListener("visibilitychange",recoverAfterCamera);
-    return ()=>document.removeEventListener("visibilitychange",recoverAfterCamera);
-  },[]);
+  useEffect(()=>{ void load(); },[]);
   useEffect(()=>()=>{ if(preview) URL.revokeObjectURL(preview); },[preview]);
 
   function chooseFile(selected?:File) {
@@ -125,8 +67,7 @@ export default function PilotExpenseHub() {
     setReading(true); setError(""); setMessage("");
     try {
       const body=new FormData(); body.append("file",selected);
-      const r=await authenticatedFetch("/api/expense/ocr",{method:"POST",body});
-      if(!r)return;
+      const r=await fetch("/api/expense/ocr",{method:"POST",body});
       const d=await r.json();
       if(!r.ok) throw new Error(d.error||"No fue posible leer el documento.");
       const result:OcrData=d.data||{};
@@ -146,57 +87,66 @@ export default function PilotExpenseHub() {
   }
 
   async function create(e:FormEvent) {
-    e.preventDefault(); setError("");
-    sessionStorage.setItem("wama-expense-draft",JSON.stringify(form));
-    const r=await authenticatedFetch("/api/expense/renditions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,amountClp:Number(form.amountClp)})});
-    if(!r)return;
-    const d=await r.json();
-    if(!r.ok){setError(d.error||"No se pudo crear.");return;}
-    if(file){
-      const evidence=new FormData(); evidence.append("file",file); evidence.append("renditionId",d.rendition.id);
-      const upload=await authenticatedFetch("/api/expense/evidence",{method:"POST",body:evidence});
-      if(!upload)return;
-      const uploadData=await upload.json();
-      if(!upload.ok){setError(uploadData.error||"La rendición fue creada, pero no se pudo guardar la evidencia.");await load();return;}
+    e.preventDefault();
+    if(submitLock.current) return;
+    submitLock.current=true; setSubmitting(true); setError(""); setMessage("");
+    try {
+      const t=await token();
+      if(!t) throw new Error("No pudimos validar tu sesión. Vuelve a ingresar e inténtalo nuevamente.");
+      const r=await fetch("/api/expense/renditions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({...form,amountClp:Number(form.amountClp)})});
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok) throw new Error(d.error||"No fue posible enviar la solicitud. Revisa los datos e inténtalo nuevamente.");
+      if(file){
+        const evidence=new FormData(); evidence.append("file",file); evidence.append("renditionId",d.rendition.id);
+        const upload=await fetch("/api/expense/evidence",{method:"POST",headers:{Authorization:`Bearer ${t}`},body:evidence});
+        const uploadData=await upload.json().catch(()=>({}));
+        if(!upload.ok){
+          setError(uploadData.error||"La solicitud fue creada, pero no se pudo guardar la evidencia. Puedes abrirla y adjuntar el documento nuevamente.");
+          await load();
+          return;
+        }
+      }
+      closeModal();
+      setMessage("Solicitud enviada correctamente.");
+      await load();
+    } catch(reason) {
+      setError(reason instanceof Error?reason.message:"No fue posible enviar la solicitud. Inténtalo nuevamente.");
+    } finally {
+      submitLock.current=false; setSubmitting(false);
     }
-    sessionStorage.removeItem("wama-expense-draft");
-    setMessage("Rendición y evidencia guardadas correctamente."); closeModal(); await load();
   }
 
   async function openDetail(item:Rendition){
     setSelected(item); setEvidence([]); setReviewComment(item.review_comment||""); setDetailLoading(true); setError("");
-    const r=await authenticatedFetch(`/api/expense/evidence?renditionId=${encodeURIComponent(item.id)}`);
-    if(!r){setDetailLoading(false);return;}
+    const t=await token();
+    const r=await fetch(`/api/expense/evidence?renditionId=${encodeURIComponent(item.id)}`,{headers:{Authorization:`Bearer ${t}`}});
     const d=await r.json();
     if(r.ok)setEvidence(d.evidence||[]);else setError(d.error||"No se pudo abrir la evidencia.");
     setDetailLoading(false);
   }
   async function review(id:string,status:string){
-    const r=await authenticatedFetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,status,comment:reviewComment})});
-    if(!r)return;
+    const t=await token();
+    const r=await fetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({id,status,comment:reviewComment})});
     const d=await r.json();
     if(!r.ok){setError(d.error||"No se pudo actualizar la rendición.");return;}
     setMessage(status==="approved"?"Rendición aprobada correctamente.":"Rendición rechazada y registrada en el historial.");setSelected(null);await load();
   }
   async function operate(action:string){
-    if(!selected)return; setError("");
-    const r=await authenticatedFetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action,comment:reviewComment,amount:Number(paymentAmount||0),paymentType:selected.request_type==="fund_request"?"advance":"installment"})});
-    if(!r)return;
+    if(!selected)return; const t=await token(); setError("");
+    const r=await fetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({id:selected.id,action,comment:reviewComment,amount:Number(paymentAmount||0),paymentType:selected.request_type==="fund_request"?"advance":"installment"})});
     const d=await r.json(); if(!r.ok){setError(d.error||"No se pudo registrar la acción.");return;} setMessage("Movimiento actualizado correctamente.");setSelected(null);setPaymentAmount("");await load();
   }
-  function closeModal(){setOpen(false);setForm(initialForm());setFile(null);setOcr(null);setError("");if(preview)URL.revokeObjectURL(preview);setPreview("");}
+  function closeModal(){if(submitLock.current)return;setOpen(false);setForm(initialForm());setFile(null);setOcr(null);setError("");if(preview)URL.revokeObjectURL(preview);setPreview("");}
 
   const total=useMemo(()=>items.reduce((s,i)=>s+Number(i.amount_clp),0),[items]);
   const pending=items.filter(i=>["submitted","in_review","observed"].includes(i.status)).length;
   const canReview=["owner","admin","manager"].includes(role);
   const canFinance=["owner","admin","super_admin","finance","treasury"].includes(role);
   const funds=items.filter(i=>i.request_type==="fund_request");
-  const availableFunds=funds.filter(f=>["approved","pending_payment","partially_paid","paid","open","partially_rendered"].includes(f.status));
   const visibleItems=view==="funds"?funds:view==="approvals"?items.filter(i=>["submitted","assigned","in_review","observed"].includes(i.status)):view==="treasury"?items.filter(i=>["approved","pending_payment","partially_paid","open"].includes(i.status)):items;
   const openCreate=(requestType:string)=>{setForm({...initialForm(),requestType,category:requestType==="fund_request"?"Fondo por rendir":"Movilización"});setOpen(true)};
 
   return <EnterpriseShell title="Expense Hub" subtitle="Rinde, revisa y aprueba gastos con su evidencia original.">
-    {sessionExpired&&<div className="fixed inset-0 z-[120] grid place-items-center bg-black/55 p-4"><section className="w-full max-w-md rounded-[2rem] bg-white p-7 text-center shadow-2xl"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#DFFFFA] text-[#087B74]"><RefreshCw className="h-6 w-6"/></div><h2 className="mt-5 text-2xl font-black text-[#0B0C0E]">Sesión caducada</h2><p className="mt-3 text-sm leading-6 text-[#69717D]">Por seguridad, tu sesión terminó. Conservamos los datos escritos para que puedas continuar después de ingresar nuevamente.</p><button onClick={()=>{location.href=`/login?returnTo=${encodeURIComponent(location.pathname)}`}} className="mt-6 w-full rounded-full bg-[#00E5D6] px-5 py-3 font-black text-[#0B0C0E]">Iniciar sesión nuevamente</button></section></div>}
     <div className="space-y-5 sm:space-y-6">
       <nav className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-[0_8px_30px_rgba(11,12,14,.06)]">
         <Nav active={view==="home"} icon={LayoutDashboard} label="Inicio" onClick={()=>setView("home")}/><Nav active={view==="mine"} icon={ReceiptText} label="Mis movimientos" onClick={()=>setView("mine")}/><Nav active={view==="funds"} icon={WalletCards} label="Fondos" onClick={()=>setView("funds")}/>{canReview&&<Nav active={view==="approvals"} icon={ClipboardCheck} label="Aprobaciones" onClick={()=>setView("approvals")}/>} {canFinance&&<Nav active={view==="treasury"} icon={Banknote} label="Tesorería" onClick={()=>setView("treasury")}/>} 
@@ -232,8 +182,8 @@ export default function PilotExpenseHub() {
           </div>}
         </section>
         <section className="p-5 sm:p-7"><div className="grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2"><Field label="¿Qué necesitas hacer?"><select value={form.requestType} onChange={e=>setForm({...form,requestType:e.target.value,parentFundId:""})} className="w-full cursor-pointer rounded-2xl border border-[#DDE3E7] bg-white p-4"><option value="expense_reimbursement">Solicitar reembolso de un gasto</option><option value="fund_request">Solicitar dinero antes de gastar</option><option value="fund_rendition">Justificar gastos de un fondo recibido</option></select><div className="mt-1 flex items-start gap-2 rounded-2xl bg-[#F3F8F7] p-3 text-xs font-medium leading-5 text-[#53606A]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#008F87]"/><span>{requestHelp(form.requestType)}</span></div></Field></div>
-          {form.requestType==="fund_rendition"&&<div className="sm:col-span-2"><Field label="Fondo que estás rindiendo">{availableFunds.length?<select required value={form.parentFundId} onChange={e=>setForm({...form,parentFundId:e.target.value})} className="w-full cursor-pointer rounded-2xl border border-[#DDE3E7] bg-white p-4"><option value="">Selecciona un fondo vigente</option>{availableFunds.map(f=><option key={f.id} value={f.id}>{f.report_number} · {f.description||f.merchant} · Entregado {money(Number(f.amount_clp))}</option>)}</select>:<div className="rounded-2xl border border-[#CFE7E4] bg-[#F4FBFA] p-4"><strong className="block text-sm text-[#0B5F5A]">No tienes fondos vigentes para rendir</strong><p className="mt-1 text-xs font-medium leading-5 text-[#607078]">Primero solicita un fondo. Cuando sea aprobado y entregado por Tesorería, aparecerá automáticamente en esta lista.</p><button type="button" onClick={()=>setForm({...initialForm(),requestType:"fund_request",category:"Fondo por rendir"})} className="mt-3 inline-flex cursor-pointer items-center gap-1 text-xs font-black text-[#008F87]">Solicitar un fondo ahora <ChevronRight className="h-4 w-4"/></button></div>}</Field></div>}
+          <div className="sm:col-span-2"><Field label="Tipo de solicitud"><select value={form.requestType} onChange={e=>setForm({...form,requestType:e.target.value})} className="w-full cursor-pointer rounded-2xl border border-[#DDE3E7] p-4"><option value="expense_reimbursement">Rendición / reembolso</option><option value="fund_request">Fondo por rendir</option><option value="fund_rendition">Rendición de fondo</option></select></Field></div>
+          {form.requestType==="fund_rendition"&&<div className="sm:col-span-2"><Field label="Fondo asociado"><select required value={form.parentFundId} onChange={e=>setForm({...form,parentFundId:e.target.value})} className="w-full cursor-pointer rounded-2xl border border-[#DDE3E7] p-4"><option value="">Selecciona un fondo</option>{funds.filter(f=>["approved","partially_paid","open"].includes(f.status)).map(f=><option key={f.id} value={f.id}>{f.report_number} · {f.description||f.merchant} · {money(Number(f.amount_clp))}</option>)}</select></Field></div>}
           <Field label={form.requestType==="fund_request"?"Nombre o motivo del fondo":"Comercio"}><input required={form.requestType!=="fund_request"} value={form.merchant} onChange={e=>setForm({...form,merchant:e.target.value})} placeholder={form.requestType==="fund_request"?"Ej. Gastos operacionales agosto":"Comercio"} className="w-full rounded-2xl border p-4"/></Field>
           <Field label="Fecha"><input required type="date" value={form.expenseDate} onChange={e=>setForm({...form,expenseDate:e.target.value})} className="w-full rounded-2xl border p-4"/></Field>
           <Field label="Categoría"><select value={form.category} onChange={e=>setForm({...form,category:e.target.value})} className="w-full rounded-2xl border p-4"><option>Movilización</option><option>Alimentación</option><option>Alojamiento</option><option>Combustible</option><option>Insumos</option><option>Otros</option></select></Field>
@@ -241,7 +191,7 @@ export default function PilotExpenseHub() {
           <div className="sm:col-span-2"><Field label="Proyecto"><select value={form.projectId} onChange={e=>setForm({...form,projectId:e.target.value})} className="w-full rounded-2xl border p-4"><option value="">Sin proyecto</option>{projects.map(p=><option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}</select></Field></div>
           <div className="sm:col-span-2"><Field label="Centro de costo"><input value={form.costCenter} onChange={e=>setForm({...form,costCenter:e.target.value})} placeholder="Centro de costo" className="w-full rounded-2xl border p-4"/></Field></div>
           <div className="sm:col-span-2"><Field label="Motivo o referencia"><textarea value={form.description} onChange={e=>setForm({...form,description:e.target.value})} placeholder="Motivo del gasto" className="min-h-24 w-full rounded-2xl border p-4"/></Field></div>
-        </div>{error&&<div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}<div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row"><button type="button" onClick={closeModal} className="flex-1 rounded-full border px-5 py-3 font-black">Cancelar</button><button disabled={form.requestType==="fund_rendition"&&!form.parentFundId} className="flex-1 rounded-full bg-[#00E5D6] px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-45">{form.requestType==="fund_request"?"Enviar solicitud de fondo":form.requestType==="fund_rendition"?"Enviar rendición del fondo":"Enviar solicitud de reembolso"}</button></div></section>
+        </div>{error&&<div className="mt-4 rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700"><span className="block">No pudimos enviar la solicitud</span><span className="mt-1 block font-medium">{error}</span></div>}<div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row"><button type="button" disabled={submitting} onClick={closeModal} className="flex-1 rounded-full border px-5 py-3 font-black disabled:cursor-not-allowed disabled:opacity-50">Cancelar</button><button type="submit" disabled={submitting} aria-busy={submitting} className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-5 py-3 font-black transition disabled:cursor-wait disabled:bg-[#9AEAE4] disabled:text-[#49635F]"><Loader2 className={`h-5 w-5 ${submitting?"animate-spin":"hidden"}`}/>{submitting?"Enviando solicitud…":"Enviar solicitud de reembolso"}</button></div>{submitting&&<p className="mt-3 text-center text-xs font-bold text-[#69717D]">Estamos guardando la solicitud y su evidencia. No cierres esta ventana.</p>}</section>
       </div>
     </form></div></div>}
     {selected&&<div className="fixed inset-0 z-[80] overflow-y-auto bg-black/65 p-3 sm:p-6"><div className="mx-auto my-3 max-w-6xl overflow-hidden rounded-[2rem] bg-white shadow-2xl sm:my-8"><div className="flex items-center justify-between border-b p-5 sm:p-7"><div><p className="text-xs font-black uppercase tracking-[.18em] text-[#008F87]">{selected.report_number}</p><h2 className="mt-1 text-2xl font-black">Revisar rendición</h2></div><button onClick={()=>setSelected(null)} className="rounded-full border p-2" aria-label="Cerrar"><X className="h-5 w-5"/></button></div><div className="grid lg:grid-cols-[1.1fr_.9fr]"><section className="min-h-[360px] border-b bg-[#EEF1F3] p-4 lg:border-b-0 lg:border-r sm:p-6">{detailLoading?<div className="flex min-h-[360px] items-center justify-center gap-3 font-bold"><Loader2 className="animate-spin"/>Cargando evidencia…</div>:evidence[0]?.url?(evidence[0].mime_type==="application/pdf"?<iframe title="Evidencia PDF" src={evidence[0].url} className="h-[70vh] min-h-[480px] w-full rounded-2xl bg-white"/>:<a href={evidence[0].url} target="_blank" rel="noreferrer" className="block"><img src={evidence[0].url} alt="Evidencia de la rendición" className="mx-auto max-h-[70vh] w-full rounded-2xl bg-white object-contain"/><span className="mt-3 block text-center text-xs font-black text-[#008F87]">Toca la imagen para verla en tamaño completo</span></a>):<div className="flex min-h-[360px] flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#C3CBD2] bg-white text-center"><FileImage className="h-12 w-12 text-[#7B858E]"/><strong className="mt-3">Esta rendición no tiene evidencia guardada</strong><span className="mt-1 text-xs text-[#69717D]">Las nuevas imágenes y PDF quedarán registrados aquí.</span></div>}</section><section className="p-5 sm:p-7"><dl className="grid gap-4 sm:grid-cols-2"><Detail label="Comercio" value={selected.merchant}/><Detail label="Monto" value={money(Number(selected.amount_clp))}/><Detail label="Fecha" value={selected.expense_date}/><Detail label="Categoría" value={selected.category}/><Detail label="Persona" value={selected.wama_profiles?.full_name||"Usuario"}/><Detail label="Proyecto" value={selected.wama_projects?`${selected.wama_projects.code} · ${selected.wama_projects.name}`:"Sin proyecto"}/></dl>{selected.description&&<div className="mt-5 rounded-2xl bg-[#F4F6F7] p-4"><p className="text-xs font-black uppercase tracking-[.14em] text-[#69717D]">Descripción</p><p className="mt-2 text-sm">{selected.description}</p></div>}{evidence.length>1&&<div className="mt-5"><p className="text-xs font-black uppercase tracking-[.14em] text-[#69717D]">Historial de evidencias</p><div className="mt-2 grid gap-2">{evidence.map((item,index)=><a key={item.id} href={item.url||"#"} target="_blank" rel="noreferrer" className="rounded-xl border p-3 text-xs font-bold">{index+1}. {item.file_name} · {new Date(item.created_at).toLocaleString("es-CL")}</a>)}</div></div>}{canReview&&selected.status==="submitted"&&<div className="mt-6 border-t pt-5"><label className="grid gap-2 text-sm font-black">Comentario de revisión<textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)} className="min-h-24 rounded-2xl border p-4" placeholder="Opcional al aprobar; recomendado al rechazar"/></label><div className="mt-4 grid gap-3 sm:grid-cols-2"><button onClick={()=>review(selected.id,"rejected")} className="inline-flex items-center justify-center gap-2 rounded-full border border-red-300 bg-red-50 px-5 py-3 font-black text-red-700"><XCircle className="h-5 w-5"/>Rechazar</button><button onClick={()=>review(selected.id,"approved")} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-5 py-3 font-black text-[#0B0C0E]"><CheckCircle2 className="h-5 w-5"/>Aprobar</button></div></div>} {!canReview||selected.status!=="submitted"?<div className="mt-6 rounded-2xl bg-[#DFFFFA] p-4 text-sm font-bold text-[#08645F]">Estado: {statusLabel(selected.status)}{selected.review_comment?` · ${selected.review_comment}`:""}</div>:null}</section></div></div></div>}
@@ -255,5 +205,4 @@ function Nav({active,icon:Icon,label,onClick}:{active:boolean;icon:React.Compone
 function Quick({icon:Icon,title,text,onClick,accent=false}:{icon:React.ComponentType<{className?:string}>;title:string;text:string;onClick:()=>void;accent?:boolean}){return <button onClick={onClick} className={`group cursor-pointer rounded-[1.75rem] p-6 text-left shadow-[0_12px_36px_rgba(11,12,14,.07)] transition hover:-translate-y-1 ${accent?"bg-[#0B0C0E] text-white":"bg-white"}`}><span className={`grid h-12 w-12 place-items-center rounded-2xl ${accent?"bg-[#00E5D6] text-[#0B0C0E]":"bg-[#DFFFFA] text-[#008F87]"}`}><Icon className="h-6 w-6"/></span><h3 className="mt-5 text-xl font-black">{title}</h3><p className={`mt-2 text-sm leading-6 ${accent?"text-[#B9C1C9]":"text-[#68727C]"}`}>{text}</p></button>}
 function Detail({label,value}:{label:string;value:string}){return <div><dt className="text-xs font-black uppercase tracking-[.14em] text-[#69717D]">{label}</dt><dd className="mt-1 font-black">{value}</dd></div>}
 function requestLabel(type?:string){return type==="fund_request"?"Fondo por rendir":type==="fund_rendition"?"Rendición de fondo":"Rendición / reembolso"}
-function requestHelp(type:string){return type==="fund_request"?"Pides a la empresa un monto antes de realizar gastos. Después deberás justificar su uso.":type==="fund_rendition"?"Adjuntas boletas para descontarlas de un fondo que ya fue aprobado y entregado.":"Ya pagaste con dinero propio y solicitas que la empresa te devuelva ese gasto."}
 function statusLabel(status:string){return ({submitted:"Pendiente",assigned:"Asignada",in_review:"En revisión",observed:"Observada",approved:"Aprobada",pending_payment:"Pendiente de pago",partially_paid:"Abonada parcialmente",paid:"Pagada",open:"Fondo vigente",partially_rendered:"Parcialmente rendido",settled:"Fondo cerrado",rejected:"Rechazada"} as Record<string,string>)[status]||status}

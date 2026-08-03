@@ -4,6 +4,17 @@ import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../.
 const reviewer = (role:string) => isTenantAdmin(role) || ["manager","approver","finance"].includes(role);
 const finance = (role:string) => isTenantAdmin(role) || ["finance","treasury"].includes(role);
 
+function errorMessage(error:unknown, fallback="No fue posible completar la solicitud.") {
+  if(error instanceof Error && error.message) return error.message;
+  if(error && typeof error==="object") {
+    const value=error as {message?:unknown;details?:unknown;hint?:unknown;code?:unknown};
+    const parts=[value.message,value.details,value.hint].filter(item=>typeof item==="string"&&item.trim()) as string[];
+    if(parts.length) return parts.join(" · ");
+    if(typeof value.code==="string"&&value.code) return `${fallback} Código: ${value.code}`;
+  }
+  return fallback;
+}
+
 export async function GET(request:Request){
   try{
     const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
@@ -14,7 +25,7 @@ export async function GET(request:Request){
       admin.from("wama_tenant_memberships").select("profile_id,role,status,wama_profiles(id,full_name,email)").eq("tenant_id",membership.tenant_id).eq("status","active")
     ]);
     return NextResponse.json({reports:reports||[],renditions:reports||[],projects:projects||[],members:(memberships||[]).map(x=>({...(x.wama_profiles as unknown as object),role:x.role})),role:membership.role,profile});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:401});}
+  }catch(error){return NextResponse.json({error:errorMessage(error,"No pudimos validar tu acceso.")},{status:401});}
 }
 
 export async function POST(request:Request){
@@ -30,7 +41,10 @@ export async function POST(request:Request){
     if(error)throw error;
     await admin.from("wama_expense_events").insert({tenant_id:membership.tenant_id,report_id:data.id,event_type:"created",to_status:"submitted",comment:"Solicitud enviada",created_by:profile.id});
     return NextResponse.json({ok:true,report:data,rendition:data});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500});}
+  }catch(error){
+    console.error("expense/renditions POST",error);
+    return NextResponse.json({error:errorMessage(error,"No fue posible guardar la solicitud.")},{status:500});
+  }
 }
 
 export async function PATCH(request:Request){
@@ -64,5 +78,8 @@ export async function PATCH(request:Request){
     const {data,error}=await admin.from("wama_expense_reports").update(update).eq("id",body.id).eq("tenant_id",membership.tenant_id).select("*").single(); if(error)throw error;
     await admin.from("wama_expense_events").insert({tenant_id:membership.tenant_id,report_id:body.id,event_type:body.action,from_status:current.status,to_status:next,comment:body.comment||null,metadata:{amount:body.amount||null,reference:body.reference||null},created_by:profile.id});
     return NextResponse.json({ok:true,report:data});
-  }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"Error"},{status:500});}
+  }catch(error){
+    console.error("expense/renditions PATCH",error);
+    return NextResponse.json({error:errorMessage(error,"No fue posible actualizar la solicitud.")},{status:500});
+  }
 }
