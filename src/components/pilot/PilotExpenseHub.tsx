@@ -38,19 +38,62 @@ export default function PilotExpenseHub() {
   const [detailLoading,setDetailLoading] = useState(false);
   const [reviewComment,setReviewComment] = useState("");
   const [paymentAmount,setPaymentAmount] = useState("");
+  const [sessionExpired,setSessionExpired] = useState(false);
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
 
-  async function token() { const {data}=await supabase.auth.getSession(); return data.session?.access_token||""; }
+  async function token(forceRefresh=false) {
+    if(forceRefresh){
+      const {data,error}=await supabase.auth.refreshSession();
+      return error ? "" : data.session?.access_token||"";
+    }
+    const {data}=await supabase.auth.getSession();
+    const session=data.session;
+    if(!session) return "";
+    const expiresSoon=(session.expires_at||0)*1000-Date.now()<120000;
+    if(!expiresSoon) return session.access_token;
+    const refreshed=await supabase.auth.refreshSession();
+    return refreshed.error ? "" : refreshed.data.session?.access_token||"";
+  }
+  async function authenticatedFetch(input:RequestInfo|URL,init:RequestInit={}) {
+    async function send(forceRefresh=false){
+      const accessToken=await token(forceRefresh);
+      if(!accessToken) return null;
+      const headers=new Headers(init.headers);
+      headers.set("Authorization",`Bearer ${accessToken}`);
+      return fetch(input,{...init,headers});
+    }
+    const isExpired=async(response:Response|null)=>{
+      if(!response||response.status===401)return true;
+      if(response.ok)return false;
+      try{
+        const payload=await response.clone().json();
+        return /unauthorized|invalid.*jwt|jwt.*expired|token.*expired/i.test(String(payload?.error||""));
+      }catch{return false;}
+    };
+    let response=await send(false);
+    if(await isExpired(response)) response=await send(true);
+    if(await isExpired(response)){
+      sessionStorage.setItem("wama-expense-draft",JSON.stringify(form));
+      setSessionExpired(true);
+      return null;
+    }
+    return response;
+  }
   async function load() {
     setLoading(true);
-    const t=await token();
-    if(!t){ location.href="/login"; return; }
-    const r=await fetch("/api/expense/renditions",{headers:{Authorization:`Bearer ${t}`}});
+    const r=await authenticatedFetch("/api/expense/renditions");
+    if(!r){setLoading(false);return;}
     const d=await r.json();
     setItems(d.renditions||[]); setProjects(d.projects||[]); setRole(d.role||""); setLoading(false);
   }
-  useEffect(()=>{ void load(); },[]);
+  useEffect(()=>{
+    const draft=sessionStorage.getItem("wama-expense-draft");
+    if(draft){
+      try{setForm({...initialForm(),...JSON.parse(draft)});setOpen(true);}catch{}
+    }
+    void load();
+  },[]);
   useEffect(()=>()=>{ if(preview) URL.revokeObjectURL(preview); },[preview]);
 
   function chooseFile(selected?:File) {
@@ -86,37 +129,41 @@ export default function PilotExpenseHub() {
 
   async function create(e:FormEvent) {
     e.preventDefault(); setError("");
-    const t=await token();
-    const r=await fetch("/api/expense/renditions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({...form,amountClp:Number(form.amountClp)})});
+    sessionStorage.setItem("wama-expense-draft",JSON.stringify(form));
+    const r=await authenticatedFetch("/api/expense/renditions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,amountClp:Number(form.amountClp)})});
+    if(!r)return;
     const d=await r.json();
     if(!r.ok){setError(d.error||"No se pudo crear.");return;}
     if(file){
       const evidence=new FormData(); evidence.append("file",file); evidence.append("renditionId",d.rendition.id);
-      const upload=await fetch("/api/expense/evidence",{method:"POST",headers:{Authorization:`Bearer ${t}`},body:evidence});
+      const upload=await authenticatedFetch("/api/expense/evidence",{method:"POST",body:evidence});
+      if(!upload)return;
       const uploadData=await upload.json();
       if(!upload.ok){setError(uploadData.error||"La rendición fue creada, pero no se pudo guardar la evidencia.");await load();return;}
     }
+    sessionStorage.removeItem("wama-expense-draft");
     setMessage("Rendición y evidencia guardadas correctamente."); closeModal(); await load();
   }
 
   async function openDetail(item:Rendition){
     setSelected(item); setEvidence([]); setReviewComment(item.review_comment||""); setDetailLoading(true); setError("");
-    const t=await token();
-    const r=await fetch(`/api/expense/evidence?renditionId=${encodeURIComponent(item.id)}`,{headers:{Authorization:`Bearer ${t}`}});
+    const r=await authenticatedFetch(`/api/expense/evidence?renditionId=${encodeURIComponent(item.id)}`);
+    if(!r){setDetailLoading(false);return;}
     const d=await r.json();
     if(r.ok)setEvidence(d.evidence||[]);else setError(d.error||"No se pudo abrir la evidencia.");
     setDetailLoading(false);
   }
   async function review(id:string,status:string){
-    const t=await token();
-    const r=await fetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({id,status,comment:reviewComment})});
+    const r=await authenticatedFetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id,status,comment:reviewComment})});
+    if(!r)return;
     const d=await r.json();
     if(!r.ok){setError(d.error||"No se pudo actualizar la rendición.");return;}
     setMessage(status==="approved"?"Rendición aprobada correctamente.":"Rendición rechazada y registrada en el historial.");setSelected(null);await load();
   }
   async function operate(action:string){
-    if(!selected)return; const t=await token(); setError("");
-    const r=await fetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${t}`},body:JSON.stringify({id:selected.id,action,comment:reviewComment,amount:Number(paymentAmount||0),paymentType:selected.request_type==="fund_request"?"advance":"installment"})});
+    if(!selected)return; setError("");
+    const r=await authenticatedFetch("/api/expense/renditions",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action,comment:reviewComment,amount:Number(paymentAmount||0),paymentType:selected.request_type==="fund_request"?"advance":"installment"})});
+    if(!r)return;
     const d=await r.json(); if(!r.ok){setError(d.error||"No se pudo registrar la acción.");return;} setMessage("Movimiento actualizado correctamente.");setSelected(null);setPaymentAmount("");await load();
   }
   function closeModal(){setOpen(false);setForm(initialForm());setFile(null);setOcr(null);setError("");if(preview)URL.revokeObjectURL(preview);setPreview("");}
@@ -131,6 +178,7 @@ export default function PilotExpenseHub() {
   const openCreate=(requestType:string)=>{setForm({...initialForm(),requestType,category:requestType==="fund_request"?"Fondo por rendir":"Movilización"});setOpen(true)};
 
   return <EnterpriseShell title="Expense Hub" subtitle="Rinde, revisa y aprueba gastos con su evidencia original.">
+    {sessionExpired&&<div className="fixed inset-0 z-[120] grid place-items-center bg-black/55 p-4"><section className="w-full max-w-md rounded-[2rem] bg-white p-7 text-center shadow-2xl"><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#DFFFFA] text-[#087B74]"><RefreshCw className="h-6 w-6"/></div><h2 className="mt-5 text-2xl font-black text-[#0B0C0E]">Sesión caducada</h2><p className="mt-3 text-sm leading-6 text-[#69717D]">Por seguridad, tu sesión terminó. Conservamos los datos escritos para que puedas continuar después de ingresar nuevamente.</p><button onClick={()=>{location.href=`/login?returnTo=${encodeURIComponent(location.pathname)}`}} className="mt-6 w-full rounded-full bg-[#00E5D6] px-5 py-3 font-black text-[#0B0C0E]">Iniciar sesión nuevamente</button></section></div>}
     <div className="space-y-5 sm:space-y-6">
       <nav className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-[0_8px_30px_rgba(11,12,14,.06)]">
         <Nav active={view==="home"} icon={LayoutDashboard} label="Inicio" onClick={()=>setView("home")}/><Nav active={view==="mine"} icon={ReceiptText} label="Mis movimientos" onClick={()=>setView("mine")}/><Nav active={view==="funds"} icon={WalletCards} label="Fondos" onClick={()=>setView("funds")}/>{canReview&&<Nav active={view==="approvals"} icon={ClipboardCheck} label="Aprobaciones" onClick={()=>setView("approvals")}/>} {canFinance&&<Nav active={view==="treasury"} icon={Banknote} label="Tesorería" onClick={()=>setView("treasury")}/>} 

@@ -17,12 +17,17 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [notice, setNotice] = useState("");
 
+  function safeReturnTo() {
+    const requested = new URLSearchParams(window.location.search).get("returnTo") || "";
+    return requested.startsWith("/") && !requested.startsWith("//") ? requested : "/empresa";
+  }
+
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("password") === "updated") setNotice("Tu contraseña fue actualizada. Ya puedes ingresar con tu nueva clave.");
     void supabase.auth.getSession().then(({ data }) => {
       if (!data.session) return;
       const mustChange = Boolean(data.session.user.user_metadata?.must_change_password);
-      router.replace(mustChange ? "/cuenta/crear-clave" : "/empresa");
+      router.replace(mustChange ? "/cuenta/crear-clave" : safeReturnTo());
     });
   }, [router]);
 
@@ -37,7 +42,7 @@ export default function LoginPage() {
       return;
     }
     const mustChange = Boolean(data.user.user_metadata?.must_change_password);
-    router.replace(mustChange ? "/cuenta/crear-clave" : "/empresa");
+    router.replace(mustChange ? "/cuenta/crear-clave" : safeReturnTo());
   }
 
   return (
