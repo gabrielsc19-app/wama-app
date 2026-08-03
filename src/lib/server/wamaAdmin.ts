@@ -43,5 +43,5 @@ export async function getUserTenantContext(authUserId: string) {
 }
 
 export function isTenantAdmin(role: string) {
-  return role === "owner" || role === "admin";
+  return ["owner", "admin", "super_admin"].includes(String(role || "").toLowerCase());
 }

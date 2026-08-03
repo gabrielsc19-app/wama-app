@@ -10,7 +10,12 @@ export async function GET(request: Request) {
       .eq("tenant_id", membership.tenant_id).order("joined_at");
     if (error) throw error;
     const { data: licenses } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key,name),wama_module_user_assignments(profile_id,status)").eq("tenant_id", membership.tenant_id);
-    return NextResponse.json({ users: memberships || [], licenses: licenses || [], currentRole: membership.role });
+    const assignmentRows = (licenses || []).flatMap((license) => {
+      const moduleKey = (license.wama_module_catalog as unknown as { module_key: string } | null)?.module_key;
+      return (license.wama_module_user_assignments || []).filter((item:{status:string})=>item.status==="active").map((item:{profile_id:string})=>({profileId:item.profile_id,moduleKey}));
+    });
+    const users = (memberships || []).map((item) => ({...item,module_keys:assignmentRows.filter(a=>a.profileId===item.profile_id).map(a=>a.moduleKey).filter(Boolean)}));
+    return NextResponse.json({ users, licenses: licenses || [], currentRole: membership.role });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error" }, { status: 401 });
   }
