@@ -247,9 +247,9 @@ export default function SalesHubCrmPage() {
   return (
     <main className="min-h-screen bg-[#F5F6F7] text-[#0B0C0E]">
       <header className="sticky top-0 z-40 border-b border-[#D7DBE0] bg-white/95 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-[1700px] items-center justify-between gap-6 px-8 py-5">
+        <div className="mx-auto flex max-w-[1700px] flex-col items-stretch justify-between gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:items-center lg:px-8 lg:py-5">
           <div className="flex items-center gap-5">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#D7DBE0] bg-white text-2xl font-black text-[#00AFA4] shadow-sm">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl border border-[#D7DBE0] bg-white text-3xl font-black text-[#00AFA4] shadow-sm">
               W
             </div>
 
@@ -275,7 +275,13 @@ export default function SalesHubCrmPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/empresa"
+              className="rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] transition hover:bg-[#00CFC2]"
+            >
+              Volver a módulos
+            </Link>
             <Link
               href="/sales-hub/crm/dashboard"
               className="rounded-full border border-[#D7DBE0] px-5 py-3 text-sm font-black"
@@ -298,7 +304,7 @@ export default function SalesHubCrmPage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-[1700px] px-8 py-8">
+      <section className="mx-auto max-w-[1700px] px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
         <div className="mb-8 rounded-[2rem] border border-[#D7DBE0] bg-white p-6 shadow-sm">
           <div className="grid gap-4 xl:grid-cols-[1.3fr_0.8fr_0.8fr_0.8fr_0.8fr]">
             <input

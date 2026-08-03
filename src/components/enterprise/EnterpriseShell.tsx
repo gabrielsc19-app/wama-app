@@ -49,16 +49,16 @@ export default function EnterpriseShell({
   return (
     <main className="min-h-screen bg-[#F5F6F7] pb-[calc(5.4rem+env(safe-area-inset-bottom))] text-[#0B0C0E] lg:pb-0">
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(286px,88vw)] flex-col overflow-hidden border-r border-[#DCE1E6] bg-[#0B0C0E] text-white transition-transform xl:w-[286px] xl:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
-        <div className="flex h-20 items-center justify-between border-b border-white/10 px-6">
+        <div className="flex min-h-24 items-center justify-between border-b border-white/10 px-5 py-3">
           <Link href="/empresa" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#00E5D6] text-xl font-black text-[#0B0C0E]">W</span>
-            <span><strong className="block text-lg leading-none">WAMA</strong><small className="text-[10px] font-bold tracking-[0.18em] text-[#9CA5AF]">PORTAL EMPRESARIAL</small></span>
+            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#00E5D6] text-2xl font-black text-[#0B0C0E]">W</span>
+            <span><strong className="block text-xl leading-none">WAMA</strong><small className="mt-1 block text-[10px] font-bold tracking-[0.16em] text-[#9CA5AF]">PORTAL EMPRESARIAL</small></span>
           </Link>
           <button className="xl:hidden" onClick={() => setOpen(false)} aria-label="Cerrar menú"><X className="h-5 w-5" /></button>
         </div>
 
         <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-4">
-          <Link href="/app" className="mb-4 flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-[#C4C7CC] hover:bg-white/5">
+          <Link href="/empresa" onClick={() => setOpen(false)} className="mb-4 flex items-center gap-3 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-[#C4C7CC] hover:bg-white/5">
             <ChevronLeft className="h-4 w-4" /> Volver a módulos
           </Link>
           {items.map(({ href, label, icon: Icon }) => (

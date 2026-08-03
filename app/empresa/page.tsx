@@ -75,7 +75,7 @@ export default function CompanyPage() {
               {(["sales", "expense"] as const).map((moduleKey) => {
                 const license = commercialLicenses.find((item) => item.module_key === moduleKey);
                 const title = moduleKey === "sales" ? "Sales Hub" : "Expense Hub";
-                const href = moduleKey === "sales" ? "/sales-hub" : "/expense-hub";
+                const href = moduleKey === "sales" ? "/sales-hub/crm" : "/expense-hub";
 
                 return license ? (
                   <div key={moduleKey} className="rounded-3xl border border-[#DCE1E6] p-5">
@@ -90,7 +90,7 @@ export default function CompanyPage() {
                   <div key={moduleKey} className="rounded-3xl border border-dashed border-[#BFC6CD] bg-[#F7F9FA] p-5">
                     <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#69717D]">Disponible</p><h3 className="mt-1 text-xl font-black">{title}</h3>
                     <p className="mt-3 text-sm leading-6 text-[#69717D]">Activa 15 días gratis y recibe 10 licencias propias para este módulo.</p>
-                    <Link href={`/trial?module=${moduleKey}`} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#0B0C0E] px-5 py-3 text-sm font-black text-white">Activar prueba</Link>
+                    <Link href={`/trial?module=${moduleKey}`} className="mt-5 inline-flex w-full items-center justify-center rounded-2xl bg-[#00E5D6] px-5 py-3 text-sm font-black text-[#0B0C0E] shadow-[0_10px_24px_rgba(0,229,214,.22)] transition hover:bg-[#00CFC2]">Activar prueba</Link>
                   </div>
                 );
               })}
