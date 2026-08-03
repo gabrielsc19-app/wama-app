@@ -42,20 +42,30 @@ export default function PilotExpenseHub() {
   const cameraInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
 
+  const wait = (milliseconds:number) => new Promise(resolve=>setTimeout(resolve,milliseconds));
+  async function currentSession() {
+    // En iPhone, volver desde la cámara puede dejar el almacenamiento de sesión
+    // momentáneamente ocupado. Esperamos antes de concluir que la sesión terminó.
+    for(let attempt=0;attempt<5;attempt+=1){
+      const {data}=await supabase.auth.getSession();
+      if(data.session)return data.session;
+      if(attempt<4)await wait(300*(attempt+1));
+    }
+    return null;
+  }
   async function token(forceRefresh=false) {
+    const session=await currentSession();
+    if(!session)return "";
     if(forceRefresh){
       const {data,error}=await supabase.auth.refreshSession();
-      return error ? "" : data.session?.access_token||"";
+      return error ? session.access_token : data.session?.access_token||session.access_token;
     }
-    const {data}=await supabase.auth.getSession();
-    const session=data.session;
-    if(!session) return "";
     const expiresSoon=(session.expires_at||0)*1000-Date.now()<120000;
     if(!expiresSoon) return session.access_token;
     const refreshed=await supabase.auth.refreshSession();
-    return refreshed.error ? "" : refreshed.data.session?.access_token||"";
+    return refreshed.error ? session.access_token : refreshed.data.session?.access_token||session.access_token;
   }
-  async function authenticatedFetch(input:RequestInfo|URL,init:RequestInit={}) {
+  async function authenticatedFetch(input:RequestInfo|URL,init:RequestInit={},showExpired=true) {
     async function send(forceRefresh=false){
       const accessToken=await token(forceRefresh);
       if(!accessToken) return null;
@@ -73,7 +83,7 @@ export default function PilotExpenseHub() {
     };
     let response=await send(false);
     if(await isExpired(response)) response=await send(true);
-    if(await isExpired(response)){
+    if(await isExpired(response)&&showExpired){
       sessionStorage.setItem("wama-expense-draft",JSON.stringify(form));
       setSessionExpired(true);
       return null;
@@ -82,7 +92,7 @@ export default function PilotExpenseHub() {
   }
   async function load() {
     setLoading(true);
-    const r=await authenticatedFetch("/api/expense/renditions");
+    const r=await authenticatedFetch("/api/expense/renditions",{},false);
     if(!r){setLoading(false);return;}
     const d=await r.json();
     setItems(d.renditions||[]); setProjects(d.projects||[]); setRole(d.role||""); setLoading(false);
@@ -93,6 +103,13 @@ export default function PilotExpenseHub() {
       try{setForm({...initialForm(),...JSON.parse(draft)});setOpen(true);}catch{}
     }
     void load();
+  },[]);
+  useEffect(()=>{
+    const recoverAfterCamera=()=>{
+      if(document.visibilityState==="visible")void currentSession();
+    };
+    document.addEventListener("visibilitychange",recoverAfterCamera);
+    return ()=>document.removeEventListener("visibilitychange",recoverAfterCamera);
   },[]);
   useEffect(()=>()=>{ if(preview) URL.revokeObjectURL(preview); },[preview]);
 
@@ -108,7 +125,8 @@ export default function PilotExpenseHub() {
     setReading(true); setError(""); setMessage("");
     try {
       const body=new FormData(); body.append("file",selected);
-      const r=await fetch("/api/expense/ocr",{method:"POST",body});
+      const r=await authenticatedFetch("/api/expense/ocr",{method:"POST",body});
+      if(!r)return;
       const d=await r.json();
       if(!r.ok) throw new Error(d.error||"No fue posible leer el documento.");
       const result:OcrData=d.data||{};
