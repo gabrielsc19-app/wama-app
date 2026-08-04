@@ -5,7 +5,65 @@ import EnterpriseShell from "../../../src/components/enterprise/EnterpriseShell"
 import { loadEnterprisePortalData, type EnterprisePortalData } from "../../../src/core/portal/portalData";
 import { updateTenant } from "../../../src/core/tenant/TenantService";
 
-const MAX_LOGO_BYTES = 2 * 1024 * 1024;
+const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+const TARGET_LOGO_BYTES = 700 * 1024;
+const MAX_LOGO_SIDE = 1400;
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function readAsDataUrl(file: Blob) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No pudimos leer la imagen seleccionada."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(source: string) {
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No pudimos procesar esta imagen."));
+    image.src = source;
+  });
+}
+
+async function optimizeRasterLogo(file: File) {
+  const source = await readAsDataUrl(file);
+  const image = await loadImage(source);
+  const scale = Math.min(1, MAX_LOGO_SIDE / Math.max(image.naturalWidth, image.naturalHeight));
+  let width = Math.max(1, Math.round(image.naturalWidth * scale));
+  let height = Math.max(1, Math.round(image.naturalHeight * scale));
+  let quality = 0.9;
+  let blob: Blob | null = null;
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("El navegador no pudo optimizar la imagen.");
+    context.drawImage(image, 0, 0, width, height);
+    blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", quality));
+    if (!blob) throw new Error("El navegador no pudo convertir la imagen.");
+    if (blob.size <= TARGET_LOGO_BYTES) break;
+    if (quality > 0.58) quality -= 0.08;
+    else {
+      width = Math.max(320, Math.round(width * 0.85));
+      height = Math.max(320, Math.round(height * 0.85));
+    }
+  }
+
+  if (!blob || blob.size > TARGET_LOGO_BYTES) {
+    throw new Error("No fue posible reducir suficientemente la imagen. Prueba con otra fotografía.");
+  }
+  return { dataUrl: await readAsDataUrl(blob), optimizedBytes: blob.size };
+}
 
 function normalizeWebsite(value: string) {
   const clean = value.trim();
@@ -21,6 +79,8 @@ export default function ProfilePage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [optimizing, setOptimizing] = useState(false);
+  const [logoInfo, setLogoInfo] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,25 +92,39 @@ export default function ProfilePage() {
     });
   }, []);
 
-  function selectLogo(event: ChangeEvent<HTMLInputElement>) {
+  async function selectLogo(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     setError("");
     setMessage("");
+    setLogoInfo("");
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
+    if (!["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(file.type)) {
       setError("Selecciona una imagen en formato PNG, JPG, WEBP o SVG.");
       event.target.value = "";
       return;
     }
-    if (file.size > MAX_LOGO_BYTES) {
-      setError("La imagen es demasiado pesada. El máximo permitido es 2 MB.");
+    if (file.size > MAX_SOURCE_BYTES) {
+      setError("La imagen supera los 20 MB. Selecciona un archivo más liviano.");
       event.target.value = "";
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => setLogo(String(reader.result || ""));
-    reader.onerror = () => setError("No pudimos leer la imagen seleccionada.");
-    reader.readAsDataURL(file);
+    setOptimizing(true);
+    try {
+      if (file.type === "image/svg+xml") {
+        if (file.size > TARGET_LOGO_BYTES) throw new Error("El SVG supera los 700 KB. Optimízalo antes de cargarlo.");
+        setLogo(await readAsDataUrl(file));
+        setLogoInfo(`Imagen lista: ${formatBytes(file.size)}.`);
+      } else {
+        const optimized = await optimizeRasterLogo(file);
+        setLogo(optimized.dataUrl);
+        setLogoInfo(`Imagen optimizada: ${formatBytes(file.size)} → ${formatBytes(optimized.optimizedBytes)}.`);
+      }
+    } catch (optimizationError) {
+      setError(optimizationError instanceof Error ? optimizationError.message : "No pudimos optimizar la imagen.");
+      event.target.value = "";
+    } finally {
+      setOptimizing(false);
+    }
   }
 
   async function save(event: FormEvent) {
@@ -108,15 +182,17 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <h3 className="text-sm font-black">Logo de la empresa</h3>
-                  <p className="mt-1 text-xs text-[#69717D]">Carga una imagen PNG, JPG, WEBP o SVG de hasta 2 MB.</p>
+                  <p className="mt-1 text-xs text-[#69717D]">Carga una imagen PNG, JPG o WEBP de hasta 20 MB. WAMA reducirá automáticamente su peso antes de guardarla.</p>
+                  {optimizing && <p className="mt-2 text-xs font-black text-[#008F87]">Optimizando imagen…</p>}
+                  {logoInfo && !optimizing && <p className="mt-2 text-xs font-bold text-[#08645F]">{logoInfo}</p>}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={selectLogo} className="hidden" />
-                  <button type="button" onClick={() => fileRef.current?.click()} className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white">
-                    {logo ? "Cambiar imagen" : "Cargar imagen"}
+                  <button type="button" disabled={optimizing} onClick={() => fileRef.current?.click()} className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60">
+                    {optimizing ? "Optimizando…" : logo ? "Cambiar imagen" : "Cargar imagen"}
                   </button>
                   {logo && (
-                    <button type="button" onClick={() => { setLogo(""); if (fileRef.current) fileRef.current.value = ""; }} className="rounded-xl border border-[#C9D0D5] bg-white px-4 py-3 text-sm font-black">
+                    <button type="button" disabled={optimizing} onClick={() => { setLogo(""); setLogoInfo(""); if (fileRef.current) fileRef.current.value = ""; }} className="rounded-xl border border-[#C9D0D5] bg-white px-4 py-3 text-sm font-black disabled:opacity-60">
                       Quitar logo
                     </button>
                   )}
@@ -132,7 +208,7 @@ export default function ProfilePage() {
 
           {message && <p className="mt-5 rounded-2xl bg-[#DFFFFA] p-4 text-sm font-bold text-[#08645F]">{message}</p>}
           {error && <p className="mt-5 rounded-2xl bg-[#FFF0F0] p-4 text-sm font-bold text-[#9B1C1C]">{error}</p>}
-          <button disabled={saving} className="mt-6 w-full rounded-2xl bg-[#00E5D6] px-6 py-4 font-black text-black disabled:cursor-wait disabled:opacity-60">
+          <button disabled={saving || optimizing} className="mt-6 w-full rounded-2xl bg-[#00E5D6] px-6 py-4 font-black text-black disabled:cursor-wait disabled:opacity-60">
             {saving ? "Guardando cambios…" : "Guardar cambios"}
           </button>
         </form>
