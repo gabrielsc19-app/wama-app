@@ -4,6 +4,12 @@ import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../.
 const reviewer = (role:string) => isTenantAdmin(role) || ["manager","approver","finance"].includes(role);
 const finance = (role:string) => isTenantAdmin(role) || ["finance","treasury"].includes(role);
 
+async function expenseRole(admin:any,tenantId:string,profileId:string,membershipRole:string){
+  if(isTenantAdmin(membershipRole)) return "admin";
+  const {data}=await admin.from("wama_module_user_assignments").select("module_role,wama_tenant_module_licenses!inner(tenant_id,wama_module_catalog!inner(module_key))").eq("profile_id",profileId).eq("status","active").eq("wama_tenant_module_licenses.tenant_id",tenantId).eq("wama_tenant_module_licenses.wama_module_catalog.module_key","expense").maybeSingle();
+  return data?.module_role||"member";
+}
+
 function errorMessage(error:unknown, fallback="No fue posible completar la solicitud.") {
   if(error instanceof Error && error.message) return error.message;
   if(error && typeof error==="object") {
@@ -18,6 +24,7 @@ function errorMessage(error:unknown, fallback="No fue posible completar la solic
 export async function GET(request:Request){
   try{
     const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
+    const moduleRole=await expenseRole(admin,membership.tenant_id,profile.id,membership.role);
     const {data:reports,error}=await admin.from("wama_expense_reports").select("*,wama_projects(id,name,code),wama_profiles!wama_expense_reports_submitted_by_fkey(id,full_name,email),assignee:wama_profiles!wama_expense_reports_assigned_to_fkey(id,full_name,email),wama_expense_evidence(id,file_name,mime_type,file_size,storage_path,created_at),wama_expense_payments(*),wama_expense_events(*)").eq("tenant_id",membership.tenant_id).order("created_at",{ascending:false});
     if(error) throw error;
     const [{data:projects},{data:memberships}]=await Promise.all([
@@ -33,7 +40,7 @@ export async function GET(request:Request){
       const delivered=Number(report.paid_amount_clp||0); const returned=Number(report.returned_amount_clp||0);
       return {...report,fund_summary:{delivered,approved_spent:approvedSpent,pending_spent:pendingSpent,returned,available:Math.max(0,delivered-approvedSpent-returned)}};
     });
-    return NextResponse.json({reports:enriched,renditions:enriched,projects:projects||[],members:(memberships||[]).map(x=>({...(x.wama_profiles as unknown as object),role:x.role})),role:membership.role,profile});
+    return NextResponse.json({reports:enriched,renditions:enriched,projects:projects||[],members:(memberships||[]).map(x=>({...(x.wama_profiles as unknown as object),role:x.role})),role:moduleRole,profile});
   }catch(error){return NextResponse.json({error:errorMessage(error,"No pudimos validar tu acceso.")},{status:401});}
 }
 
@@ -59,6 +66,7 @@ export async function POST(request:Request){
 export async function PATCH(request:Request){
   try{
     const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
+    const moduleRole=await expenseRole(admin,membership.tenant_id,profile.id,membership.role);
     const body=await request.json() as {id?:string;action?:string;status?:string;comment?:string;assignedTo?:string;approvedAmount?:number;amount?:number;reference?:string;paymentType?:string;evidenceId?:string};
     if(!body.action&&body.status) body.action=body.status==="approved"?"approve":body.status==="rejected"?"reject":body.status==="observed"?"observe":undefined;
     if(!body.id||!body.action)return NextResponse.json({error:"Datos incompletos."},{status:400});
@@ -66,10 +74,10 @@ export async function PATCH(request:Request){
     if(!current)return NextResponse.json({error:"Solicitud no encontrada."},{status:404});
     let next=current.status; const update:Record<string,unknown>={updated_at:new Date().toISOString()};
     if(body.action==="assign"){
-      if(!reviewer(membership.role))return NextResponse.json({error:"Sin permiso para asignar."},{status:403});
+      if(!reviewer(moduleRole))return NextResponse.json({error:"Sin permiso para asignar."},{status:403});
       next="assigned"; update.assigned_to=body.assignedTo||profile.id;
     }else if(body.action==="observe"||body.action==="reject"||body.action==="approve"){
-      if(!reviewer(membership.role))return NextResponse.json({error:"Sin permiso para revisar."},{status:403});
+      if(!reviewer(moduleRole))return NextResponse.json({error:"Sin permiso para revisar."},{status:403});
       next=body.action==="observe"?"observed":body.action==="reject"?"rejected":current.request_type==="fund_request"?"approved":current.request_type==="fund_rendition"?"paid":"pending_payment";
       update.reviewed_by=profile.id; update.reviewed_at=new Date().toISOString(); update.review_comment=body.comment||null;
       if(body.action==="approve"){
@@ -87,7 +95,7 @@ export async function PATCH(request:Request){
     }else if(body.action==="resubmit"){
       if(current.submitted_by!==profile.id)return NextResponse.json({error:"Solo el solicitante puede reenviar."},{status:403}); next="submitted";
     }else if(body.action==="pay"){
-      if(!finance(membership.role))return NextResponse.json({error:"Sin permiso para registrar pagos."},{status:403});
+      if(!finance(moduleRole))return NextResponse.json({error:"Sin permiso para registrar pagos."},{status:403});
       if(!body.evidenceId)return NextResponse.json({error:"Adjunta el comprobante de transferencia antes de registrar el abono."},{status:400});
       const {data:receipt}=await admin.from("wama_expense_evidence").select("id,evidence_type").eq("id",body.evidenceId).eq("report_id",current.id).eq("tenant_id",membership.tenant_id).single();
       if(!receipt||receipt.evidence_type!=="transfer_receipt")return NextResponse.json({error:"El comprobante de transferencia no es válido."},{status:400});
@@ -95,7 +103,7 @@ export async function PATCH(request:Request){
       await admin.from("wama_expense_payments").insert({tenant_id:membership.tenant_id,report_id:current.id,amount_clp:amount,payment_type:body.paymentType||"installment",reference:body.reference||null,note:body.comment||null,evidence_id:receipt.id,created_by:profile.id});
       const paid=Number(current.paid_amount_clp)+amount; update.paid_amount_clp=paid; next=paid>=target?(current.request_type==="fund_request"?"open":"paid"):"partially_paid";
     }else if(body.action==="return_fund"){
-      if(!finance(membership.role))return NextResponse.json({error:"Sin permiso para registrar devoluciones."},{status:403});
+      if(!finance(moduleRole))return NextResponse.json({error:"Sin permiso para registrar devoluciones."},{status:403});
       if(current.request_type!=="fund_request")return NextResponse.json({error:"La devolución solo corresponde a un fondo por rendir."},{status:400});
       if(!body.evidenceId)return NextResponse.json({error:"Adjunta el comprobante de devolución."},{status:400});
       const {data:receipt}=await admin.from("wama_expense_evidence").select("id,evidence_type").eq("id",body.evidenceId).eq("report_id",current.id).eq("tenant_id",membership.tenant_id).single();
@@ -109,7 +117,7 @@ export async function PATCH(request:Request){
       update.returned_amount_clp=Number(current.returned_amount_clp||0)+amount;
       next=Math.abs(available-amount)<0.5?"settled":"partially_rendered";
     }else if(body.action==="close_fund"){
-      if(!finance(membership.role))return NextResponse.json({error:"Sin permiso para cerrar fondos."},{status:403});
+      if(!finance(moduleRole))return NextResponse.json({error:"Sin permiso para cerrar fondos."},{status:403});
       if(current.request_type!=="fund_request")return NextResponse.json({error:"Solo se pueden cerrar fondos por rendir."},{status:400});
       const {data:children}=await admin.from("wama_expense_reports").select("status,amount_clp,approved_amount_clp").eq("parent_fund_id",current.id).eq("tenant_id",membership.tenant_id);
       const pending=(children||[]).some(item=>["submitted","assigned","in_review","observed"].includes(item.status));
