@@ -1,0 +1,11 @@
+begin;
+alter table public.wama_tenant_memberships drop constraint if exists wama_tenant_memberships_role_check;
+alter table public.wama_tenant_memberships add constraint wama_tenant_memberships_role_check check (role in ('owner','admin','super_admin','manager','approver','finance','treasury','member','viewer'));
+alter table public.wama_expense_evidence add column if not exists evidence_type text not null default 'expense_document';
+alter table public.wama_expense_evidence drop constraint if exists wama_expense_evidence_type_check;
+alter table public.wama_expense_evidence add constraint wama_expense_evidence_type_check check (evidence_type in ('expense_document','transfer_receipt','return_receipt'));
+alter table public.wama_expense_payments add column if not exists evidence_id uuid references public.wama_expense_evidence(id) on delete restrict;
+alter table public.wama_expense_reports add column if not exists returned_amount_clp numeric(14,2) not null default 0;
+create index if not exists idx_wama_expense_evidence_type on public.wama_expense_evidence(report_id,evidence_type,created_at desc);
+commit;
+notify pgrst, 'reload schema';

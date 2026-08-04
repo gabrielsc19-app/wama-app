@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
     const {data:evidence, error} = await admin
       .from("wama_expense_evidence")
-      .select("id,file_name,mime_type,file_size,storage_path,created_at,is_current")
+      .select("id,file_name,mime_type,file_size,storage_path,created_at,is_current,evidence_type")
       .eq("report_id", renditionId)
       .eq("tenant_id", membership.tenant_id)
       .order("created_at", {ascending:false});
@@ -78,6 +78,7 @@ export async function POST(request: Request) {
     const form = await request.formData();
     const file = form.get("file");
     const renditionId = String(form.get("renditionId") || "");
+    const evidenceType = String(form.get("evidenceType") || "expense_document");
     if (!(file instanceof File) || !renditionId) return NextResponse.json({error:"Falta la evidencia o la rendición."},{status:400});
     if (file.size > 12*1024*1024) return NextResponse.json({error:"El archivo supera el máximo de 12 MB."},{status:413});
     const allowed=["image/jpeg","image/png","image/webp","application/pdf"];
@@ -89,7 +90,8 @@ export async function POST(request: Request) {
     const bytes=Buffer.from(await file.arrayBuffer());
     const {error:storageError}=await admin.storage.from("expense-evidence").upload(path,bytes,{contentType:file.type,upsert:false});
     if(storageError) throw storageError;
-    const {data:evidence,error:evidenceError}=await admin.from("wama_expense_evidence").insert({tenant_id:membership.tenant_id,report_id:renditionId,uploaded_by:profile.id,storage_path:path,file_name:file.name,mime_type:file.type,file_size:file.size}).select("*").single();
+    if(!["expense_document","transfer_receipt","return_receipt"].includes(evidenceType)) return NextResponse.json({error:"Tipo de comprobante no válido."},{status:400});
+    const {data:evidence,error:evidenceError}=await admin.from("wama_expense_evidence").insert({tenant_id:membership.tenant_id,report_id:renditionId,uploaded_by:profile.id,storage_path:path,file_name:file.name,mime_type:file.type,file_size:file.size,evidence_type:evidenceType}).select("*").single();
     if(evidenceError){await admin.storage.from("expense-evidence").remove([path]);throw evidenceError;}
     await admin.from("wama_expense_reports").update({document_url:path,updated_at:new Date().toISOString()}).eq("id",renditionId).eq("tenant_id",membership.tenant_id);
     return NextResponse.json({ok:true,evidence});

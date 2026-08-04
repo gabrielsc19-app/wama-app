@@ -58,6 +58,8 @@ export async function POST(request: Request) {
     const body = await request.json() as { email?: string; fullName?: string; role?: string; projectIds?: string[]; moduleKeys?: string[] };
     const email = body.email?.trim().toLowerCase(); const fullName = body.fullName?.trim();
     if (!email || !fullName) return NextResponse.json({ error: "Nombre y correo son obligatorios." }, { status: 400 });
+    const requestedRole = body.role || "member";
+    if (!["member","manager","approver","finance","treasury","admin","viewer"].includes(requestedRole)) return NextResponse.json({ error: "El perfil seleccionado no es válido." }, { status: 400 });
 
     const requestedModules = [...new Set(body.moduleKeys || [])];
     if (!requestedModules.length) return NextResponse.json({ error: "Selecciona al menos un módulo." }, { status: 400 });
@@ -71,10 +73,10 @@ export async function POST(request: Request) {
     if (inviteError || !invite.user) return NextResponse.json({ error: inviteError?.message || "No se pudo enviar la invitación." }, { status: 400 });
     const { data: invitedProfile, error: profileError } = await admin.from("wama_profiles").upsert({ auth_user_id: invite.user.id, full_name: fullName, email, status: "invited" }, { onConflict: "auth_user_id" }).select("id").single();
     if (profileError || !invitedProfile) throw profileError;
-    await admin.from("wama_tenant_memberships").upsert({ tenant_id: membership.tenant_id, profile_id: invitedProfile.id, role: body.role || "member", status: "invited" }, { onConflict: "tenant_id,profile_id" });
+    await admin.from("wama_tenant_memberships").upsert({ tenant_id: membership.tenant_id, profile_id: invitedProfile.id, role: requestedRole, status: "invited" }, { onConflict: "tenant_id,profile_id" });
     await admin.from("wama_module_user_assignments").upsert(selected.map(license => ({ tenant_module_license_id: license.id, profile_id: invitedProfile.id, assigned_by: profile.id, status: "active" })), { onConflict: "tenant_module_license_id,profile_id" });
-    if (body.projectIds?.length) await admin.from("wama_project_members").upsert(body.projectIds.map(projectId => ({ project_id: projectId, profile_id: invitedProfile.id, role: body.role || "member" })), { onConflict: "project_id,profile_id" });
-    await admin.from("wama_invitations").upsert({ tenant_id: membership.tenant_id, email, full_name: fullName, role: body.role || "member", invited_by: profile.id, auth_user_id: invite.user.id, status: "pending" }, { onConflict: "tenant_id,email" });
+    if (body.projectIds?.length) await admin.from("wama_project_members").upsert(body.projectIds.map(projectId => ({ project_id: projectId, profile_id: invitedProfile.id, role: requestedRole })), { onConflict: "project_id,profile_id" });
+    await admin.from("wama_invitations").upsert({ tenant_id: membership.tenant_id, email, full_name: fullName, role: requestedRole, invited_by: profile.id, auth_user_id: invite.user.id, status: "pending" }, { onConflict: "tenant_id,email" });
     return NextResponse.json({ ok: true, email, modules: requestedModules });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error inesperado." }, { status: 500 });
