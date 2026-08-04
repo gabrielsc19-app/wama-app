@@ -3,7 +3,7 @@
 import { ChangeEvent, FormEvent, useEffect, useRef, useState } from "react";
 import EnterpriseShell from "../../../src/components/enterprise/EnterpriseShell";
 import { loadEnterprisePortalData, type EnterprisePortalData } from "../../../src/core/portal/portalData";
-import { updateTenant } from "../../../src/core/tenant/TenantService";
+import { supabase } from "../../lib/supabase";
 
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 const TARGET_LOGO_BYTES = 700 * 1024;
@@ -135,11 +135,25 @@ export default function ProfilePage() {
     setMessage("");
     try {
       const normalizedWebsite = normalizeWebsite(website);
-      await updateTenant(data.tenant.id, {
-        name,
-        website: normalizedWebsite,
-        logoUrl: logo || null,
+      const { data: authData } = await supabase.auth.getSession();
+      const token = authData.session?.access_token;
+      if (!token) throw new Error("Tu sesión terminó. Vuelve a ingresar.");
+
+      const response = await fetch("/api/enterprise/profile", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          tenantId: data.tenant.id,
+          name,
+          website: normalizedWebsite,
+          logoUrl: logo || null,
+        }),
       });
+      const result = (await response.json().catch(() => ({}))) as { error?: string };
+      if (!response.ok) throw new Error(result.error || "No fue posible guardar los cambios.");
       setWebsite(normalizedWebsite || "");
       setMessage("Datos de la empresa actualizados correctamente.");
     } catch (saveError) {
@@ -156,8 +170,8 @@ export default function ProfilePage() {
       ) : (
         <form onSubmit={save} className="mx-auto max-w-4xl rounded-[2rem] border border-[#DCE1E6] bg-white p-7 sm:p-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-3xl border bg-white p-2 text-3xl font-black">
-              {logo ? <img src={logo} alt="Logo de la empresa" className="h-full w-full object-contain" /> : name.slice(0, 2).toUpperCase()}
+            <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-3xl border bg-white text-3xl font-black">
+              {logo ? <img src={logo} alt="Logo de la empresa" className="h-full w-full object-cover" /> : name.slice(0, 2).toUpperCase()}
             </div>
             <div>
               <p className="text-xs font-black uppercase tracking-[.18em] text-[#008F87]">Identidad empresarial</p>
