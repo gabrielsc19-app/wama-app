@@ -1,5 +1,16 @@
 import { NextResponse } from "next/server";
+import { sendWamaEmail } from "../../../../src/lib/server/googleGmail";
 import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+
+function escapeHtml(value: string) {
+  return value.replace(/[&<>'"]/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "'": "&#39;",
+    '"': "&quot;",
+  })[char] ?? char);
+}
 
 export async function GET(request: Request) {
   try {
@@ -123,13 +134,31 @@ export async function PATCH(request: Request) {
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede reenviar invitaciones." },{status:403});
     const body = await request.json() as { profileId?:string };
     if (!body.profileId) return NextResponse.json({error:"Falta identificar la invitación pendiente."},{status:400});
-    const { data:targetMembership,error:membershipError }=await admin.from("wama_tenant_memberships").select("status,wama_profiles!inner(email)").eq("tenant_id",membership.tenant_id).eq("profile_id",body.profileId).maybeSingle();
+    const { data:targetMembership,error:membershipError }=await admin.from("wama_tenant_memberships").select("status,wama_profiles!inner(full_name,email)").eq("tenant_id",membership.tenant_id).eq("profile_id",body.profileId).maybeSingle();
     if(membershipError||!targetMembership) return NextResponse.json({error:"El usuario no pertenece a esta empresa."},{status:404});
     if(targetMembership.status!=="invited") return NextResponse.json({error:"La invitación ya fue aceptada y no necesita reenvío."},{status:409});
-    const email=(targetMembership.wama_profiles as unknown as {email:string}).email;
+    const targetProfile=targetMembership.wama_profiles as unknown as {full_name:string;email:string};
+    const email=targetProfile.email.trim().toLowerCase();
     const origin=new URL(request.url).origin;
-    const { error:resendError }=await admin.auth.resend({type:"signup",email,options:{emailRedirectTo:`${origin}/invitacion/aceptar`}});
-    if(resendError) return NextResponse.json({error:resendError.message||"No se pudo reenviar la invitación."},{status:400});
+    const redirectTo=`${origin}/invitacion/aceptar`;
+    const { data:linkData,error:linkError }=await admin.auth.admin.generateLink({
+      type:"invite",
+      email,
+      options:{redirectTo,data:{full_name:targetProfile.full_name}},
+    });
+    const invitationUrl=linkData?.properties?.action_link;
+    if(linkError||!invitationUrl) return NextResponse.json({error:linkError?.message||"No se pudo generar un nuevo enlace de invitación."},{status:400});
+
+    const { data:tenant }=await admin.from("wama_tenants").select("name").eq("id",membership.tenant_id).maybeSingle();
+    const safeName=escapeHtml(targetProfile.full_name||"Usuario");
+    const safeCompany=escapeHtml(tenant?.name||"tu empresa");
+    const safeInvitationUrl=escapeHtml(invitationUrl);
+    await sendWamaEmail({
+      to:email,
+      subject:"Has sido invitado a WAMA",
+      text:`Hola ${targetProfile.full_name || ""},\n\n${tenant?.name || "Tu empresa"} te ha invitado a WAMA. Usa este enlace para aceptar la invitación y configurar tu acceso:\n\n${invitationUrl}\n\nEste enlace reemplaza al anterior.`,
+      html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,Helvetica,sans-serif;color:#0B0C0E"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:32px;text-align:center"><div style="font-size:36px;font-weight:800;letter-spacing:4px;color:#00E5D6">WAMA</div><div style="margin-top:8px;font-size:14px;color:#C4C7CC">Warn and Manage</div></td></tr><tr><td style="padding:40px 34px"><h1 style="margin:0 0 18px;font-size:25px">Has sido invitado a WAMA</h1><p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te ha invitado a formar parte de su portal de trabajo.</p><p style="margin:0 0 26px;font-size:16px;line-height:1.6;color:#42464D">Presiona el botón para aceptar la invitación y configurar tu acceso.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 28px"><tr><td style="border-radius:10px;background:#00E5D6"><a href="${safeInvitationUrl}" style="display:inline-block;padding:15px 28px;font-size:16px;font-weight:700;color:#0B0C0E;text-decoration:none">Aceptar invitación</a></td></tr></table><p style="margin:0 0 8px;font-size:13px;color:#737881">Si el botón no funciona, copia este enlace:</p><p style="margin:0;word-break:break-all;font-size:12px;color:#737881">${safeInvitationUrl}</p></td></tr><tr><td style="padding:22px 34px;background:#F5F6F7;text-align:center;font-size:13px;color:#737881">Gestiona tu empresa módulo por módulo.</td></tr></table></td></tr></table></body></html>`,
+    });
     await admin.from("wama_invitations").update({status:"pending"}).eq("tenant_id",membership.tenant_id).eq("email",email);
     return NextResponse.json({ok:true,email});
   } catch(error) {
