@@ -115,3 +115,24 @@ export async function PUT(request: Request) {
     return NextResponse.json({error:error instanceof Error?error.message:"Error inesperado."},{status:500});
   }
 }
+
+export async function PATCH(request: Request) {
+  try {
+    const user = await requireWamaUser(request);
+    const { admin, membership } = await getUserTenantContext(user.id);
+    if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede reenviar invitaciones." },{status:403});
+    const body = await request.json() as { profileId?:string };
+    if (!body.profileId) return NextResponse.json({error:"Falta identificar la invitación pendiente."},{status:400});
+    const { data:targetMembership,error:membershipError }=await admin.from("wama_tenant_memberships").select("status,wama_profiles!inner(email)").eq("tenant_id",membership.tenant_id).eq("profile_id",body.profileId).maybeSingle();
+    if(membershipError||!targetMembership) return NextResponse.json({error:"El usuario no pertenece a esta empresa."},{status:404});
+    if(targetMembership.status!=="invited") return NextResponse.json({error:"La invitación ya fue aceptada y no necesita reenvío."},{status:409});
+    const email=(targetMembership.wama_profiles as unknown as {email:string}).email;
+    const origin=new URL(request.url).origin;
+    const { error:resendError }=await admin.auth.resend({type:"signup",email,options:{emailRedirectTo:`${origin}/invitacion/aceptar`}});
+    if(resendError) return NextResponse.json({error:resendError.message||"No se pudo reenviar la invitación."},{status:400});
+    await admin.from("wama_invitations").update({status:"pending"}).eq("tenant_id",membership.tenant_id).eq("email",email);
+    return NextResponse.json({ok:true,email});
+  } catch(error) {
+    return NextResponse.json({error:error instanceof Error?error.message:"Error inesperado."},{status:500});
+  }
+}

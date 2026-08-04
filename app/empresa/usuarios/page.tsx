@@ -38,6 +38,7 @@ export default function UsersPage() {
   const [message,setMessage] = useState("");
   const [loading,setLoading] = useState(false);
   const [savingKey,setSavingKey] = useState("");
+  const [resendingId,setResendingId] = useState("");
 
   async function token() { const { data } = await supabase.auth.getSession(); return data.session?.access_token || ""; }
   async function load() {
@@ -78,6 +79,15 @@ export default function UsersPage() {
     setMessage(`Perfil de ${data.moduleName} actualizado correctamente.`);
   }
 
+  async function resendInvitation(user:ApiUser) {
+    setResendingId(user.profile_id); setMessage("");
+    const accessToken=await token();
+    const response=await fetch("/api/enterprise/users",{method:"PATCH",headers:{"Content-Type":"application/json",Authorization:`Bearer ${accessToken}`},body:JSON.stringify({profileId:user.profile_id})});
+    const data=await response.json(); setResendingId("");
+    if(!response.ok){setMessage(`Error: ${data.error||"No se pudo reenviar la invitación."}`);return;}
+    setMessage(`Invitación reenviada a ${data.email}.`);
+  }
+
   const canAdmin=["owner","admin","super_admin"].includes(role.toLowerCase());
   const selectedModules=Object.keys(form.moduleRoles);
   return <EnterpriseShell title="Usuarios" subtitle="Administra tu equipo y asigna un perfil diferente en cada módulo.">
@@ -86,7 +96,7 @@ export default function UsersPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"><StatCard label="Usuarios únicos" value={String(users.length)} detail="Personas asociadas a la empresa" />{licenses.map((license)=>{const capacity=license.included_seats+license.extra_seat_blocks*license.extra_block_size;const used=(license.wama_module_user_assignments||[]).filter((a)=>a.status==="active").length;return <StatCard key={license.id} label={license.wama_module_catalog.name} value={`${used}/${capacity}`} detail={`${Math.max(0,capacity-used)} cupos disponibles`} />;})}</div>
       {message&&<div className={`rounded-2xl p-4 text-sm font-bold ${message.startsWith("Error:")?"bg-red-50 text-red-700":"bg-[#DFFFFA] text-[#08645F]"}`}>{message}</div>}
       <SectionCard title="Equipo de la empresa" eyebrow="Roles independientes por módulo" action={null}>
-        <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b border-[#E8ECEF] text-xs uppercase text-[#69717D]"><th className="pb-4">Usuario</th><th className="pb-4">Estado</th>{licenses.map((license)=><th key={license.id} className="pb-4">{license.wama_module_catalog.name}</th>)}</tr></thead><tbody>{users.map((user)=><tr key={user.id} className="border-b border-[#EEF1F3] last:border-0"><td className="py-5"><strong className="block">{user.wama_profiles?.full_name||"Usuario"}</strong><span className="text-[#69717D]">{user.wama_profiles?.email}</span>{user.role==="owner"&&<span className="mt-1 block text-xs font-black text-[#008F87]">Propietario</span>}</td><td>{user.status==="invited"?"Invitación pendiente":"Activo"}</td>{licenses.map((license)=>{const moduleKey=license.wama_module_catalog.module_key;const assignment=user.module_assignments.find((item)=>item.module_key===moduleKey);const key=`${user.profile_id}:${moduleKey}`;return <td key={license.id} className="py-4 pr-4">{assignment?(user.role==="owner"?<StatusPill>Acceso total</StatusPill>:<select disabled={!canAdmin||savingKey===key} value={assignment.role} onChange={(event)=>void updateModuleRole(user.profile_id,moduleKey,event.target.value)} className="w-full min-w-[180px] cursor-pointer rounded-xl bg-[#F5F8F9] px-3 py-2.5 font-bold outline-none ring-[#00BEB3] focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60">{optionsFor(moduleKey).map((option)=><option key={option.value} value={option.value}>{option.label}</option>)}</select>):<span className="text-[#9AA2AA]">Sin acceso</span>}</td>;})}</tr>)}</tbody></table>{!users.length&&!message&&<p className="py-8 text-center text-[#69717D]">Cargando usuarios…</p>}</div>
+        <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-sm"><thead><tr className="border-b border-[#E8ECEF] text-xs uppercase text-[#69717D]"><th className="pb-4">Usuario</th><th className="pb-4">Estado</th>{licenses.map((license)=><th key={license.id} className="pb-4">{license.wama_module_catalog.name}</th>)}</tr></thead><tbody>{users.map((user)=><tr key={user.id} className="border-b border-[#EEF1F3] last:border-0"><td className="py-5"><strong className="block">{user.wama_profiles?.full_name||"Usuario"}</strong><span className="text-[#69717D]">{user.wama_profiles?.email}</span>{user.role==="owner"&&<span className="mt-1 block text-xs font-black text-[#008F87]">Propietario</span>}</td><td className="py-4 pr-4">{user.status==="invited"?<div className="flex flex-col items-start gap-2"><span>Invitación pendiente</span>{canAdmin&&<button type="button" disabled={resendingId===user.profile_id} onClick={()=>void resendInvitation(user)} className="cursor-pointer rounded-full bg-[#E6FFFC] px-3 py-2 text-xs font-black text-[#08746E] transition hover:bg-[#CFFFF9] disabled:cursor-not-allowed disabled:opacity-60">{resendingId===user.profile_id?"Reenviando…":"Reenviar invitación"}</button>}</div>:"Activo"}</td>{licenses.map((license)=>{const moduleKey=license.wama_module_catalog.module_key;const assignment=user.module_assignments.find((item)=>item.module_key===moduleKey);const key=`${user.profile_id}:${moduleKey}`;return <td key={license.id} className="py-4 pr-4">{assignment?(user.role==="owner"?<StatusPill>Acceso total</StatusPill>:<select disabled={!canAdmin||savingKey===key} value={assignment.role} onChange={(event)=>void updateModuleRole(user.profile_id,moduleKey,event.target.value)} className="w-full min-w-[180px] cursor-pointer rounded-xl bg-[#F5F8F9] px-3 py-2.5 font-bold outline-none ring-[#00BEB3] focus:ring-2 disabled:cursor-not-allowed disabled:opacity-60">{optionsFor(moduleKey).map((option)=><option key={option.value} value={option.value}>{option.label}</option>)}</select>):<span className="text-[#9AA2AA]">Sin acceso</span>}</td>;})}</tr>)}</tbody></table>{!users.length&&!message&&<p className="py-8 text-center text-[#69717D]">Cargando usuarios…</p>}</div>
         {!canAdmin&&role&&<p className="mt-4 text-sm font-bold text-[#69717D]">Solo el propietario o un administrador puede asignar perfiles.</p>}
       </SectionCard>
     </div>
