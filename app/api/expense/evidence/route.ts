@@ -62,6 +62,7 @@ export async function GET(request: Request) {
         storage_path:legacyPath,
         created_at:new Date(0).toISOString(),
         is_current:true,
+        evidence_type:"expense_document",
         url:legacyUrl,
       });
     }
