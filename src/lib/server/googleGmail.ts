@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 type SendInput = { to: string | string[]; subject: string; html: string; text?: string; replyTo?: string };
 type TokenResponse = { access_token?: string; error?: string; error_description?: string };
 type SendResponse = { id?: string; threadId?: string; error?: { message?: string } };
@@ -51,6 +53,26 @@ function mime(input: SendInput): string {
 }
 
 export async function sendWamaEmail(input: SendInput) {
+  const smtpPassword = process.env.WAMA_SMTP_APP_PASSWORD?.replace(/\s+/g, "");
+  if (smtpPassword) {
+    const sender = process.env.WAMA_SMTP_USER?.trim() || process.env.GOOGLE_SENDER_EMAIL?.trim() || "contacto@wamaapp.com";
+    const transporter = nodemailer.createTransport({
+      host: process.env.WAMA_SMTP_HOST?.trim() || "smtp.gmail.com",
+      port: Number(process.env.WAMA_SMTP_PORT || 465),
+      secure: Number(process.env.WAMA_SMTP_PORT || 465) === 465,
+      auth: { user: sender, pass: smtpPassword },
+    });
+    const result = await transporter.sendMail({
+      from: `WAMA <${sender}>`,
+      to: input.to,
+      subject: input.subject,
+      html: input.html,
+      text: input.text,
+      replyTo: input.replyTo,
+    });
+    return { id: result.messageId, threadId: null };
+  }
+
   const token = await accessToken();
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method:"POST",
