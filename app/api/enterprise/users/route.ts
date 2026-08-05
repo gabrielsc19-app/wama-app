@@ -25,6 +25,25 @@ export async function GET(request: Request) {
       ? await admin.from("wama_profiles").select("id,full_name,email,status").in("id", profileIds)
       : { data: [], error: null };
     if (profilesError) throw profilesError;
+    const invitedMemberships = (memberships || []).filter((item) => item.status === "invited");
+    const { data: authUsers } = invitedMemberships.length
+      ? await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+      : { data: null };
+    for (const invitedMembership of invitedMemberships) {
+      const invitedProfile = (profiles || []).find((item) => item.id === invitedMembership.profile_id);
+      if (!invitedProfile) continue;
+      const authUser = authUsers?.users.find((item) => item.email?.toLowerCase() === invitedProfile.email?.toLowerCase());
+      if (!authUser?.last_sign_in_at) continue;
+      const activatedAt = authUser.last_sign_in_at;
+      const { error: membershipActivationError } = await admin.from("wama_tenant_memberships").update({ status: "active" }).eq("id", invitedMembership.id);
+      if (membershipActivationError) throw membershipActivationError;
+      const { error: profileActivationError } = await admin.from("wama_profiles").update({ status: "active" }).eq("id", invitedProfile.id);
+      if (profileActivationError) throw profileActivationError;
+      const { error: invitationActivationError } = await admin.from("wama_invitations").update({ status: "accepted", accepted_at: activatedAt }).eq("tenant_id", membership.tenant_id).eq("email", invitedProfile.email.toLowerCase());
+      if (invitationActivationError && !invitationActivationError.message.includes("accepted_at")) throw invitationActivationError;
+      invitedMembership.status = "active";
+      invitedProfile.status = "active";
+    }
     const { data: licenses, error: licensesError } = await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog(module_key,name),wama_module_user_assignments(profile_id,status,module_role)").eq("tenant_id", membership.tenant_id);
     if (licensesError) throw licensesError;
     const assignmentRows = (licenses || []).flatMap((license) => {
