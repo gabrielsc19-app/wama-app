@@ -105,23 +105,42 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await requireWamaUser(request);
-    const { admin, membership } = await getUserTenantContext(user.id);
+    const { admin, profile, membership } = await getUserTenantContext(user.id);
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede modificar perfiles." },{status:403});
-    const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string };
-    if (!body.profileId || !body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
+    const body = await request.json() as { profileId?:string; moduleRoles?:Record<string,string> };
+    if (!body.profileId || !body.moduleRoles || !Object.keys(body.moduleRoles).length) return NextResponse.json({error:"Selecciona al menos un módulo para el usuario."},{status:400});
     const validRoles:Record<string,string[]>={expense:["member","approver","finance","viewer"],sales:["sales_executive","sales_manager","sales_admin","viewer"]};
-    const allowed=validRoles[body.moduleKey]||["member","viewer"];
-    if(!allowed.includes(body.moduleRole)) return NextResponse.json({error:"El perfil seleccionado no es válido para este módulo."},{status:400});
     const { data:targetMembership,error:membershipError }=await admin.from("wama_tenant_memberships").select("role").eq("tenant_id",membership.tenant_id).eq("profile_id",body.profileId).maybeSingle();
     if(membershipError||!targetMembership) return NextResponse.json({error:"El usuario no pertenece a esta empresa."},{status:404});
     if(targetMembership.role==="owner") return NextResponse.json({error:"El propietario conserva acceso total en todos los módulos."},{status:400});
-    const { data:license,error:licenseError }=await admin.from("wama_tenant_module_licenses").select("id,wama_module_catalog!inner(module_key,name)").eq("tenant_id",membership.tenant_id).eq("wama_module_catalog.module_key",body.moduleKey).maybeSingle();
-    if(licenseError||!license) return NextResponse.json({error:"El módulo no está contratado por esta empresa."},{status:404});
-    const { data:assignment,error:assignmentLookupError }=await admin.from("wama_module_user_assignments").select("id").eq("tenant_module_license_id",license.id).eq("profile_id",body.profileId).eq("status","active").maybeSingle();
-    if(assignmentLookupError||!assignment) return NextResponse.json({error:"El usuario no tiene una licencia activa en este módulo."},{status:404});
-    const { error:updateError }=await admin.from("wama_module_user_assignments").update({module_role:body.moduleRole}).eq("id",assignment.id);
-    if(updateError) throw updateError;
-    return NextResponse.json({ok:true,moduleName:(license.wama_module_catalog as unknown as {name:string}).name,moduleRole:body.moduleRole});
+    const requestedKeys=Object.keys(body.moduleRoles);
+    for(const moduleKey of requestedKeys){
+      const allowed=validRoles[moduleKey]||["member","viewer"];
+      if(!allowed.includes(body.moduleRoles[moduleKey])) return NextResponse.json({error:`El perfil seleccionado para ${moduleKey} no es válido.`},{status:400});
+    }
+    const { data:licenses,error:licenseError }=await admin.from("wama_tenant_module_licenses").select("id,included_seats,extra_seat_blocks,extra_block_size,wama_module_catalog!inner(module_key,name)").eq("tenant_id",membership.tenant_id);
+    if(licenseError) throw licenseError;
+    const selected=(licenses||[]).filter((license)=>requestedKeys.includes((license.wama_module_catalog as unknown as {module_key:string}).module_key));
+    if(selected.length!==requestedKeys.length) return NextResponse.json({error:"Uno de los módulos seleccionados no está contratado por esta empresa."},{status:404});
+    for(const license of selected){
+      const { data:existing,error:existingError }=await admin.from("wama_module_user_assignments").select("id,status").eq("tenant_module_license_id",license.id).eq("profile_id",body.profileId).maybeSingle();
+      if(existingError) throw existingError;
+      if(!existing||existing.status!=="active"){
+        const { count,error:countError }=await admin.from("wama_module_user_assignments").select("id",{count:"exact",head:true}).eq("tenant_module_license_id",license.id).eq("status","active");
+        if(countError) throw countError;
+        const capacity=license.included_seats+license.extra_seat_blocks*license.extra_block_size;
+        if((count||0)>=capacity) return NextResponse.json({error:`No quedan cupos en ${(license.wama_module_catalog as unknown as {name:string}).name}.`},{status:409});
+      }
+    }
+    const selectedIds=new Set(selected.map((license)=>license.id));
+    const { data:currentAssignments,error:currentError }=await admin.from("wama_module_user_assignments").select("id,tenant_module_license_id,status").eq("profile_id",body.profileId).in("tenant_module_license_id",(licenses||[]).map((license)=>license.id));
+    if(currentError) throw currentError;
+    const deactivateIds=(currentAssignments||[]).filter((assignment)=>assignment.status==="active"&&!selectedIds.has(assignment.tenant_module_license_id)).map((assignment)=>assignment.id);
+    if(deactivateIds.length){const {error}=await admin.from("wama_module_user_assignments").update({status:"inactive"}).in("id",deactivateIds);if(error)throw error;}
+    const assignments=selected.map((license)=>{const moduleKey=(license.wama_module_catalog as unknown as {module_key:string}).module_key;return{tenant_module_license_id:license.id,profile_id:body.profileId,assigned_by:profile.id,status:"active",module_role:body.moduleRoles![moduleKey]};});
+    const {error:upsertError}=await admin.from("wama_module_user_assignments").upsert(assignments,{onConflict:"tenant_module_license_id,profile_id"});
+    if(upsertError) throw upsertError;
+    return NextResponse.json({ok:true,modules:requestedKeys});
   } catch(error) {
     return NextResponse.json({error:error instanceof Error?error.message:"Error inesperado."},{status:500});
   }
