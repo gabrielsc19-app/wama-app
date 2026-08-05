@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { profileFor, profileLabel } from "../../../src/lib/moduleProfiles";
 
 const stages=["Marca objetivo","Primer contacto","Propuesta enviada","Negociación","Cierre ganado","Cierre perdido"] as const;
 type Stage=typeof stages[number]; type Currency="UF"|"USD"|"CLP"; type SaleType="Spot"|"Recurrente"|"Mixta";
@@ -14,10 +15,10 @@ const probability:Record<Stage,number>={"Marca objetivo":10,"Primer contacto":20
 const blank={company:"",contact:"",email:"",phone:"",website:"",product:"",need:"",saleType:"Recurrente" as SaleType,amount:0,stage:"Marca objetivo" as Stage,owner:"",source:"Contacto directo",comment:""};
 
 export default function SalesHubCrmPage(){
- const[deals,setDeals]=useState<Deal[]>([]),[settings,setSettings]=useState<Settings|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[showNew,setShowNew]=useState(false),[selected,setSelected]=useState<Deal|null>(null),[editing,setEditing]=useState(false),[editDeal,setEditDeal]=useState<Deal|null>(null),[form,setForm]=useState(blank),[pendingFiles,setPendingFiles]=useState<File[]>([]),[detailFiles,setDetailFiles]=useState<File[]>([]),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[query,setQuery]=useState(""),[dragged,setDragged]=useState<string|null>(null),[configIndustry,setConfigIndustry]=useState(""),[configCurrency,setConfigCurrency]=useState<Currency>("UF"),[productText,setProductText]=useState("");
+ const[deals,setDeals]=useState<Deal[]>([]),[settings,setSettings]=useState<Settings|null>(null),[moduleRole,setModuleRole]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState(""),[showNew,setShowNew]=useState(false),[selected,setSelected]=useState<Deal|null>(null),[editing,setEditing]=useState(false),[editDeal,setEditDeal]=useState<Deal|null>(null),[form,setForm]=useState(blank),[pendingFiles,setPendingFiles]=useState<File[]>([]),[detailFiles,setDetailFiles]=useState<File[]>([]),[saving,setSaving]=useState(false),[uploading,setUploading]=useState(false),[query,setQuery]=useState(""),[dragged,setDragged]=useState<string|null>(null),[configIndustry,setConfigIndustry]=useState(""),[configCurrency,setConfigCurrency]=useState<Currency>("UF"),[productText,setProductText]=useState("");
  async function token(){const{data}=await supabase.auth.getSession();return data.session?.access_token||""}
  async function api(path:string,init:RequestInit={}){const t=await token();const headers=new Headers(init.headers);headers.set("Authorization",`Bearer ${t}`);if(init.body&&!(init.body instanceof FormData))headers.set("Content-Type","application/json");const response=await fetch(path,{...init,headers});const data=await response.json();if(!response.ok)throw new Error(data.error||"No se pudo completar la operación.");return data}
- async function load(){setLoading(true);setError("");try{const[s,d]=await Promise.all([api("/api/sales/settings"),api("/api/sales/deals")]);setSettings(s.settings);setDeals(d.deals||[]);if(s.settings){setConfigIndustry(s.settings.industry||"");setConfigCurrency(s.settings.currency);setProductText((s.settings.products||[]).join("\n"))}}catch(e){setError(e instanceof Error?e.message:"Error")}finally{setLoading(false)}}
+ async function load(){setLoading(true);setError("");try{const[s,d,r]=await Promise.all([api("/api/sales/settings"),api("/api/sales/deals"),api("/api/enterprise/module-role?moduleKey=sales")]);setSettings(s.settings);setDeals(d.deals||[]);setModuleRole(r.role||"");if(s.settings){setConfigIndustry(s.settings.industry||"");setConfigCurrency(s.settings.currency);setProductText((s.settings.products||[]).join("\n"))}}catch(e){setError(e instanceof Error?e.message:"Error")}finally{setLoading(false)}}
  useEffect(()=>{void load()},[]);
  const filtered=useMemo(()=>deals.filter(d=>`${d.company} ${d.contact} ${d.product} ${d.need}`.toLowerCase().includes(query.toLowerCase())),[deals,query]);
  const metrics=useMemo(()=>{const open=deals.filter(d=>!["Cierre ganado","Cierre perdido"].includes(d.stage));const won=deals.filter(d=>d.stage==="Cierre ganado"),lost=deals.filter(d=>d.stage==="Cierre perdido");return{open:open.length,won:won.length,lost:lost.length,total:open.reduce((s,d)=>s+Number(d.amount),0),weighted:open.reduce((s,d)=>s+Number(d.amount)*d.probability/100,0),rate:won.length+lost.length?Math.round(won.length/(won.length+lost.length)*100):0}},[deals]);
@@ -50,6 +51,12 @@ export default function SalesHubCrmPage(){
 </div>
 </header>
   <section className="mx-auto max-w-[1800px] p-5">
+<section className="mb-5 rounded-3xl bg-gradient-to-r from-[#102228] to-[#1D3940] p-6 text-white shadow-xl">
+<p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Perfil activo · Sales Hub</p>
+<h2 className="mt-2 text-2xl font-black">{profileLabel("sales",moduleRole)}</h2>
+<p className="mt-2 text-sm text-white/70">{profileFor("sales",moduleRole)?.description||"Acceso integral a la gestión comercial."}</p>
+<div className="mt-4 flex flex-wrap gap-2">{profileFor("sales",moduleRole)?.activities.map(activity=><span key={activity} className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold">{activity}</span>)}</div>
+</section>
 <div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
 <Metric label="Abiertos" value={String(metrics.open)}/>
 <Metric label="Ganados" value={String(metrics.won)}/>

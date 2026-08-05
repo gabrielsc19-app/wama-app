@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { Banknote, Camera, CheckCircle2, ChevronRight, ClipboardCheck, Eye, FileImage, ImageUp, Info, LayoutDashboard, Loader2, ReceiptText, RefreshCw, Sparkles, UploadCloud, WalletCards, X, XCircle } from "lucide-react";
 import { supabase } from "../../../app/lib/supabase";
 import EnterpriseShell from "../enterprise/EnterpriseShell";
+import { profileFor, profileLabel } from "../../lib/moduleProfiles";
 
 type Evidence = { id:string; file_name:string; mime_type:string; file_size:number; storage_path:string; created_at:string; evidence_type?:string; url?:string|null };
 type FundSummary = { delivered:number; approved_spent:number; pending_spent:number; returned:number; available:number };
@@ -157,8 +158,9 @@ export default function PilotExpenseHub() {
 
   const total=useMemo(()=>items.reduce((s,i)=>s+Number(i.amount_clp),0),[items]);
   const pending=items.filter(i=>["submitted","in_review","observed"].includes(i.status)).length;
-  const canReview=["owner","admin","super_admin","manager","approver"].includes(role);
-  const canFinance=["owner","admin","super_admin","finance","treasury"].includes(role);
+  const canReview=["owner","admin","super_admin","module_admin","expense_reviewer","expense_approver","expense_manager","expense_admin","manager","approver"].includes(role);
+  const canFinance=["owner","admin","super_admin","module_admin","expense_treasurer","expense_manager","expense_admin","finance","treasury"].includes(role);
+  const activeProfile=profileFor("expense",role);
   const funds=items.filter(i=>i.request_type==="fund_request");
   const availableFunds=funds.filter(f=>["open","partially_rendered"].includes(f.status)&&Number(f.fund_summary?.available||0)>0);
   const visibleItems=view==="funds"?funds:view==="approvals"?items.filter(i=>["submitted","assigned","in_review","observed"].includes(i.status)):view==="treasury"?items.filter(i=>["approved","pending_payment","partially_paid","open"].includes(i.status)):items;
@@ -169,6 +171,12 @@ export default function PilotExpenseHub() {
       <nav className="flex gap-2 overflow-x-auto rounded-2xl bg-white p-2 shadow-[0_8px_30px_rgba(11,12,14,.06)]">
         <Nav active={view==="home"} icon={LayoutDashboard} label="Inicio" onClick={()=>setView("home")}/><Nav active={view==="mine"} icon={ReceiptText} label="Mis movimientos" onClick={()=>setView("mine")}/><Nav active={view==="funds"} icon={WalletCards} label="Fondos" onClick={()=>setView("funds")}/>{canReview&&<Nav active={view==="approvals"} icon={ClipboardCheck} label="Aprobaciones" onClick={()=>setView("approvals")}/>} {canFinance&&<Nav active={view==="treasury"} icon={Banknote} label="Tesorería" onClick={()=>setView("treasury")}/>} 
       </nav>
+      <section className="rounded-[2rem] bg-gradient-to-r from-[#102228] to-[#1D3940] p-6 text-white shadow-xl sm:p-8">
+        <p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Perfil activo · Expense Hub</p>
+        <h1 className="mt-2 text-2xl font-black sm:text-3xl">{profileLabel("expense",role)}</h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-white/70">{activeProfile?.description||"Acceso integral al módulo y a sus procesos."}</p>
+        {activeProfile&&<div className="mt-4 flex flex-wrap gap-2">{activeProfile.activities.map(activity=><span key={activity} className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold">{activity}</span>)}</div>}
+      </section>
       {view==="home"&&<section className="grid gap-4 lg:grid-cols-2"><Quick icon={WalletCards} title="Solicitar dinero antes de gastar" text="Pide un fondo a la empresa y, cuando lo recibas, podrás justificar su uso." onClick={()=>openCreate("fund_request")}/><Quick icon={ReceiptText} title="Justificar un fondo recibido" text="Presenta las boletas de un fondo que la empresa ya te entregó." onClick={()=>openCreate("fund_rendition")}/></section>}
       <section className="grid overflow-hidden rounded-[2rem] bg-[#0B0C0E] text-white lg:grid-cols-[1fr_auto] lg:items-center">
         <div className="p-6 sm:p-9"><p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Reembolso de gasto · Foto + OpenAI</p><h2 className="mt-3 text-3xl font-black tracking-[-.05em] sm:text-4xl">¿Pagaste con tu dinero? Ríndelo aquí.</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-[#B7BEC8]">Toma una foto o selecciona una boleta, factura o PDF. WAMA completa los datos y prepara tu solicitud de reembolso.</p></div>

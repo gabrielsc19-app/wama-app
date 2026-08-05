@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
 
-const reviewer = (role:string) => isTenantAdmin(role) || ["manager","approver","finance"].includes(role);
-const finance = (role:string) => isTenantAdmin(role) || ["finance","treasury"].includes(role);
+const reviewer = (role:string) => isTenantAdmin(role) || ["expense_reviewer","expense_approver","expense_manager","expense_admin","manager","approver"].includes(role);
+const finance = (role:string) => isTenantAdmin(role) || ["expense_treasurer","expense_manager","expense_admin","finance","treasury"].includes(role);
 
 async function expenseRole(admin:any,tenantId:string,profileId:string,membershipRole:string){
   if(isTenantAdmin(membershipRole)) return "admin";
