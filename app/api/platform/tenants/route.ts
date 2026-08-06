@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       tenantIds.length
         ? admin
             .from("wama_tenant_module_licenses")
-            .select("id,tenant_id,status,included_seats,extra_seat_blocks,extra_block_size,renews_at,wama_module_catalog(module_key,name)")
+            .select("id,tenant_id,status,included_seats,extra_seat_blocks,extra_block_size,unit_price_usd,extra_block_price_usd,starts_at,renews_at,wama_module_catalog(module_key,name)")
             .in("tenant_id", tenantIds)
         : Promise.resolve({ data: [] as unknown[] }),
     ]);
@@ -45,6 +45,10 @@ export async function GET(request: Request) {
         extraSeatBlocks: item.extra_seat_blocks,
         extraBlockSize: item.extra_block_size,
         capacity: item.included_seats + item.extra_seat_blocks * item.extra_block_size,
+        unitPriceUsd: Number(item.unit_price_usd || 0),
+        extraBlockPriceUsd: Number(item.extra_block_price_usd || 0),
+        monthlyTotalUsd: Number(item.unit_price_usd || 0) + item.extra_seat_blocks * Number(item.extra_block_price_usd || 0),
+        startsAt: item.starts_at,
         renewsAt: item.renews_at,
         moduleKey: item.wama_module_catalog?.module_key,
         moduleName: item.wama_module_catalog?.name,
