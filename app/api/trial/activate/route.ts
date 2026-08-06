@@ -7,6 +7,15 @@ function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
+function friendlyTrialError(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+  if (message.includes("ya está activado")) return message;
+  if (message.includes("No se pudo verificar el correo")) {
+    return "No pudimos verificar tu correo en este momento. Intenta nuevamente en unos minutos.";
+  }
+  return "No pudimos crear tu prueba en este momento. No se realizó ningún cobro. Intenta nuevamente o contáctanos si el problema continúa.";
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json() as {
@@ -47,8 +56,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
+    console.error("[trial/activate] Error al crear la prueba", error);
     return NextResponse.json({
-      error: error instanceof Error ? error.message : "No se pudo activar la prueba.",
-    }, { status: 400 });
+      error: friendlyTrialError(error),
+    }, { status: 500 });
   }
 }

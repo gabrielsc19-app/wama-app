@@ -43,6 +43,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
   let authUser = usersPage.users.find((user) => user.email?.toLowerCase() === ownerEmail) ?? null;
   let password: string | null = null;
   let createdNewUser = false;
+  let createdProfile = false;
 
   if (!authUser) {
     password = temporaryPassword();
@@ -74,6 +75,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
     }).select("id").single();
     if (error || !profile) throw new Error(error?.message || "No se pudo crear el perfil administrador.");
     profileId = profile.id;
+    createdProfile = true;
   }
 
   const { data: memberships, error: membershipLookupError } = await admin
@@ -125,7 +127,11 @@ export async function provisionTrial(input: TrialProvisionInput) {
     if (licenseError || !license) throw new Error(licenseError?.message || `No se pudo activar ${moduleInfo.name}.`);
 
     const { error: assignmentError } = await admin.from("wama_module_user_assignments").insert({
-      tenant_module_license_id: license.id, profile_id: profileId, assigned_by: profileId, status: "active",
+      tenant_module_license_id: license.id,
+      profile_id: profileId,
+      assigned_by: profileId,
+      status: "active",
+      module_role: "module_admin",
     });
     if (assignmentError) throw new Error(assignmentError.message);
 
@@ -156,6 +162,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
     return { ownerEmail, trialEndsAt: trialEnds, includedUsers: 10, moduleKey: input.moduleKey, moduleName: moduleInfo.name, createdNewUser };
   } catch (error) {
     if (createdTenant && tenantId) await admin.from("wama_tenants").delete().eq("id", tenantId);
+    if (createdProfile && profileId) await admin.from("wama_profiles").delete().eq("id", profileId);
     if (createdNewUser) await admin.auth.admin.deleteUser(authUser.id);
     throw error;
   }
