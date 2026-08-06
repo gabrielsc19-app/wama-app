@@ -34,8 +34,8 @@ export default function ResetPasswordPage() {
       setError("Ingresa un correo válido.");
       return;
     }
-    if (!/^\d{6}$/.test(normalizedCode)) {
-      setError("El código debe tener 6 dígitos.");
+    if (!/^\d{8}$/.test(normalizedCode)) {
+      setError("El código debe tener 8 dígitos.");
       return;
     }
     if (password.length < 10) {
@@ -78,10 +78,10 @@ export default function ResetPasswordPage() {
           <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#00E5D6]/15 text-[#00E5D6]"><KeyRound className="h-6 w-6" /></span>
           <p className="mt-6 text-sm font-semibold uppercase tracking-[.22em] text-[#00E5D6]">Seguridad WAMA</p>
           <h1 className="mt-2 text-4xl font-black tracking-[-.04em] text-white">Ingresa tu código.</h1>
-          <p className="mt-4 text-sm leading-6 text-[#B8C0C8]">Escribe el código de 6 dígitos que recibiste y define tu nueva contraseña.</p>
+          <p className="mt-4 text-sm leading-6 text-[#B8C0C8]">Escribe el código de 8 dígitos que recibiste y define tu nueva contraseña.</p>
           <form onSubmit={submit} className="mt-7 grid gap-4">
             <label className="grid gap-2 text-sm font-semibold text-white">Correo<input type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-4 outline-none focus:border-[#00E5D6]/60" /></label>
-            <label className="grid gap-2 text-sm font-semibold text-white">Código de 6 dígitos<input type="text" required inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 6))} className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-4 text-center text-2xl font-black tracking-[.35em] outline-none focus:border-[#00E5D6]/60" placeholder="000000" /></label>
+            <label className="grid gap-2 text-sm font-semibold text-white">Código de 8 dígitos<input type="text" required inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, "").slice(0, 8))} className="rounded-2xl border border-white/10 bg-[#111318] px-4 py-4 text-center text-2xl font-black tracking-[.28em] outline-none focus:border-[#00E5D6]/60" placeholder="00000000" /></label>
             <Password label="Nueva contraseña" value={password} show={show} onChange={setPassword} onToggle={() => setShow(!show)} />
             <Password label="Repetir contraseña" value={confirm} show={showConfirm} onChange={setConfirm} onToggle={() => setShowConfirm(!showConfirm)} />
             {error && <div className="rounded-2xl border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">{error}</div>}
