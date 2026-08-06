@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Resend } from "resend";
-import { getWamaAdmin } from "../../../../../src/lib/server/wamaAdmin";
+import { getWamaAdmin } from "@/src/lib/server/wamaAdmin";
 
 export const runtime = "nodejs";
 
