@@ -136,9 +136,11 @@ export default function WamaControlCenter() {
     tenantId: string,
     body: Record<string, unknown>,
     message: string,
-  ) {
-    if (!connected)
-      return setError("Primero ingresa con la clave interna WAMA.");
+  ): Promise<boolean> {
+    if (!connected) {
+      setError("Primero ingresa con la clave interna WAMA.");
+      return false;
+    }
     setBusy(`${tenantId}:${String(body.action)}`);
     setError("");
     setNotice("");
