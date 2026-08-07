@@ -4,6 +4,11 @@ import { getWamaAdmin } from "../../../../src/lib/server/wamaAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+function isExpenseModule(moduleKey?: string | null, moduleName?: string | null) {
+  const value = `${moduleKey ?? ""} ${moduleName ?? ""}`.toLowerCase();
+  return value.includes("expense") || value.includes("rendici") || value.includes("gasto");
+}
+
 function authorize(request: Request) {
   const expected = process.env.WAMA_OWNER_CONTROL_SECRET;
   const supplied = request.headers.get("x-wama-owner-secret");
@@ -38,20 +43,23 @@ export async function GET(request: Request) {
     const result = (tenants ?? []).map((tenant) => ({
       ...tenant,
       userCount: (memberships ?? []).filter((item) => item.tenant_id === tenant.id && item.status !== "disabled").length,
-      licenses: (licenses ?? []).filter((item: any) => item.tenant_id === tenant.id).map((item: any) => ({
+      licenses: (licenses ?? []).filter((item: any) => item.tenant_id === tenant.id).map((item: any) => {
+        const expense = isExpenseModule(item.wama_module_catalog?.module_key, item.wama_module_catalog?.name);
+        const officialPrice = expense ? 20 : 10;
+        return ({
         id: item.id,
         status: item.status,
         includedSeats: item.included_seats,
         extraSeatBlocks: item.extra_seat_blocks,
         extraBlockSize: item.extra_block_size,
         capacity: item.included_seats + item.extra_seat_blocks * item.extra_block_size,
-        unitPriceUsd: Number(item.unit_price_usd ?? item.wama_module_catalog?.monthly_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
-        extraBlockPriceUsd: Number(item.extra_block_price_usd ?? item.wama_module_catalog?.extra_block_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
-        monthlyTotalUsd: Number(item.unit_price_usd ?? item.wama_module_catalog?.monthly_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)) + item.extra_seat_blocks * Number(item.extra_block_price_usd ?? item.wama_module_catalog?.extra_block_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
+        unitPriceUsd: officialPrice,
+        extraBlockPriceUsd: officialPrice,
+        monthlyTotalUsd: officialPrice + item.extra_seat_blocks * officialPrice,
         renewsAt: item.renews_at,
         moduleKey: item.wama_module_catalog?.module_key,
         moduleName: item.wama_module_catalog?.name,
-      })),
+      });}),
     }));
 
     return NextResponse.json({ tenants: result });
@@ -63,12 +71,13 @@ export async function GET(request: Request) {
 
 type UpdateBody = {
   tenantId?: string;
-  action?: "activate_tenant" | "suspend_tenant" | "mark_paid" | "mark_past_due" | "update_license";
+  action?: "activate_tenant" | "suspend_tenant" | "extend_trial" | "mark_paid" | "mark_past_due" | "update_license";
   reason?: string;
   paidUntil?: string | null;
   licenseId?: string;
   licenseStatus?: "trial" | "active" | "suspended" | "cancelled";
   extraSeatBlocks?: number;
+  trialEndsAt?: string | null;
 };
 
 export async function PATCH(request: Request) {
@@ -93,6 +102,15 @@ export async function PATCH(request: Request) {
       if (error) throw error;
       await admin.from("wama_tenant_module_licenses").update({ status: "suspended" }).eq("tenant_id", body.tenantId).in("status", ["trial", "active"]);
       metadata = { reason };
+    }
+
+    if (body.action === "extend_trial") {
+      if (!body.trialEndsAt) throw new Error("No se pudo calcular el nuevo vencimiento de la prueba.");
+      const { error } = await admin.from("wama_tenants").update({ status: "trial", billing_status: "trial", trial_ends_at: body.trialEndsAt, paid_until: null, suspended_at: null, suspension_reason: null }).eq("id", body.tenantId);
+      if (error) throw error;
+      const { error: licenseError } = await admin.from("wama_tenant_module_licenses").update({ status: "trial", renews_at: body.trialEndsAt }).eq("tenant_id", body.tenantId).in("status", ["trial", "suspended", "pending"]);
+      if (licenseError) throw licenseError;
+      metadata = { trial_ends_at: body.trialEndsAt, extension_days: 15 };
     }
 
     if (body.action === "mark_paid") {
