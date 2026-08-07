@@ -593,6 +593,7 @@ export default function WamaControlCenter() {
                 `${paymentTenant.name}: pago registrado correctamente.`,
               );
               if (saved) setPaymentTenant(null);
+              return saved;
             }}
           />
         )}
