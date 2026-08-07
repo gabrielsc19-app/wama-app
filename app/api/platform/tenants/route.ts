@@ -30,7 +30,7 @@ export async function GET(request: Request) {
       tenantIds.length
         ? admin
             .from("wama_tenant_module_licenses")
-            .select("id,tenant_id,status,included_seats,extra_seat_blocks,extra_block_size,unit_price_usd,extra_block_price_usd,starts_at,renews_at,wama_module_catalog(module_key,name)")
+            .select("id,tenant_id,status,included_seats,extra_seat_blocks,extra_block_size,unit_price_usd,extra_block_price_usd,renews_at,wama_module_catalog(module_key,name,monthly_price_usd,extra_block_price_usd)")
             .in("tenant_id", tenantIds)
         : Promise.resolve({ data: [] as unknown[] }),
     ]);
@@ -45,10 +45,9 @@ export async function GET(request: Request) {
         extraSeatBlocks: item.extra_seat_blocks,
         extraBlockSize: item.extra_block_size,
         capacity: item.included_seats + item.extra_seat_blocks * item.extra_block_size,
-        unitPriceUsd: Number(item.unit_price_usd || 0),
-        extraBlockPriceUsd: Number(item.extra_block_price_usd || 0),
-        monthlyTotalUsd: Number(item.unit_price_usd || 0) + item.extra_seat_blocks * Number(item.extra_block_price_usd || 0),
-        startsAt: item.starts_at,
+        unitPriceUsd: Number(item.unit_price_usd ?? item.wama_module_catalog?.monthly_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
+        extraBlockPriceUsd: Number(item.extra_block_price_usd ?? item.wama_module_catalog?.extra_block_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
+        monthlyTotalUsd: Number(item.unit_price_usd ?? item.wama_module_catalog?.monthly_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)) + item.extra_seat_blocks * Number(item.extra_block_price_usd ?? item.wama_module_catalog?.extra_block_price_usd ?? (item.wama_module_catalog?.module_key === "expense" ? 20 : 10)),
         renewsAt: item.renews_at,
         moduleKey: item.wama_module_catalog?.module_key,
         moduleName: item.wama_module_catalog?.name,
@@ -100,7 +99,8 @@ export async function PATCH(request: Request) {
       if (!body.paidUntil) throw new Error("Indica la fecha pagada hasta.");
       const { error } = await admin.from("wama_tenants").update({ status: "active", billing_status: "paid", paid_until: body.paidUntil, suspended_at: null, suspension_reason: null }).eq("id", body.tenantId);
       if (error) throw error;
-      await admin.from("wama_tenant_module_licenses").update({ status: "active", renews_at: body.paidUntil }).eq("tenant_id", body.tenantId).in("status", ["trial", "suspended"]);
+      const { error: licenseError } = await admin.from("wama_tenant_module_licenses").update({ status: "active", renews_at: body.paidUntil }).eq("tenant_id", body.tenantId).in("status", ["trial", "suspended", "pending"]);
+      if (licenseError) throw licenseError;
       metadata = { paid_until: body.paidUntil };
     }
 
@@ -123,7 +123,7 @@ export async function PATCH(request: Request) {
     }
 
     await admin.from("wama_platform_admin_logs").insert({ tenant_id: body.tenantId, action: body.action, reason: body.reason || null, metadata });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, message: "Cambio guardado correctamente." });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Error inesperado.";
     return NextResponse.json({ error: message === "UNAUTHORIZED" ? "Acceso no autorizado." : message }, { status: message === "UNAUTHORIZED" ? 401 : 400 });

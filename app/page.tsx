@@ -53,6 +53,22 @@ export default function HomePage() {
           </div>
         </section>
 
+        <section id="contacto" className="border-y border-[#DDE1E6] bg-[#F5F6F7]">
+          <div className="mx-auto grid max-w-7xl gap-10 px-6 py-20 lg:grid-cols-[1fr_1.1fr] lg:items-center lg:py-24">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-[#008F87]">Contacto y difusión</p>
+              <h2 className="mt-4 text-4xl font-black leading-[1.04] tracking-[-0.055em] md:text-6xl">Conversemos sobre el módulo que necesita tu empresa.</h2>
+              <p className="mt-5 max-w-2xl text-base leading-7 text-[#66707C]">Escríbenos para una demostración, soporte comercial o para compartir WAMA con otra empresa.</p>
+              <a href="mailto:contacto@wamaapp.com?subject=Quiero%20conocer%20WAMA" className="mt-7 inline-flex rounded-full bg-[#0B0C0E] px-7 py-4 text-sm font-black text-white">contacto@wamaapp.com</a>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <ShareCard title="Correo" text="Solicitar una demostración" href="mailto:contacto@wamaapp.com?subject=Quiero%20una%20demostraci%C3%B3n%20de%20WAMA&body=Hola%2C%20quiero%20conocer%20WAMA%20para%20mi%20empresa." />
+              <ShareCard title="WhatsApp" text="Compartir WAMA" href="https://wa.me/?text=Conoce%20WAMA%2C%20software%20modular%20para%20empresas%3A%20https%3A%2F%2Fwww.wamaapp.com" external />
+              <ShareCard title="LinkedIn" text="Publicar en tu red" href="https://www.linkedin.com/sharing/share-offsite/?url=https%3A%2F%2Fwww.wamaapp.com" external />
+            </div>
+          </div>
+        </section>
+
         <section className="bg-[#0B0C0E] text-white">
           <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
             <h2 className="max-w-5xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">Elige tu producto y comienza a trabajar.</h2>
@@ -84,4 +100,8 @@ function ProductStory({ eyebrow, title, description, href, action, kind }: { eye
 
 function ModuleRow({ number, name, description, href }: { number:string; name:string; description:string; href:string }) {
   return <article className="grid gap-5 py-9 md:grid-cols-[4rem_0.45fr_1fr_auto] md:items-center"><p className="text-sm font-black text-[#008F87]">{number}</p><h3 className="text-2xl font-black">{name}</h3><p className="text-base leading-7 text-[#69717D]">{description}</p><Link href={href} className="text-sm font-black transition hover:text-[#008F87]">Conocer más →</Link></article>;
+}
+
+function ShareCard({ title, text, href, external = false }: { title:string; text:string; href:string; external?:boolean }) {
+  return <a href={href} target={external ? "_blank" : undefined} rel={external ? "noreferrer" : undefined} className="rounded-3xl border border-[#D6DCE1] bg-white p-6 transition hover:-translate-y-1 hover:border-[#00BDB2]"><p className="text-xs font-black uppercase tracking-[.18em] text-[#008F87]">{title}</p><p className="mt-3 font-black">{text} →</p></a>;
 }
