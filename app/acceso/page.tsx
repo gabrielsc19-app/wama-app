@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, BriefcaseBusiness, Camera, CheckCircle2, ReceiptText, Sparkles } from "lucide-react";
+import { ArrowRight, BellRing, BriefcaseBusiness, Camera, CheckCircle2, ReceiptText, Sparkles } from "lucide-react";
 import WamaShell from "../../src/components/brand/WamaShell";
 
 const portals = [
@@ -23,6 +23,16 @@ const portals = [
     icon: ReceiptText,
     steps: ["Foto", "OCR + IA", "Aprobación", "Control"],
   },
+  {
+    label: "Operations Hub",
+    kicker: "Casos y alertas en tiempo real",
+    title: "Reporta, asigna y controla cada incidente.",
+    text: "Casos operacionales, alertas urgentes, responsables, evidencias y trazabilidad en un solo flujo.",
+    href: "/operations-hub",
+    action: "Entrar a Operations Hub",
+    icon: BellRing,
+    steps: ["Reporte", "Asignación", "Gestión", "Cierre"],
+  },
 ];
 
 export default function AccesoPage() {
@@ -40,14 +50,14 @@ export default function AccesoPage() {
               <div className="flex items-start gap-4">
                 <div className="rounded-2xl bg-[#00E5D6] p-3 text-[#0B0C0E]"><Sparkles className="h-6 w-6" /></div>
                 <div>
-                  <h2 className="text-2xl font-black">Una cuenta. Dos experiencias especializadas.</h2>
-                  <p className="mt-3 max-w-2xl leading-7 text-[#B7BEC8]">Cada Hub mantiene su propio flujo, permisos y portal. Tu empresa puede activar uno o ambos y acceder desde computador, tablet o celular.</p>
+                  <h2 className="text-2xl font-black">Una cuenta. Tres experiencias especializadas.</h2>
+                  <p className="mt-3 max-w-2xl leading-7 text-[#B7BEC8]">Sales Hub, Expense Hub y Operations Hub conviven en un mismo Portal WAMA. Tu empresa activa solo los módulos que necesita y accede desde computador, tablet o celular.</p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="relative mt-14 grid gap-6 lg:grid-cols-2">
+          <div className="relative mt-14 grid gap-6 lg:grid-cols-3">
             {portals.map((portal) => {
               const Icon = portal.icon;
               return (
@@ -60,12 +70,12 @@ export default function AccesoPage() {
                       </div>
                       <div className="rounded-2xl border border-[#00E5D6]/25 bg-[#00E5D6]/10 p-3 text-[#00E5D6]"><Icon className="h-7 w-7" /></div>
                     </div>
-                    <h2 className="mt-6 text-4xl font-black leading-[1] tracking-[-0.055em] sm:text-5xl">{portal.title}</h2>
+                    <h2 className="mt-6 text-3xl font-black leading-[1] tracking-[-0.055em] sm:text-4xl">{portal.title}</h2>
                     <p className="mt-5 text-base leading-7 text-[#B7BEC8]">{portal.text}</p>
                   </div>
 
                   <div className="p-7 sm:p-8">
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="grid grid-cols-2 gap-3">
                       {portal.steps.map((step, index) => (
                         <div key={step} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
                           <div className="flex items-center gap-2 text-[#00E5D6]"><CheckCircle2 className="h-4 w-4" /><span className="text-xs font-black">0{index + 1}</span></div>
@@ -83,7 +93,7 @@ export default function AccesoPage() {
           </div>
 
           <div className="relative mt-10 rounded-[2rem] border border-[#00E5D6]/20 bg-[#00E5D6]/[0.07] p-6 sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-8">
-            <div className="flex items-start gap-4"><Camera className="mt-1 h-7 w-7 shrink-0 text-[#00E5D6]" /><div><h3 className="text-2xl font-black">WAMA también vive en tu celular.</h3><p className="mt-2 text-sm leading-6 text-[#B7BEC8]">Instala la aplicación web y captura gastos, revisa tareas o entra a tus Hubs sin abrir el navegador.</p></div></div>
+            <div className="flex items-start gap-4"><Camera className="mt-1 h-7 w-7 shrink-0 text-[#00E5D6]" /><div><h3 className="text-2xl font-black">WAMA también vive en tu celular.</h3><p className="mt-2 text-sm leading-6 text-[#B7BEC8]">Instala la aplicación web para capturar gastos, gestionar oportunidades y reportar casos con evidencia desde terreno.</p></div></div>
             <Link href="/descargar-app" className="mt-6 inline-flex shrink-0 items-center gap-2 rounded-full border border-[#00E5D6]/40 bg-[#0B0C0E] px-6 py-4 text-sm font-black text-white transition hover:border-[#00E5D6] hover:text-[#00E5D6] sm:mt-0">Descargar app <ArrowRight className="h-4 w-4" /></Link>
           </div>
         </section>
