@@ -185,8 +185,8 @@ function localQuickAnswer(text: string) {
   ) {
     return {
       reply:
-        "Para finanzas te recomiendo el módulo Finanzas. Ayuda a ordenar documentos, pagos, cartolas, pendientes y conciliación. Para ayudarte mejor, ¿cómo te llamas?",
-      suggestedModule: "Finanzas",
+        "Para rendiciones y control de gastos te recomiendo Expense Hub. Permite capturar documentos, aprobar solicitudes, controlar pagos y mantener trazabilidad. Para ayudarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Expense Hub",
     };
   }
 
@@ -198,7 +198,7 @@ function localQuickAnswer(text: string) {
   ) {
     return {
       reply:
-        "La prueba gratuita dura 14 días. Te permite configurar tu empresa, elegir un módulo y comenzar a trabajar en el portal. Para iniciar, ¿cómo te llamas?",
+        "La prueba gratuita dura 15 días por módulo. Puedes elegir Sales Hub, Expense Hub u Operations Hub y comenzar a trabajar en el mismo portal. Para iniciar, ¿cómo te llamas?",
       suggestedModule: "Módulos WAMA",
     };
   }
@@ -305,7 +305,7 @@ export default function WamaGuideBubble() {
         ...current,
         {
           from: "wama",
-          text: "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, operación o finanzas?",
+          text: "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, rendiciones de gastos u operaciones?",
         },
       ]);
     } finally {

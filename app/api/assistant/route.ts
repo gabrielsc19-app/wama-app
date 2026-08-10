@@ -106,9 +106,9 @@ function getLocalSalesAnswer(message: string) {
   ) {
     return {
       reply:
-        "Para finanzas te recomiendo el módulo Finanzas. Ayuda a ordenar documentos, pagos, cartolas, conciliaciones, pendientes y reportes financieros.",
-      suggestedModule: "Finanzas",
-      intent: "module_finance",
+        "Para rendiciones y control de gastos te recomiendo Expense Hub. Permite capturar documentos, aprobar solicitudes, controlar pagos y mantener trazabilidad.",
+      suggestedModule: "Expense Hub",
+      intent: "module_expense",
     };
   }
 
@@ -120,7 +120,7 @@ function getLocalSalesAnswer(message: string) {
   ) {
     return {
       reply:
-        "La prueba gratuita dura 14 días. Primero cargas los datos de tu empresa, eliges el módulo inicial y luego puedes entrar al portal para comenzar a trabajar.",
+        "La prueba gratuita dura 15 días por módulo. Primero cargas los datos de tu empresa, eliges Sales Hub, Expense Hub u Operations Hub y luego ingresas al mismo portal.",
       suggestedModule: "Módulos WAMA",
       intent: "trial",
     };
@@ -129,7 +129,7 @@ function getLocalSalesAnswer(message: string) {
   if (text.length < 3 || /(.)\1{5,}/.test(text)) {
     return {
       reply:
-        "No entendí bien tu mensaje. Puedes contarme si quieres ordenar ventas, operación, finanzas o reportes.",
+        "No entendí bien tu mensaje. Puedes contarme si quieres ordenar ventas, rendiciones de gastos u operaciones.",
       suggestedModule: "Módulos WAMA",
       intent: "unknown",
     };
@@ -137,7 +137,7 @@ function getLocalSalesAnswer(message: string) {
 
   return {
     reply:
-      "Puedo ayudarte a elegir el módulo correcto para tu empresa. WAMA trabaja con Sales Hub, Operación, Finanzas y Reportes. ¿Qué área necesitas ordenar primero?",
+      "Puedo ayudarte a elegir el módulo correcto para tu empresa. WAMA trabaja con Sales Hub, Expense Hub y Operations Hub dentro del mismo portal. ¿Qué proceso necesitas ordenar primero?",
     suggestedModule: "Módulos WAMA",
     intent: "unknown",
   };
@@ -208,9 +208,9 @@ Eres el Agente WAMA, un agente comercial para una app SaaS modular.
 
 Objetivo:
 - Ayudar al visitante a entender WAMA.
-- Recomendar el módulo correcto: Sales Hub, Operación o Finanzas.
+- Recomendar el módulo correcto: Sales Hub, Expense Hub u Operations Hub.
 - Capturar lead comercial de forma natural: nombre, empresa, correo o celular, y necesidad.
-- Incentivar prueba gratis de 14 días.
+- Incentivar prueba gratis de 15 días por módulo.
 - Responder con tono profesional, comercial, claro y cercano.
 - No sonar como formulario rígido.
 - No tomar "hola", "buenas", "ok", "gracias" como nombre.
@@ -221,14 +221,13 @@ Objetivo:
 
 Contexto:
 - WAMA es software modular para empresas.
-- Módulos: Sales Hub, Operación, Finanzas y Reportes.
+- Módulos activos: Sales Hub, Expense Hub y Operations Hub, todos dentro del mismo portal.
 - Sales Hub: CRM, prospectos, contactos, deals, pipeline, seguimiento comercial.
-- Operación: alertas, casos, responsables, SLA, evidencia, trazabilidad.
-- Finanzas: documentos, pagos, cartolas, conciliación, pendientes y reportes.
-- Prueba gratis: 14 días.
-- Precio base: US$10 mensuales por módulo.
-- Incluye hasta 10 usuarios por módulo.
-- Usuarios adicionales: bloque adicional de US$10.
+- Operations Hub: alertas, casos, responsables, SLA, evidencia y trazabilidad.
+- Expense Hub: rendiciones, documentos, aprobaciones, pagos y control de gastos.
+- Prueba gratis: 15 días por módulo.
+- Precios: Sales Hub y Operations Hub US$10 por usuario/mes; Expense Hub US$20 por usuario/mes.
+- Incluye 10 licencias iniciales por módulo.
 
 Responde SIEMPRE en JSON válido, sin markdown:
 {
@@ -242,7 +241,7 @@ Responde SIEMPRE en JSON válido, sin markdown:
   },
   "leadReady": false,
   "suggestedModule": "",
-  "intent": "greeting|pricing|trial|module_sales|module_operation|module_finance|lead_capture|unknown|inappropriate"
+  "intent": "greeting|pricing|trial|module_sales|module_operation|module_expense|lead_capture|unknown|inappropriate"
 }
 
 Reglas:
@@ -252,7 +251,7 @@ Reglas:
 - Si ya tienes necesidad, no la vuelvas a pedir.
 - Si el usuario pregunta algo antes de dejar datos, responde primero y luego haz una pregunta suave.
 - leadReady solo debe ser true si tienes name, company, contact y need.
-- suggestedModule debe ser "Sales Hub", "Operación", "Finanzas" o "Módulos WAMA".
+- suggestedModule debe ser "Sales Hub", "Expense Hub", "Operations Hub" o "Módulos WAMA".
 `;
 
     const response = await fetch("https://api.openai.com/v1/responses", {
