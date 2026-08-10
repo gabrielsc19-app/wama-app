@@ -5,7 +5,7 @@ import { getWamaAdmin } from "../../../../src/lib/server/wamaAdmin";
 export const runtime = "nodejs";
 
 const GENERIC_MESSAGE =
-  "Si existe una cuenta asociada a ese correo, recibirás un enlace en los próximos minutos.";
+  "Si existe una cuenta asociada a ese correo, recibirás un código en los próximos minutos.";
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
     });
 
     // No revelamos si una dirección está o no registrada.
-    if (linkError || !data.properties?.hashed_token) {
+    if (linkError || !data.properties?.email_otp) {
       const normalized = linkError?.message?.toLowerCase() || "";
       if (normalized.includes("user") && normalized.includes("not found")) {
         return NextResponse.json({ ok: true, message: GENERIC_MESSAGE });
@@ -45,16 +45,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const recoveryUrl = new URL("https://www.wamaapp.com/restablecer-clave");
-    recoveryUrl.searchParams.set("token_hash", data.properties.hashed_token);
-    recoveryUrl.searchParams.set("type", "recovery");
-
     const resend = new Resend(resendKey);
     const { error: sendError } = await resend.emails.send({
       from: process.env.WAMA_FROM_EMAIL || "WAMA <notificaciones@wamaapp.com>",
       to: email,
       subject: "Recupera tu acceso a WAMA",
-      html: recoveryEmail(recoveryUrl.toString()),
+      html: recoveryEmail(data.properties.email_otp),
     });
 
     if (sendError) {
@@ -75,7 +71,7 @@ export async function POST(request: Request) {
   }
 }
 
-function recoveryEmail(url: string) {
+function recoveryEmail(code: string) {
   return `<!doctype html>
 <html lang="es">
   <body style="margin:0;background:#f5f6f7;font-family:Arial,Helvetica,sans-serif;color:#0b0c0e">
@@ -89,10 +85,8 @@ function recoveryEmail(url: string) {
           <tr><td style="padding:40px 34px">
             <h1 style="margin:0 0 18px;font-size:25px;color:#0b0c0e">Recupera tu acceso a WAMA</h1>
             <p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#42464d">Recibimos una solicitud para crear una nueva contraseña.</p>
-            <p style="margin:0 0 26px;font-size:16px;line-height:1.6;color:#42464d">Presiona el botón para continuar. El enlace es personal y estará disponible por un tiempo limitado.</p>
-            <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 28px"><tr>
-              <td style="border-radius:10px;background:#00e5d6"><a href="${url}" style="display:inline-block;padding:15px 28px;font-size:16px;font-weight:700;color:#0b0c0e;text-decoration:none">Crear nueva contraseña</a></td>
-            </tr></table>
+            <p style="margin:0 0 24px;font-size:16px;line-height:1.6;color:#42464d">Ingresa este código en WAMA para continuar. Es personal y estará disponible por un tiempo limitado.</p>
+            <div style="margin:0 auto 28px;padding:18px 20px;border-radius:12px;background:#eefcfb;text-align:center;font-size:34px;font-weight:800;letter-spacing:8px;color:#0b0c0e">${code}</div>
             <p style="margin:0;font-size:13px;line-height:1.6;color:#737881">Si no solicitaste este cambio, puedes ignorar el mensaje. Tu contraseña actual seguirá funcionando.</p>
           </td></tr>
           <tr><td style="padding:22px 34px;background:#f5f6f7;text-align:center;font-size:13px;color:#737881">Gestiona tu empresa módulo por módulo.</td></tr>
