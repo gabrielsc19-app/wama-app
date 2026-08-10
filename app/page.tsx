@@ -150,9 +150,9 @@ export default function HomePage() {
               </p>
               <a
                 href="mailto:contacto@wamaapp.com?subject=Quiero%20conocer%20WAMA"
-                className="mt-7 inline-flex rounded-full bg-[#0B0C0E] px-7 py-4 text-sm font-black text-white"
+                className="mt-7 inline-flex items-center justify-center rounded-full bg-[#0B0C0E] px-7 py-4 text-sm font-black !text-white shadow-sm transition hover:bg-[#202327]"
               >
-                contacto@wamaapp.com
+                Enviar consulta por correo →
               </a>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
