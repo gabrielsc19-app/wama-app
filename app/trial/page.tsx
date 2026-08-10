@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState, type ReactNode } from "react";
+import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import WamaShell from "../../src/components/brand/WamaShell";
 
@@ -14,11 +14,16 @@ export default function TrialPage() {
     ownerPhone: "",
     ownerEmail: "",
     website: "",
-    moduleKey: "expense" as "expense" | "sales",
+    moduleKey: "expense" as "expense" | "sales" | "operations",
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successEmail, setSuccessEmail] = useState("");
+
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("module");
+    if (requested === "sales" || requested === "expense" || requested === "operations") setForm((current) => ({ ...current, moduleKey: requested }));
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -50,7 +55,7 @@ export default function TrialPage() {
             <div>
               <p className="text-sm font-black uppercase tracking-[0.24em] text-[#00E5D6]">Prueba gratis por 15 días</p>
               <h1 className="mt-7 max-w-3xl text-5xl font-black leading-[0.96] tracking-[-0.07em] sm:text-6xl">Activa el módulo que tu empresa necesita.</h1>
-              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">Crea un único portal WAMA y prueba Sales Hub o Expense Hub. Después podrás activar el otro módulo desde la misma empresa.</p>
+              <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">Crea un único portal WAMA y prueba Sales Hub, Expense Hub u Operations Hub. Después podrás activar los demás módulos desde la misma empresa.</p>
               <div className="mt-10 divide-y divide-white/10 border-y border-white/10">
                 <Benefit number="01" text="15 días de prueba sin pago inicial" />
                 <Benefit number="02" text="10 usuarios independientes por módulo" />
@@ -79,9 +84,10 @@ export default function TrialPage() {
 
                   <div className="mt-8 grid gap-5">
                     <Field label="Módulo que quieres probar">
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-3">
                         <ModuleChoice active={form.moduleKey === "expense"} title="Expense Hub" text="Rendiciones de gastos" onClick={() => setForm({ ...form, moduleKey: "expense" })} />
                         <ModuleChoice active={form.moduleKey === "sales"} title="Sales Hub" text="CRM y oportunidades" onClick={() => setForm({ ...form, moduleKey: "sales" })} />
+                        <ModuleChoice active={form.moduleKey === "operations"} title="Operations Hub" text="Casos y alertas" onClick={() => setForm({ ...form, moduleKey: "operations" })} />
                       </div>
                     </Field>
                     <div className="grid gap-5 md:grid-cols-2">
@@ -98,7 +104,7 @@ export default function TrialPage() {
                     <div className="rounded-2xl border border-[#DDE3E7] bg-[#F7F9FA] p-5">
                       <p className="text-xs font-black uppercase tracking-[0.18em] text-[#008F87]">Tu prueba incluye</p>
                       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-                        <Included text={form.moduleKey === "expense" ? "Expense Hub" : "Sales Hub / CRM"} />
+                        <Included text={form.moduleKey === "expense" ? "Expense Hub" : form.moduleKey === "sales" ? "Sales Hub / CRM" : "Operations Hub"} />
                         <Included text="15 días de acceso" />
                         <Included text="10 usuarios incluidos" />
                         <Included text="Administrador principal" />

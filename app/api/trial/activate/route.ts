@@ -7,15 +7,6 @@ function isEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 
-function friendlyTrialError(error: unknown) {
-  const message = error instanceof Error ? error.message : "";
-  if (message.includes("ya está activado")) return message;
-  if (message.includes("No se pudo verificar el correo")) {
-    return "No pudimos verificar tu correo en este momento. Intenta nuevamente en unos minutos.";
-  }
-  return "No pudimos crear tu prueba en este momento. No se realizó ningún cobro. Intenta nuevamente o contáctanos si el problema continúa.";
-}
-
 export async function POST(request: Request) {
   try {
     const body = await request.json() as {
@@ -35,7 +26,7 @@ export async function POST(request: Request) {
     const ownerName = body.ownerName?.trim() || "";
     const ownerEmail = body.ownerEmail?.trim().toLowerCase() || "";
     const ownerPhone = body.ownerPhone?.trim() || "";
-    const moduleKey = body.moduleKey === "sales" ? "sales" : "expense";
+    const moduleKey: TrialModuleKey = body.moduleKey === "sales" ? "sales" : body.moduleKey === "operations" ? "operations" : "expense";
 
     if (!companyName || !ownerName || !ownerEmail) {
       return NextResponse.json({ error: "Completa empresa, responsable y correo administrador." }, { status: 400 });
@@ -56,9 +47,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
-    console.error("[trial/activate] Error al crear la prueba", error);
     return NextResponse.json({
-      error: friendlyTrialError(error),
-    }, { status: 500 });
+      error: error instanceof Error ? error.message : "No se pudo activar la prueba.",
+    }, { status: 400 });
   }
 }

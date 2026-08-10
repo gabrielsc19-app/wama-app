@@ -211,6 +211,11 @@ button {
     transition: none;
   }
 }
+
+@layer components {
+  .input { width: 100%; border-radius: 1rem; border: 1px solid #dce1e6; background: #fff; padding: .875rem 1rem; color: #0b0c0e; outline: none; }
+  .input:focus { border-color: #00afa4; box-shadow: 0 0 0 2px rgba(0,175,164,.15); }
+}
 /* ================================
    WAMA INSTALLED APP EXPERIENCE
    ================================ */

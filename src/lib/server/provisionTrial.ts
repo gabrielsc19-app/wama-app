@@ -2,7 +2,7 @@ import crypto from "node:crypto";
 import { sendWamaEmail } from "./googleGmail";
 import { getWamaAdmin } from "./wamaAdmin";
 
-export type TrialModuleKey = "expense" | "sales";
+export type TrialModuleKey = "expense" | "sales" | "operations";
 
 export type TrialProvisionInput = {
   companyName: string;
@@ -17,6 +17,7 @@ export type TrialProvisionInput = {
 const MODULES = {
   expense: { name: "Expense Hub", description: "Rendiciones de Gastos", href: "/expense-hub" },
   sales: { name: "Sales Hub", description: "CRM y gestión comercial", href: "/sales-hub" },
+  operations: { name: "Operations Hub", description: "Incidentes, alertas y gestión operacional", href: "/operations-hub" },
 } as const;
 
 function slugify(value: string) {
@@ -106,7 +107,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
     }
 
     const { data: catalogModule, error: moduleError } = await admin
-      .from("wama_module_catalog").select("id,monthly_price_usd,extra_block_price_usd").eq("module_key", input.moduleKey).single();
+      .from("wama_module_catalog").select("id").eq("module_key", input.moduleKey).single();
     if (moduleError || !catalogModule) throw new Error(`El módulo ${moduleInfo.name} no existe en el catálogo.`);
 
     const { data: existingLicense, error: existingLicenseError } = await admin
@@ -119,8 +120,6 @@ export async function provisionTrial(input: TrialProvisionInput) {
       module_id: catalogModule.id,
       status: "trial",
       included_seats: 10,
-      unit_price_usd: input.moduleKey === "expense" ? 20 : Number(catalogModule.monthly_price_usd || 10),
-      extra_block_price_usd: input.moduleKey === "expense" ? 20 : Number(catalogModule.extra_block_price_usd || 10),
       starts_at: now.toISOString(),
       renews_at: trialEnds,
     }).select("id").single();
@@ -130,6 +129,11 @@ export async function provisionTrial(input: TrialProvisionInput) {
       tenant_module_license_id: license.id, profile_id: profileId, assigned_by: profileId, status: "active",
     });
     if (assignmentError) throw new Error(assignmentError.message);
+
+    if (input.moduleKey === "operations") {
+      const { error: seedError } = await admin.rpc("wama_seed_operations", { target_tenant_id: tenantId, creator_profile_id: profileId });
+      if (seedError) throw new Error(seedError.message);
+    }
 
     await admin.from("wama_invitations").upsert({
       tenant_id: tenantId, email: ownerEmail, full_name: input.ownerName, role: "owner", auth_user_id: authUser.id,
