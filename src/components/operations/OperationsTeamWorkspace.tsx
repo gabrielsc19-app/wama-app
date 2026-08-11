@@ -2,7 +2,29 @@
 import { ArrowLeft, ChevronRight, Pencil, Plus, Users } from "lucide-react";
 type Ref = { id: string; name: string; color?: unknown; description?: unknown; members?: unknown; receives_urgent?: unknown };
 type Person = { id: string; full_name: string; email: string };
-type Case = { id: string; case_number: string; title: string; status: string; is_urgent: boolean; priority: string; team?: Ref; assignee?: Person; due_at: string };
+type CaseEvent = { id: string; event_type: string; from_status?: string; to_status?: string; comment?: string; created_at: string; created_by: string };
+type Evidence = { id: string; file_name: string; mime_type: string; created_at: string; url?: string | null };
+type Case = {
+  id: string;
+  case_number: string;
+  title: string;
+  description: string;
+  status: string;
+  is_urgent: boolean;
+  priority: string;
+  due_at: string;
+  created_at: string;
+  reported_by: string;
+  assigned_to?: string | null;
+  resolved_at?: string | null;
+  location?: Ref;
+  category?: Ref;
+  team?: Ref;
+  reporter?: Person;
+  assignee?: Person;
+  events?: CaseEvent[];
+  evidence?: Evidence[];
+};
 export default function OperationsTeamWorkspace({ teams, cases, members, selectedId, select, openCase, edit, invite }: { teams: Ref[]; cases: Case[]; members: Person[]; selectedId: string | null; select: (id: string | null) => void; openCase: (item: Case) => void; edit: (item: Ref) => void; invite: () => void }) {
   const team = teams.find((item) => item.id === selectedId);
   if (!team) return <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{teams.map((item) => { const teamCases = cases.filter((entry) => entry.team?.id === item.id); const open = teamCases.filter((entry) => !["closed", "cancelled"].includes(entry.status)).length; return <button key={item.id} onClick={() => select(item.id)} className="rounded-[2rem] border border-[#DCE1E6] bg-white p-6 text-left transition hover:-translate-y-1 hover:border-[#00B8AE] hover:shadow-lg"><span className="block h-2 w-16 rounded-full" style={{ background: String(item.color || "#00B8AE") }}/><h3 className="mt-5 text-xl font-black">{item.name}</h3><p className="mt-2 text-sm text-[#69717D]">{String(item.description || (item.receives_urgent ? "Recibe alertas urgentes" : "Casos regulares"))}</p><div className="mt-5 flex items-center justify-between"><strong className="text-sm">{open} abiertos · {teamCases.length} total</strong><span className="inline-flex items-center gap-1 text-xs font-black text-[#008F87]">Entrar y gestionar <ChevronRight className="h-4 w-4"/></span></div></button>; })}</section>;
