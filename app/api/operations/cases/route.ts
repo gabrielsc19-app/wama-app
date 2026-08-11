@@ -26,10 +26,17 @@ export async function GET(request:Request){
       admin.from("wama_operations_teams").select("*,members:wama_operations_team_members(profile_id,team_role,notify_new_cases,notify_updates,notify_urgent,notify_email,notify_push)").eq("tenant_id",tenantId).eq("status","active").order("name"),
       admin.from("wama_operations_setup").select("*").eq("tenant_id",tenantId).maybeSingle(),
       admin.from("wama_operations_notifications").select("*").eq("tenant_id",tenantId).eq("recipient_profile_id",profile.id).is("read_at",null).order("created_at",{ascending:false}).limit(30),
-      admin.from("wama_module_user_assignments").select("id",{count:"exact",head:true}).eq("tenant_module_license_id",context.license.id).eq("status","active"),
+      admin.from("wama_module_user_assignments").select("id",{count:"exact",head:true}).eq("tenant_module_license_id",context.license.id).in("status",["active","invited"]),
     ]);if(error)throw error;
-    const {data:assignments}=await admin.from("wama_module_user_assignments").select("profile_id,module_role,wama_profiles(id,full_name,email)").eq("tenant_module_license_id",context.license.id).eq("status","active");
-    const members=(assignments||[]).map(row=>({...row.wama_profiles,role:row.module_role}));
+    const {data:assignments,error:assignmentsError}=await admin.from("wama_module_user_assignments").select("profile_id,module_role,status").eq("tenant_module_license_id",context.license.id).in("status",["active","invited"]);
+    if(assignmentsError)throw assignmentsError;
+    const profileIds=[...new Set((assignments||[]).map(row=>row.profile_id).filter(Boolean))];
+    const {data:licensedProfiles,error:profilesError}=profileIds.length
+      ?await admin.from("wama_profiles").select("id,full_name,email").in("id",profileIds)
+      :{data:[],error:null};
+    if(profilesError)throw profilesError;
+    const profilesById=new Map((licensedProfiles||[]).map(item=>[item.id,item]));
+    const members=(assignments||[]).map(row=>{const member=profilesById.get(row.profile_id);return member?{...member,role:row.module_role,license_status:row.status}:null}).filter(Boolean);
     const capacity=context.license.included_seats+context.license.extra_seat_blocks*context.license.extra_block_size;
     return NextResponse.json({cases:cases||[],locations:locations||[],categories:categories||[],teams:teams||[],members,notifications:notifications||[],setup,profile,moduleRole:context.moduleRole,canAdmin:context.canAdmin,canCoordinate:context.canCoordinate,canWork:context.canWork,license:{used:usedSeats||0,capacity,blocks:1+context.license.extra_seat_blocks,status:context.license.status}});
   }catch(error){return responseError(error)}

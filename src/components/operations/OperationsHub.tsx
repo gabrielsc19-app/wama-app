@@ -4,7 +4,7 @@ import {ArrowLeft,ArrowRight,BarChart3,Bell,Building2,Camera,CheckCircle2,Chevro
 import {supabase} from "../../../app/lib/supabase";
 import EnterpriseShell from "../enterprise/EnterpriseShell";
 
-type Person={id:string;full_name:string;email:string;role?:string};
+type Person={id:string;full_name:string;email:string;role?:string;license_status?:"active"|"invited"};
 type Ref={id:string;name:string;[key:string]:unknown};
 type Event={id:string;event_type:string;from_status?:string;to_status?:string;comment?:string;created_at:string;created_by:string};
 type Evidence={id:string;file_name:string;mime_type:string;created_at:string;url?:string|null};
