@@ -12,7 +12,7 @@ type License = { id:string; included_seats:number; extra_seat_blocks:number; ext
 type InviteForm = { fullName:string; email:string; moduleRoles:Record<string,string> };
 
 const empty:InviteForm = { fullName:"", email:"", moduleRoles:{} };
-const defaultRole = (key:string) => key === "sales" ? "sales_executive" : "expense_submitter";
+const defaultRole = (key:string) => key === "sales" ? "sales_executive" : key === "operations" ? "operations_reporter" : "expense_submitter";
 const optionsFor = profilesFor;
 
 export default function UsersPage() {

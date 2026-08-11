@@ -95,7 +95,7 @@ export async function POST(request: Request) {
     const moduleRoles = body.moduleRoles || {};
     const requestedModules = [...new Set(Object.keys(moduleRoles))];
     if (!requestedModules.length) return NextResponse.json({ error: "Selecciona al menos un módulo." }, { status: 400 });
-    const validRoles:Record<string,string[]> = { expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"], sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"] };
+    const validRoles:Record<string,string[]> = { expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"], sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"], operations:["operations_admin","operations_coordinator","operations_operator","operations_reporter","operations_observer"] };
     for (const moduleKey of requestedModules) {
       const allowed = validRoles[moduleKey] || ["member","viewer"];
       if (!allowed.includes(moduleRoles[moduleKey])) return NextResponse.json({ error: `El perfil seleccionado para ${moduleKey} no es válido.` }, { status: 400 });
@@ -128,7 +128,7 @@ export async function PUT(request: Request) {
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede modificar perfiles." },{status:403});
     const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string };
     if (!body.profileId || !body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
-    const validRoles:Record<string,string[]>={expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"],sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"]};
+    const validRoles:Record<string,string[]>={expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"],sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"],operations:["operations_admin","operations_coordinator","operations_operator","operations_reporter","operations_observer"]};
     const allowed=validRoles[body.moduleKey]||["member","viewer"];
     if(!allowed.includes(body.moduleRole)) return NextResponse.json({error:"El perfil seleccionado no es válido para este módulo."},{status:400});
     const { data:targetMembership,error:membershipError }=await admin.from("wama_tenant_memberships").select("role").eq("tenant_id",membership.tenant_id).eq("profile_id",body.profileId).maybeSingle();

@@ -23,6 +23,13 @@ export const MODULE_PROFILES:Record<string,ModuleProfile[]> = {
     {value:"sales_admin",label:"Administrador de Sales Hub",description:"Configura el CRM, catálogos y accesos.",activities:["Configurar etapas y probabilidades","Administrar productos y monedas","Supervisar permisos y reportes"]},
     {value:"sales_auditor",label:"Auditor / Solo consulta",description:"Consulta pipeline e historial sin intervenir.",activities:["Consultar oportunidades y archivos","Revisar historial de cambios","Acceder a informes comerciales"]},
   ],
+  operations:[
+    {value:"operations_admin",label:"Administrador de Operations Hub",description:"Configura el módulo y controla toda la operación.",activities:["Administrar ubicaciones, categorías y equipos","Gestionar permisos y notificaciones","Archivar y restaurar casos con auditoría"]},
+    {value:"operations_coordinator",label:"Coordinador operacional",description:"Asigna, prioriza y supervisa el trabajo de los equipos.",activities:["Asignar y reasignar casos","Controlar plazos y alertas","Cerrar y reabrir casos"]},
+    {value:"operations_operator",label:"Operativo",description:"Atiende los casos asignados y registra la gestión en terreno.",activities:["Tomar e iniciar casos","Comentar y adjuntar evidencias","Resolver casos"]},
+    {value:"operations_reporter",label:"Reportante",description:"Reporta incidencias y sigue su resolución.",activities:["Crear casos con fotografías","Consultar sus reportes","Cerrar o reabrir sus casos"]},
+    {value:"operations_observer",label:"Observador",description:"Consulta la operación sin modificarla.",activities:["Revisar casos y evidencias","Consultar historial","Acceder a indicadores"]},
+  ],
 };
 
 export const profilesFor=(moduleKey:string)=>MODULE_PROFILES[moduleKey]||[];
