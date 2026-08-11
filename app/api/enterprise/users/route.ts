@@ -25,6 +25,10 @@ export async function GET(request: Request) {
       ? await admin.from("wama_profiles").select("id,full_name,email,status").in("id", profileIds)
       : { data: [], error: null };
     if (profilesError) throw profilesError;
+    const { data: invitations, error: invitationsError } = await admin.from("wama_invitations")
+      .select("email,status,sent_at,send_attempts,last_error,provider_message_id")
+      .eq("tenant_id", membership.tenant_id);
+    if (invitationsError) throw invitationsError;
     const invitedMemberships = (memberships || []).filter((item) => item.status === "invited");
     const { data: authUsers } = invitedMemberships.length
       ? await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
@@ -75,6 +79,7 @@ export async function GET(request: Request) {
     const users = (memberships || []).map((item) => ({
       ...item,
       wama_profiles: (profiles || []).find((profile) => profile.id === item.profile_id) || null,
+      invitation: (invitations || []).find((invitation) => invitation.email.toLowerCase() === (profiles || []).find((profile) => profile.id === item.profile_id)?.email?.toLowerCase()) || null,
       module_assignments: assignmentRows.filter(a=>a.profileId===item.profile_id).map(a=>({ license_id:a.licenseId, module_key:a.moduleKey, module_name:a.moduleName, role:item.role === "owner" ? "module_admin" : a.role, status:"active" })),
     }));
     return NextResponse.json({ users, licenses: licenses || [], currentRole: membership.role });
@@ -116,9 +121,10 @@ export async function POST(request: Request) {
 
     if (!targetProfile) {
       const origin = new URL(request.url).origin;
-      const { data: invite, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email, {
-        redirectTo: `${origin}/invitacion/aceptar`,
-        data: { full_name: fullName },
+      // generateLink crea el usuario invitado sin depender del correo SMTP de
+      // Supabase. El envío real se realiza y confirma más abajo mediante Resend.
+      const { data: invite, error: inviteError } = await admin.auth.admin.generateLink({
+        type:"invite",email,options:{redirectTo:`${origin}/invitacion/aceptar`,data:{full_name:fullName}},
       });
 
       if (inviteError || !invite.user) {
@@ -165,9 +171,27 @@ export async function POST(request: Request) {
     const assignments = selected.map(license => { const moduleKey=(license.wama_module_catalog as unknown as {module_key:string}).module_key; return { tenant_module_license_id:license.id, profile_id:targetProfile.id, assigned_by:profile.id, status:"active", module_role:moduleRoles[moduleKey] }; });
     const { error: assignmentError } = await admin.from("wama_module_user_assignments").upsert(assignments, { onConflict: "tenant_module_license_id,profile_id" });
     if (assignmentError) throw assignmentError;
-    const { error: invitationError } = await admin.from("wama_invitations").upsert({ tenant_id: membership.tenant_id, email, full_name: fullName, role: "member", invited_by: profile.id, auth_user_id: authUserId, status: reusedExistingUser ? "accepted" : "pending" }, { onConflict: "tenant_id,email" });
+    const { error: invitationError } = await admin.from("wama_invitations").upsert({ tenant_id: membership.tenant_id, email, full_name: fullName, role: "member", invited_by: profile.id, auth_user_id: authUserId, status: reusedExistingUser ? "accepted" : "pending", last_error:null }, { onConflict: "tenant_id,email" });
     if (invitationError && !invitationError.message.includes("accepted_at")) throw invitationError;
-    return NextResponse.json({ ok: true, email, modules: requestedModules, reusedExistingUser });
+    let emailStatus:"not_required"|"sent"="not_required";
+    if(!reusedExistingUser){
+      try{
+        const origin=new URL(request.url).origin;
+        const{data:linkData,error:linkError}=await admin.auth.admin.generateLink({type:"invite",email,options:{redirectTo:`${origin}/invitacion/aceptar`,data:{full_name:fullName}}});
+        const invitationUrl=linkData?.properties?.action_link;
+        if(linkError||!invitationUrl)throw new Error(linkError?.message||"No se pudo generar el enlace de acceso.");
+        const{data:tenant}=await admin.from("wama_tenants").select("name").eq("id",membership.tenant_id).maybeSingle();
+        const safeName=escapeHtml(fullName),safeCompany=escapeHtml(tenant?.name||"tu empresa"),safeUrl=escapeHtml(invitationUrl);
+        const sent=await sendWamaEmail({to:email,subject:`${tenant?.name||"Tu empresa"} te invitó a WAMA`,text:`Hola ${fullName},\n\n${tenant?.name||"Tu empresa"} te invitó a WAMA. Activa tu acceso aquí:\n${invitationUrl}`,html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,sans-serif;color:#0B0C0E"><table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:30px;text-align:center;color:#00E5D6;font-size:34px;font-weight:800;letter-spacing:4px">WAMA</td></tr><tr><td style="padding:38px 34px"><h1 style="margin:0 0 16px;font-size:24px">Tienes una invitación</h1><p style="font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te invitó a trabajar en WAMA.</p><p style="margin:26px 0;text-align:center"><a href="${safeUrl}" style="display:inline-block;border-radius:10px;background:#00E5D6;padding:15px 28px;font-weight:700;color:#0B0C0E;text-decoration:none">Activar mi acceso</a></p><p style="font-size:12px;color:#737881;word-break:break-all">${safeUrl}</p></td></tr></table></td></tr></table></body></html>`});
+        await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+        emailStatus="sent";
+      }catch(mailError){
+        const message=mailError instanceof Error?mailError.message:"El proveedor no confirmó el correo.";
+        await admin.from("wama_invitations").update({status:"failed",last_error:message,send_attempts:1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+        return NextResponse.json({error:`El usuario y su licencia quedaron creados, pero el correo no fue entregado: ${message}. Puedes reenviarlo desde Usuarios.`,emailStatus:"failed"},{status:502});
+      }
+    }
+    return NextResponse.json({ ok: true, email, modules: requestedModules, reusedExistingUser, emailStatus });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "Error inesperado." }, { status: 500 });
   }
@@ -224,14 +248,15 @@ export async function PATCH(request: Request) {
     const safeName=escapeHtml(targetProfile.full_name||"Usuario");
     const safeCompany=escapeHtml(tenant?.name||"tu empresa");
     const safeInvitationUrl=escapeHtml(invitationUrl);
-    await sendWamaEmail({
+    const sent=await sendWamaEmail({
       to:email,
       subject:"Has sido invitado a WAMA",
       text:`Hola ${targetProfile.full_name || ""},\n\n${tenant?.name || "Tu empresa"} te ha invitado a WAMA. Usa este enlace para aceptar la invitación y configurar tu acceso:\n\n${invitationUrl}\n\nEste enlace reemplaza al anterior.`,
       html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,Helvetica,sans-serif;color:#0B0C0E"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:32px;text-align:center"><div style="font-size:36px;font-weight:800;letter-spacing:4px;color:#00E5D6">WAMA</div><div style="margin-top:8px;font-size:14px;color:#C4C7CC">Warn and Manage</div></td></tr><tr><td style="padding:40px 34px"><h1 style="margin:0 0 18px;font-size:25px">Has sido invitado a WAMA</h1><p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te ha invitado a formar parte de su portal de trabajo.</p><p style="margin:0 0 26px;font-size:16px;line-height:1.6;color:#42464D">Presiona el botón para aceptar la invitación y configurar tu acceso.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 28px"><tr><td style="border-radius:10px;background:#00E5D6"><a href="${safeInvitationUrl}" style="display:inline-block;padding:15px 28px;font-size:16px;font-weight:700;color:#0B0C0E;text-decoration:none">Aceptar invitación</a></td></tr></table><p style="margin:0 0 8px;font-size:13px;color:#737881">Si el botón no funciona, copia este enlace:</p><p style="margin:0;word-break:break-all;font-size:12px;color:#737881">${safeInvitationUrl}</p></td></tr><tr><td style="padding:22px 34px;background:#F5F6F7;text-align:center;font-size:13px;color:#737881">Gestiona tu empresa módulo por módulo.</td></tr></table></td></tr></table></body></html>`,
     });
-    await admin.from("wama_invitations").update({status:"pending"}).eq("tenant_id",membership.tenant_id).eq("email",email);
-    return NextResponse.json({ok:true,email});
+    const{data:existingInvite}=await admin.from("wama_invitations").select("send_attempts").eq("tenant_id",membership.tenant_id).eq("email",email).maybeSingle();
+    await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:Number(existingInvite?.send_attempts||0)+1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+    return NextResponse.json({ok:true,email,emailStatus:"sent"});
   } catch(error) {
     return NextResponse.json({error:error instanceof Error?error.message:"Error inesperado."},{status:500});
   }
