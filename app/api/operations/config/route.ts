@@ -1,7 +1,32 @@
 import {NextResponse} from "next/server";
 import {getOperationsContext,operationsError} from "../../../../src/lib/server/operationsAccess";
 const fail=(e:unknown)=>{const x=operationsError(e);return NextResponse.json({error:x.message},{status:x.status})};
-export async function POST(request:Request){try{const c=await getOperationsContext(request);if(!c.canAdmin)return NextResponse.json({error:"Solo el administrador puede configurar Operations Hub."},{status:403});const b=await request.json() as {type?:string;name?:string;address?:string;color?:string;description?:string;receivesUrgent?:boolean;defaultTeamId?:string;slaMinutes?:number;memberIds?:string[];coordinatorIds?:string[];completeSetup?:boolean};
+export async function POST(request:Request){try{const c=await getOperationsContext(request);if(!c.canAdmin)return NextResponse.json({error:"Solo el administrador puede configurar Operations Hub."},{status:403});const b=await request.json() as {type?:string;name?:string;address?:string;color?:string;description?:string;receivesUrgent?:boolean;defaultTeamId?:string;slaMinutes?:number;memberIds?:string[];memberEmails?:string[];coordinatorIds?:string[];completeSetup?:boolean;location?:string;team?:string;category?:string};
+ if(b.completeSetup&&b.location&&b.team&&b.category){
+  const locationName=b.location.trim(),teamName=b.team.trim(),categoryName=b.category.trim();
+  if(!locationName||!teamName||!categoryName)return NextResponse.json({error:"Completa la ubicación, el equipo y la categoría."},{status:400});
+  const emails=[...new Set((b.memberEmails||[]).map(email=>email.trim().toLowerCase()).filter(Boolean))];
+  const{data:emailProfiles,error:profilesError}=emails.length?await c.admin.from("wama_profiles").select("id,email").in("email",emails):{data:[],error:null};
+  if(profilesError)throw profilesError;
+  if((emailProfiles||[]).length!==emails.length)return NextResponse.json({error:"Una invitación no terminó de registrarse. Revisa los correos e inténtalo nuevamente; no se duplicarán los ya creados."},{status:409});
+  const allMemberIds=[...new Set([c.profile.id,...(b.memberIds||[]),...(emailProfiles||[]).map(item=>item.id)])];
+  const{data:licensed,error:licensedError}=await c.admin.from("wama_module_user_assignments").select("profile_id").eq("tenant_module_license_id",c.license.id).eq("status","active").in("profile_id",allMemberIds);
+  if(licensedError)throw licensedError;
+  if((licensed||[]).length!==allMemberIds.length)return NextResponse.json({error:"Todos los integrantes deben tener una licencia activa de Operations Hub."},{status:409});
+  const capacity=c.license.included_seats+c.license.extra_seat_blocks*c.license.extra_block_size;
+  const{count:used}=await c.admin.from("wama_module_user_assignments").select("id",{count:"exact",head:true}).eq("tenant_module_license_id",c.license.id).eq("status","active");
+  if((used||0)>capacity)return NextResponse.json({error:`Operations Hub superó su capacidad (${used}/${capacity}). Contrata un paquete adicional antes de continuar.`},{status:409});
+  let{data:location,error:locationLookupError}=await c.admin.from("wama_operations_locations").select("*").eq("tenant_id",c.tenantId).ilike("name",locationName).maybeSingle();if(locationLookupError)throw locationLookupError;
+  if(!location){const created=await c.admin.from("wama_operations_locations").insert({tenant_id:c.tenantId,name:locationName,address:null,created_by:c.profile.id}).select("*").single();if(created.error)throw created.error;location=created.data;}
+  let{data:team,error:teamLookupError}=await c.admin.from("wama_operations_teams").select("*").eq("tenant_id",c.tenantId).ilike("name",teamName).maybeSingle();if(teamLookupError)throw teamLookupError;
+  if(!team){const created=await c.admin.from("wama_operations_teams").insert({tenant_id:c.tenantId,name:teamName,color:b.color||"#00B8AE",receives_urgent:Boolean(b.receivesUrgent),response_sla_minutes:Number(b.slaMinutes||1440),created_by:c.profile.id}).select("*").single();if(created.error)throw created.error;team=created.data;}
+  const coordinatorIds=new Set([c.profile.id,...(b.coordinatorIds||[])]);
+  const{error:membersError}=await c.admin.from("wama_operations_team_members").upsert(allMemberIds.map(profile_id=>({team_id:team.id,profile_id,team_role:coordinatorIds.has(profile_id)?"coordinator":"operator"})),{onConflict:"team_id,profile_id"});if(membersError)throw membersError;
+  let{data:category,error:categoryLookupError}=await c.admin.from("wama_operations_categories").select("*").eq("tenant_id",c.tenantId).ilike("name",categoryName).maybeSingle();if(categoryLookupError)throw categoryLookupError;
+  if(!category){const created=await c.admin.from("wama_operations_categories").insert({tenant_id:c.tenantId,name:categoryName,default_team_id:team.id,sla_minutes:Number(b.slaMinutes||1440)}).select("*").single();if(created.error)throw created.error;category=created.data;}
+  const{error:setupError}=await c.admin.from("wama_operations_setup").upsert({tenant_id:c.tenantId,completed_at:new Date().toISOString(),completed_by:c.profile.id,updated_at:new Date().toISOString()});if(setupError)throw setupError;
+  return NextResponse.json({ok:true,location,team,category,license:{used:used||0,capacity}});
+ }
  if(b.completeSetup){const{error}=await c.admin.from("wama_operations_setup").upsert({tenant_id:c.tenantId,completed_at:new Date().toISOString(),completed_by:c.profile.id,updated_at:new Date().toISOString()});if(error)throw error;return NextResponse.json({ok:true});}
  if(!b.name?.trim()||!b.type)return NextResponse.json({error:"Nombre obligatorio."},{status:400});const name=b.name.trim();
  if(b.type==="location"){const{data,error}=await c.admin.from("wama_operations_locations").insert({tenant_id:c.tenantId,name,address:b.address?.trim()||null,created_by:c.profile.id}).select("*").single();if(error)throw error;return NextResponse.json({ok:true,item:data});}
