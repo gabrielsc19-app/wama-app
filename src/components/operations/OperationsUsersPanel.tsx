@@ -1,6 +1,7 @@
 "use client";
 import { FormEvent, useEffect, useState } from "react";
-import { CheckCircle2, Loader2, Mail, Plus, RefreshCw, UserPlus, Users, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Mail, Plus, RefreshCw, UserPlus, XCircle } from "lucide-react";
+import { supabase } from "../../../app/lib/supabase";
 
 type Team = { id: string; name: string };
 type Invitation = { status: string; sent_at?: string | null; send_attempts?: number; last_error?: string | null } | null;
@@ -8,7 +9,17 @@ type User = { id: string; full_name: string; email: string; module_role: string;
 type Payload = { users: User[]; teams: Team[]; license: { used: number; capacity: number }; error?: string };
 const roles = [{ value: "operations_admin", label: "Administrador" }, { value: "operations_coordinator", label: "Coordinador" }, { value: "operations_operator", label: "Operativo" }, { value: "operations_reporter", label: "Reportante" }, { value: "operations_observer", label: "Observador" }];
 
-async function call(url: string, init?: RequestInit) { const response = await fetch(url, init); const body = await response.json(); if (!response.ok) throw new Error(body.error || "No fue posible completar la solicitud."); return body; }
+async function call(url: string, init?: RequestInit) {
+  const { data, error } = await supabase.auth.getSession();
+  if (error || !data.session) throw new Error("Sesión caducada. Vuelve a iniciar sesión.");
+  const response = await fetch(url, {
+    ...init,
+    headers: { Authorization: `Bearer ${data.session.access_token}`, ...init?.headers },
+  });
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || "No fue posible completar la solicitud.");
+  return body;
+}
 
 export default function OperationsUsersPanel() {
   const [data, setData] = useState<Payload | null>(null), [error, setError] = useState(""), [busy, setBusy] = useState(""), [open, setOpen] = useState(false);
@@ -20,7 +31,7 @@ export default function OperationsUsersPanel() {
   async function changeRole(profileId: string, moduleRole: string) { setBusy(profileId); setError(""); try { await call("/api/operations/users", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "role", profileId, moduleRole }) }); await load(); } catch (e) { setError(e instanceof Error ? e.message : "No se pudo cambiar el perfil."); } finally { setBusy(""); } }
   const remaining = Math.max(0, (data?.license.capacity || 0) - (data?.license.used || 0));
   return <div className="grid gap-5">
-    <section className="rounded-[2rem] border border-[#DCE1E6] bg-white p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Usuarios de Operations</p><h2 className="mt-2 text-2xl font-black">Licencias, perfiles e invitaciones</h2><p className="mt-2 text-sm text-[#69717D]">Una persona consume un cupo aunque participe en varios equipos.</p></div><button onClick={() => setOpen(!open)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black"><UserPlus className="h-4 w-4"/>Invitar usuario</button></div>
+    <section className="rounded-[2rem] border border-[#DCE1E6] bg-white p-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><p className="text-xs font-black uppercase tracking-[.16em] text-[#008F87]">Usuarios de Operations</p><h2 className="mt-2 text-2xl font-black">Licencias, perfiles e invitaciones</h2><p className="mt-2 text-sm text-[#69717D]">Una persona consume un cupo aunque participe en varios equipos.</p></div><button onClick={() => setOpen(!open)} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-5 py-3 text-sm font-black"><UserPlus className="h-4 w-4"/>Enviar invitación</button></div>
       <div className="mt-5 rounded-2xl bg-[#F4F8F8] p-4"><div className="flex justify-between text-sm"><strong>{data?.license.used || 0} de {data?.license.capacity || 0} licencias utilizadas</strong><span>{remaining} disponibles</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-[#DDE8E7]"><div className="h-full bg-[#00B8AE]" style={{ width: `${Math.min(100, ((data?.license.used || 0) / Math.max(1, data?.license.capacity || 1)) * 100)}%` }}/></div></div>
     </section>
     {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
