@@ -27,10 +27,7 @@ export default function ReportesPage() {
     <WamaShell>
       <main className="overflow-hidden bg-white text-[#0B0C0E]">
         <HeroSection />
-        <ExecutiveReading />
-        <PrioritiesSection />
-        <DecisionSection />
-        <FinalCallToAction />
+              <FinalCallToAction />
       </main>
     </WamaShell>
   );

@@ -118,6 +118,7 @@ export async function POST(request: Request) {
     let targetProfile = existingProfile;
     let authUserId = existingProfile?.auth_user_id || null;
     let reusedExistingUser = Boolean(existingProfile);
+    let invitationUrlForNewUser: string | null = null;
 
     if (!targetProfile) {
       const origin = new URL(request.url).origin;
@@ -139,6 +140,7 @@ export async function POST(request: Request) {
         reusedExistingUser = true;
       } else {
         authUserId = invite.user.id;
+        invitationUrlForNewUser = invite.properties?.action_link || null;
       }
 
       const { data: createdProfile, error: profileError } = await admin
@@ -176,10 +178,8 @@ export async function POST(request: Request) {
     let emailStatus:"not_required"|"sent"="not_required";
     if(!reusedExistingUser){
       try{
-        const origin=new URL(request.url).origin;
-        const{data:linkData,error:linkError}=await admin.auth.admin.generateLink({type:"invite",email,options:{redirectTo:`${origin}/invitacion/aceptar`,data:{full_name:fullName}}});
-        const invitationUrl=linkData?.properties?.action_link;
-        if(linkError||!invitationUrl)throw new Error(linkError?.message||"No se pudo generar el enlace de acceso.");
+        const invitationUrl=invitationUrlForNewUser;
+        if(!invitationUrl)throw new Error("No se pudo recuperar el enlace de acceso generado para la invitación.");
         const{data:tenant}=await admin.from("wama_tenants").select("name").eq("id",membership.tenant_id).maybeSingle();
         const safeName=escapeHtml(fullName),safeCompany=escapeHtml(tenant?.name||"tu empresa"),safeUrl=escapeHtml(invitationUrl);
         const sent=await sendWamaEmail({to:email,subject:`${tenant?.name||"Tu empresa"} te invitó a WAMA`,text:`Hola ${fullName},\n\n${tenant?.name||"Tu empresa"} te invitó a WAMA. Activa tu acceso aquí:\n${invitationUrl}`,html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,sans-serif;color:#0B0C0E"><table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:30px;text-align:center;color:#00E5D6;font-size:34px;font-weight:800;letter-spacing:4px">WAMA</td></tr><tr><td style="padding:38px 34px"><h1 style="margin:0 0 16px;font-size:24px">Tienes una invitación</h1><p style="font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te invitó a trabajar en WAMA.</p><p style="margin:26px 0;text-align:center"><a href="${safeUrl}" style="display:inline-block;border-radius:10px;background:#00E5D6;padding:15px 28px;font-weight:700;color:#0B0C0E;text-decoration:none">Activar mi acceso</a></p><p style="font-size:12px;color:#737881;word-break:break-all">${safeUrl}</p></td></tr></table></td></tr></table></body></html>`});

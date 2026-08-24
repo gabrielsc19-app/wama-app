@@ -14,7 +14,7 @@ export default function SalesHubModulePage() {
               <p className="text-sm font-black uppercase tracking-[0.22em] text-[#00E5D6]">WAMA Sales Hub</p>
               <h1 className="mt-6 text-5xl font-black leading-[.96] tracking-[-.065em] md:text-7xl">Convierte seguimiento en ventas.</h1>
               <p className="mt-7 max-w-2xl text-lg leading-8 text-[#B7BEC8]">Ordena prospectos, oportunidades, actividades, propuestas y resultados comerciales dentro de un único flujo.</p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row"><Link href="/acceso/sales-hub" className="rounded-full bg-[#00E5D6] px-8 py-4 text-center text-sm font-black text-[#0B0C0E]">Entrar al portal Sales</Link><Link href="/trial?module=sales-hub" className="rounded-full border border-white/20 px-8 py-4 text-center text-sm font-black">Prueba gratis 14 días</Link></div>
+              <div className="mt-10 flex flex-col gap-3 sm:flex-row"><Link href="/acceso/sales-hub" className="rounded-full bg-[#00E5D6] px-8 py-4 text-center text-sm font-black text-[#0B0C0E]">Entrar al portal Sales</Link><Link href="/trial?module=sales-hub" className="rounded-full border border-white/20 px-8 py-4 text-center text-sm font-black">Prueba gratis 15 días</Link></div>
             </div>
             <WamaInteractiveFlow kind="sales" compact />
           </div>

@@ -66,13 +66,13 @@ export default function ExpenseHubLandingPage() {
 
               <div className="mt-9 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm font-bold text-[#D8DCE1]">
                 <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#00E5D6]" /> 10 usuarios incluidos</span>
-                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#00E5D6]" /> Prueba gratis 14 días</span>
+                <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#00E5D6]" /> Prueba gratis 15 días</span>
                 <span className="inline-flex items-center gap-2"><Check className="h-4 w-4 text-[#00E5D6]" /> Sin capacitación</span>
               </div>
 
               <div className="mt-10 flex flex-col gap-3 sm:flex-row">
                 <Link href="/trial?module=expense-hub" className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E] transition hover:-translate-y-0.5">
-                  Probar gratis 14 días <ArrowRight className="h-4 w-4" />
+                  Probar gratis 15 días <ArrowRight className="h-4 w-4" />
                 </Link>
                 <Link href="/expense-hub" className="inline-flex items-center justify-center rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white transition hover:border-[#00E5D6]/60 hover:text-[#00E5D6]">
                   Ver demo funcional
@@ -80,7 +80,7 @@ export default function ExpenseHubLandingPage() {
               </div>
 
               <p className="mt-7 text-sm text-[#9098A3]">
-                USD 20 al mes · 10 usuarios incluidos · bloques adicionales de 10 usuarios
+                USD 10 al mes · 10 usuarios incluidos · bloques adicionales de 10 usuarios
               </p>
             </div>
 
@@ -207,9 +207,9 @@ export default function ExpenseHubLandingPage() {
           <div className="mx-auto max-w-7xl px-6 py-24 lg:py-32">
             <p className="text-sm font-black uppercase tracking-[0.22em] text-[#00E5D6]">Precio simple</p>
             <div className="mt-6 grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-              <h2 className="max-w-4xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">USD 20 al mes. Tu equipo rinde desde el primer día.</h2>
+              <h2 className="max-w-4xl text-5xl font-black leading-[1] tracking-[-0.06em] md:text-7xl">USD 10 al mes. Tu equipo rinde desde el primer día.</h2>
               <div className="lg:pb-2">
-                <p className="text-lg leading-8 text-[#B7BEC8]">Incluye 10 usuarios, todas las funciones esenciales y 14 días de prueba gratuita.</p>
+                <p className="text-lg leading-8 text-[#B7BEC8]">Incluye 10 usuarios, todas las funciones esenciales y 15 días de prueba gratuita.</p>
                 <Link href="/trial?module=expense-hub" className="mt-8 inline-flex items-center gap-2 rounded-full bg-[#00E5D6] px-8 py-4 text-sm font-black text-[#0B0C0E]">Activar prueba gratis <ArrowRight className="h-4 w-4" /></Link>
               </div>
             </div>

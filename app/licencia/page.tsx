@@ -10,7 +10,7 @@ const plans = [
     features: [
       "1 módulo WAMA",
       "Hasta 3 usuarios",
-      "Prueba gratis 14 días",
+      "Prueba gratis 15 días",
       "Carga inicial asistida",
       "Dashboard base",
     ],
@@ -55,7 +55,7 @@ export default function LicensePage() {
           </h1>
 
           <p className="mt-6 text-lg leading-8 text-[#C4C7CC]">
-            Al finalizar los 14 días gratis, la empresa puede activar una
+            Al finalizar los 15 días gratis, la empresa puede activar una
             licencia mensual o anual para mantener acceso completo a sus módulos,
             usuarios y datos.
           </p>
