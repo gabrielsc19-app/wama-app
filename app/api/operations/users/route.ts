@@ -76,9 +76,40 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const body = await request.json() as { action?: "resend" | "role"; profileId?: string; moduleRole?: string };
+    const body = await request.json() as { action?: "resend" | "role" | "teams"; profileId?: string; moduleRole?: string; teamIds?: string[]; coordinatorTeamIds?: string[] };
     if (body.action === "resend") return resendEnterpriseInvite(forward(request, "PATCH", { profileId: body.profileId }));
     if (body.action === "role") return updateEnterpriseRole(forward(request, "PUT", { profileId: body.profileId, moduleKey: "operations", moduleRole: body.moduleRole }));
+    if (body.action === "teams") {
+      const context = await getOperationsContext(request);
+      if (!context.canAdmin) return NextResponse.json({ error: "Solo el administrador puede gestionar equipos." }, { status: 403 });
+      if (!body.profileId) return NextResponse.json({ error: "Falta identificar al usuario." }, { status: 400 });
+      const { data: assignment, error: assignmentError } = await context.admin.from("wama_module_user_assignments").select("profile_id").eq("tenant_module_license_id", context.license.id).eq("profile_id", body.profileId).in("status", ["active", "invited"]).maybeSingle();
+      if (assignmentError) throw assignmentError;
+      if (!assignment) return NextResponse.json({ error: "El usuario no tiene una licencia activa o invitación pendiente de Operations Hub." }, { status: 409 });
+      const requestedIds = [...new Set(body.teamIds || [])];
+      const coordinatorIds = new Set((body.coordinatorTeamIds || []).filter((id) => requestedIds.includes(id)));
+      let validIds = new Set<string>();
+      if (requestedIds.length) {
+        const { data: validTeams, error: validTeamsError } = await context.admin.from("wama_operations_teams").select("id").eq("tenant_id", context.tenantId).eq("status", "active").in("id", requestedIds);
+        if (validTeamsError) throw validTeamsError;
+        validIds = new Set((validTeams || []).map((team) => team.id));
+        if (validIds.size !== requestedIds.length) return NextResponse.json({ error: "Uno de los equipos seleccionados no pertenece a tu empresa o está inactivo." }, { status: 400 });
+      }
+      const { data: tenantTeams, error: tenantTeamsError } = await context.admin.from("wama_operations_teams").select("id").eq("tenant_id", context.tenantId);
+      if (tenantTeamsError) throw tenantTeamsError;
+      const tenantTeamIds = (tenantTeams || []).map((team) => team.id);
+      if (tenantTeamIds.length) {
+        const { error: removeError } = await context.admin.from("wama_operations_team_members").delete().eq("profile_id", body.profileId).in("team_id", tenantTeamIds);
+        if (removeError) throw removeError;
+      }
+      if (requestedIds.length) {
+        const rows = requestedIds.map((team_id) => ({ team_id, profile_id: body.profileId, team_role: coordinatorIds.has(team_id) ? "coordinator" : "operator" }));
+        const { error: insertError } = await context.admin.from("wama_operations_team_members").insert(rows);
+        if (insertError) throw insertError;
+      }
+      await context.admin.from("wama_audit_logs").insert({ tenant_id: context.tenantId, profile_id: context.profile.id, module_key: "operations", action: "operations_user_teams_updated", entity_type: "profile", entity_id: body.profileId, metadata: { team_ids: requestedIds, coordinator_team_ids: [...coordinatorIds] } });
+      return NextResponse.json({ ok: true });
+    }
     return NextResponse.json({ error: "Acción no válida." }, { status: 400 });
   } catch (error) { return fail(error); }
 }
