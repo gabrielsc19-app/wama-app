@@ -120,9 +120,6 @@ export async function provisionTrial(input: TrialProvisionInput) {
       module_id: catalogModule.id,
       status: "trial",
       included_seats: 10,
-      extra_block_size: 10,
-      unit_price_usd: 10,
-      extra_block_price_usd: 10,
       starts_at: now.toISOString(),
       renews_at: trialEnds,
     }).select("id").single();
@@ -146,7 +143,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
     await admin.from("wama_audit_logs").insert({
       tenant_id: tenantId, profile_id: profileId, module_key: input.moduleKey,
       action: "trial.module_activated", entity_type: "tenant_module_license", entity_id: license.id,
-      metadata: { trial_days: 15, included_users: 10, owner_email: ownerEmail },
+      metadata: { trial_days: 15, included_users: 10, monthly_price_usd: 10, owner_email: ownerEmail },
     });
 
     const loginUrl = `${input.origin}/login`;
@@ -158,8 +155,8 @@ export async function provisionTrial(input: TrialProvisionInput) {
     await sendWamaEmail({
       to: ownerEmail,
       subject: `${moduleInfo.name} ya está activo en WAMA`,
-      text: `Hola ${input.ownerName},\n\nActivamos ${moduleInfo.name} para ${input.companyName}. Tienes 15 días de prueba y 10 licencias independientes para este módulo.${credentialText}\nPortal: ${password ? loginUrl : portalUrl}`,
-      html: `<div style="background:#f4f6f7;padding:32px;font-family:Arial;color:#0b0c0e"><div style="max-width:620px;margin:auto;background:white;border-radius:24px;overflow:hidden"><div style="background:#0b0c0e;color:white;padding:30px"><strong style="color:#00e5d6">WAMA</strong><h1>${moduleInfo.name} está activo.</h1><p>Hola ${safeName}, activamos ${moduleInfo.description} para ${safeCompany}.</p></div><div style="padding:30px"><p>Prueba de 15 días · 10 licencias independientes.</p>${password ? `<p><b>Correo:</b> ${escapeHtml(ownerEmail)}<br><b>Clave temporal:</b> ${escapeHtml(password)}</p>` : "<p>Ingresa con tu cuenta WAMA actual.</p>"}<a href="${password ? loginUrl : portalUrl}" style="display:block;text-align:center;background:#00e5d6;color:#0b0c0e;text-decoration:none;font-weight:900;padding:15px;border-radius:999px">Ir al Portal WAMA</a></div></div></div>`,
+      text: `Hola ${input.ownerName},\n\nActivamos ${moduleInfo.name} para ${input.companyName}. Tienes 15 días de prueba sin cobro. Después, el módulo cuesta US$10 al mes e incluye hasta 10 usuarios.${credentialText}\nPortal: ${password ? loginUrl : portalUrl}`,
+      html: `<div style="background:#f4f6f7;padding:32px;font-family:Arial;color:#0b0c0e"><div style="max-width:620px;margin:auto;background:white;border-radius:24px;overflow:hidden"><div style="background:#0b0c0e;color:white;padding:30px"><strong style="color:#00e5d6">WAMA</strong><h1>${moduleInfo.name} está activo.</h1><p>Hola ${safeName}, activamos ${moduleInfo.description} para ${safeCompany}.</p></div><div style="padding:30px"><p>Prueba de 15 días sin cobro · US$10/mes después del trial · hasta 10 usuarios incluidos.</p>${password ? `<p><b>Correo:</b> ${escapeHtml(ownerEmail)}<br><b>Clave temporal:</b> ${escapeHtml(password)}</p>` : "<p>Ingresa con tu cuenta WAMA actual.</p>"}<a href="${password ? loginUrl : portalUrl}" style="display:block;text-align:center;background:#00e5d6;color:#0b0c0e;text-decoration:none;font-weight:900;padding:15px;border-radius:999px">Ir al Portal WAMA</a></div></div></div>`,
     });
 
     return { ownerEmail, trialEndsAt: trialEnds, includedUsers: 10, moduleKey: input.moduleKey, moduleName: moduleInfo.name, createdNewUser };
