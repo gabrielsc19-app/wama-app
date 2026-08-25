@@ -87,8 +87,8 @@ function getLocalSalesAnswer(message: string) {
   ) {
     return {
       reply:
-        "Para operación te recomiendo el módulo Operación. Sirve para gestionar alertas, casos, responsables, evidencias, SLA y trazabilidad diaria.",
-      suggestedModule: "Operación",
+        "Para gestión operacional te recomiendo Operations Hub. Sirve para gestionar alertas, casos, responsables, evidencias, SLA y trazabilidad diaria.",
+      suggestedModule: "Operations Hub",
       intent: "module_operation",
     };
   }
@@ -336,7 +336,7 @@ Reglas:
 
     return NextResponse.json({
       reply:
-        "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, operación o finanzas?",
+        "Puedo ayudarte a elegir el módulo correcto para tu empresa. ¿Necesitas ordenar ventas, rendiciones de gastos u operación?",
       lead: {},
       leadReady: false,
       suggestedModule: "Módulos WAMA",

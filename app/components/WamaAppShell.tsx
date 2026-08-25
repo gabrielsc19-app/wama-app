@@ -12,7 +12,7 @@ const navItems = [
   { label: "Inicio", href: "/app" },
   { label: "Empresa", href: "/empresa" },
   { label: "Módulos", href: "/modulos" },
-  { label: "Operación", href: "/operacion" },
+  { label: "Operations Hub", href: "/operations-hub" },
   { label: "Sales Hub", href: "/sales-hub" },
   { label: "Clientes", href: "/clientes" },
   { label: "Usuarios", href: "/usuarios" },
@@ -59,7 +59,7 @@ export default function WamaAppShell({
             <Link href="/onboarding/sales-hub" className="btn-secondary">
               Configurar cliente
             </Link>
-            <Link href="/operacion" className="btn-primary">
+            <Link href="/operations-hub" className="btn-primary">
               Nuevo caso
             </Link>
           </div>

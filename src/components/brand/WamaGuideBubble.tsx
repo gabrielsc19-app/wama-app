@@ -167,8 +167,8 @@ function localQuickAnswer(text: string) {
   ) {
     return {
       reply:
-        "Para operación te recomiendo el módulo Operación. Ayuda a gestionar alertas, casos, responsables, evidencia y SLA. Para ayudarte mejor, ¿cómo te llamas?",
-      suggestedModule: "Operación",
+        "Para gestión operacional te recomiendo Operations Hub. Ayuda a gestionar alertas, casos, responsables, evidencia y SLA. Para ayudarte mejor, ¿cómo te llamas?",
+      suggestedModule: "Operations Hub",
     };
   }
 
@@ -462,7 +462,7 @@ export default function WamaGuideBubble() {
         ...current,
         {
           from: "wama",
-          text: "Gracias. Ahora cuéntame qué necesitas ordenar: ventas, operación, finanzas, reportes u otro proceso.",
+          text: "Gracias. Ahora cuéntame qué necesitas ordenar: ventas, rendiciones de gastos, operación, reportes u otro proceso.",
         },
       ]);
 

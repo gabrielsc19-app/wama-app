@@ -11,7 +11,7 @@ type WamaShellProps = {
 const navItems = [
   { href: "/app", label: "Dashboard" },
   { href: "/modulos", label: "Módulos" },
-  { href: "/operacion", label: "Operación" },
+  { href: "/operations-hub", label: "Operations Hub" },
   { href: "/sales-hub", label: "Sales Hub" },
   { href: "/clientes", label: "Clientes / sedes" },
   { href: "/usuarios", label: "Usuarios" },
