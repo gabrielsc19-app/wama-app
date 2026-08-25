@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight, Building2, Check, Layers3, ReceiptText, ShieldAlert, Users } from "lucide-react";
 import WamaShell from "../src/components/brand/WamaShell";
+import WamaLeadForm from "../src/components/marketing/WamaLeadForm";
 
 const modules = [
   {
@@ -40,7 +41,26 @@ export default function HomePage() {
 
     <section className="border-y border-[#DDE3E7] bg-[#0B0C0E] text-white"><div className="mx-auto max-w-7xl px-5 py-20 sm:px-6 lg:py-24"><div className="flex flex-col gap-7 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-sm font-black uppercase tracking-[.22em] text-[#00E5D6]">Precios simples</p><h2 className="mt-4 text-4xl font-black tracking-[-.05em] md:text-5xl">15 días gratis por módulo.</h2><p className="mt-4 text-[#B7BEC8]">Cada módulo incluye hasta 10 usuarios. Durante los 15 días de prueba pagas US$0.</p></div><Link href="/trial" className="rounded-full bg-[#00E5D6] px-8 py-4 text-center text-sm font-black text-[#0B0C0E]">Comenzar prueba gratuita</Link></div><div className="mt-10 grid gap-3 md:grid-cols-3">{modules.map(m=><div key={m.name} className="rounded-2xl border border-white/10 bg-white/[.05] p-5"><p className="font-black">{m.name}</p><p className="mt-3 text-3xl font-black">{m.price}<span className="text-sm text-[#AEB6BF]"> / módulo / mes</span></p></div>)}</div></div></section>
 
-    <section id="contacto" className="bg-[#F5F6F7]"><div className="mx-auto grid max-w-7xl gap-8 px-5 py-20 sm:px-6 lg:grid-cols-[1fr_auto] lg:items-center"><div><p className="text-sm font-black uppercase tracking-[.22em] text-[#008F87]">Contacto</p><h2 className="mt-4 text-4xl font-black tracking-[-.05em] md:text-5xl">¿Tienes consultas sobre WAMA?</h2><p className="mt-5 text-lg text-[#66707C]">Escríbenos para resolver dudas sobre módulos, funcionalidades y planes.</p><a href="mailto:contacto@wamaapp.com" className="mt-4 inline-flex text-lg font-black underline decoration-[#00E5D6] decoration-2 underline-offset-4">contacto@wamaapp.com</a></div><a href="mailto:contacto@wamaapp.com?subject=Consulta%20sobre%20WAMA" className="rounded-full bg-[#0B0C0E] px-8 py-4 text-center text-sm font-black !text-white">Enviar consulta →</a></div></section>
+    <section id="contacto" className="bg-[#F5F6F7]">
+      <div className="mx-auto grid max-w-7xl gap-10 px-5 py-20 sm:px-6 lg:grid-cols-[.9fr_1.1fr] lg:items-start lg:py-24">
+        <div className="lg:sticky lg:top-28">
+          <p className="text-sm font-black uppercase tracking-[.22em] text-[#008F87]">Conversemos</p>
+          <h2 className="mt-4 max-w-xl text-4xl font-black tracking-[-.05em] md:text-5xl">¿Quieres ver WAMA aplicado a tu empresa?</h2>
+          <p className="mt-5 max-w-xl text-lg leading-8 text-[#66707C]">
+            Cuéntanos qué proceso necesitas ordenar. Te ayudamos a elegir el módulo correcto o puedes comenzar una prueba de 15 días inmediatamente.
+          </p>
+          <div className="mt-7 space-y-3 text-sm font-bold text-[#59616B]">
+            <p>Sales Hub · seguimiento comercial y CRM</p>
+            <p>Expense Hub · rendiciones y control de gastos</p>
+            <p>Operations Hub · casos, alertas y equipos</p>
+          </div>
+          <a href="mailto:contacto@wamaapp.com" className="mt-7 inline-flex text-base font-black underline decoration-[#00E5D6] decoration-2 underline-offset-4">
+            contacto@wamaapp.com
+          </a>
+        </div>
+        <WamaLeadForm source="home-contact" />
+      </div>
+    </section>
   </main></WamaShell>;
 }
 

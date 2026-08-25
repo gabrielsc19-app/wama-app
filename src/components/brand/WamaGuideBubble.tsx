@@ -244,7 +244,7 @@ export default function WamaGuideBubble() {
       const data = await response.json();
 
       if (data.sent) {
-        setLeadStatus("Perfecto. Tus datos fueron enviados al equipo WAMA.");
+        setLeadStatus("Perfecto. Tus datos quedaron registrados y fueron enviados al equipo WAMA.");
       } else {
         setLeadStatus(
           "Perfecto. Tus datos quedaron registrados para seguimiento comercial."
