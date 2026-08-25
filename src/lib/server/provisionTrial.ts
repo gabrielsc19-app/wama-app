@@ -122,7 +122,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
       included_seats: 10,
       extra_block_size: 10,
       unit_price_usd: 10,
-      extra_block_price_usd: 100,
+      extra_block_price_usd: 10,
       starts_at: now.toISOString(),
       renews_at: trialEnds,
     }).select("id").single();
