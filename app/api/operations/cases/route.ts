@@ -16,9 +16,18 @@ async function teamRecipients(admin:Awaited<ReturnType<typeof getOperationsConte
 export async function GET(request:Request){
   try{
     const context=await getOperationsContext(request);const{admin,profile,tenantId}=context;
-    const includeArchived=new URL(request.url).searchParams.get("archived")==="true"&&context.canAdmin;
+    const params=new URL(request.url).searchParams;
+    const includeArchived=params.get("archived")==="true"&&context.canAdmin;
+    const requestedProjectId=params.get("projectId")||"";
     let query=admin.from("wama_operations_cases").select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email),events:wama_operations_events(*),evidence:wama_operations_evidence(id,file_name,mime_type,file_size,created_at)").eq("tenant_id",tenantId).order("created_at",{ascending:false});
     query=includeArchived?query.not("deleted_at","is",null):query.is("deleted_at",null);
+    const {data:projectMemberships,error:projectMembershipError}=await admin.from("wama_project_members").select("project_id,role,wama_projects!inner(id,name,code,status,tenant_id,wama_project_modules!inner(tenant_module_license_id))").eq("profile_id",profile.id).eq("wama_projects.tenant_id",tenantId).eq("wama_projects.status","active").eq("wama_projects.wama_project_modules.tenant_module_license_id",context.license.id);
+    if(projectMembershipError)throw projectMembershipError;
+    const projectIds=(projectMemberships||[]).map(item=>item.project_id);
+    const {data:allProjects,error:projectsError}=context.canAdmin?await admin.from("wama_projects").select("id,name,code,status").eq("tenant_id",tenantId).eq("status","active").in("id",(await admin.from("wama_project_modules").select("project_id").eq("tenant_module_license_id",context.license.id)).data?.map(x=>x.project_id)||[]):{data:(projectMemberships||[]).map((item:any)=>item.wama_projects),error:null};
+    if(projectsError)throw projectsError;
+    const projects=(allProjects||[]).filter(Boolean);
+    if(requestedProjectId){if(!context.canAdmin&&!projectIds.includes(requestedProjectId))return NextResponse.json({error:"No tienes acceso a este proyecto."},{status:403});query=query.eq("project_id",requestedProjectId);}else if(!context.canAdmin){if(!projectIds.length)query=query.eq("project_id","00000000-0000-0000-0000-000000000000");else query=query.in("project_id",projectIds);}
     const [{data:cases,error},{data:locations},{data:categories},{data:teams},{data:setup},{data:notifications},{count:usedSeats}]=await Promise.all([
       query,
       admin.from("wama_operations_locations").select("*").eq("tenant_id",tenantId).eq("status","active").order("name"),
@@ -38,15 +47,18 @@ export async function GET(request:Request){
     const profilesById=new Map((licensedProfiles||[]).map(item=>[item.id,item]));
     const members=(assignments||[]).map(row=>{const member=profilesById.get(row.profile_id);return member?{...member,role:row.module_role,license_status:row.status}:null}).filter(Boolean);
     const capacity=context.license.included_seats+context.license.extra_seat_blocks*context.license.extra_block_size;
-    return NextResponse.json({cases:cases||[],locations:locations||[],categories:categories||[],teams:teams||[],members,notifications:notifications||[],setup,profile,moduleRole:context.moduleRole,canAdmin:context.canAdmin,canCoordinate:context.canCoordinate,canWork:context.canWork,license:{used:usedSeats||0,capacity,blocks:1+context.license.extra_seat_blocks,status:context.license.status}});
+    return NextResponse.json({cases:cases||[],projects,locations:locations||[],categories:categories||[],teams:teams||[],members,notifications:notifications||[],setup,profile,moduleRole:context.moduleRole,canAdmin:context.canAdmin,canCoordinate:context.canCoordinate,canWork:context.canWork,license:{used:usedSeats||0,capacity,blocks:1+context.license.extra_seat_blocks,status:context.license.status}});
   }catch(error){return responseError(error)}
 }
 
 export async function POST(request:Request){
   try{
     const{admin,profile,tenantId}=await getOperationsContext(request);
-    const body=await request.json() as {title?:string;description?:string;locationId?:string;categoryId?:string;teamId?:string;priority?:string;isUrgent?:boolean;dueAt?:string};
-    if(!body.title?.trim()||!body.description?.trim()||!body.locationId||!body.categoryId)return NextResponse.json({error:"Completa título, descripción, ubicación y categoría."},{status:400});
+    const body=await request.json() as {title?:string;description?:string;locationId?:string;categoryId?:string;teamId?:string;priority?:string;isUrgent?:boolean;dueAt?:string;projectId?:string};
+    if(!body.title?.trim()||!body.description?.trim()||!body.locationId||!body.categoryId||!body.projectId)return NextResponse.json({error:"Completa proyecto, título, descripción, ubicación y categoría."},{status:400});
+    const{data:project}=await admin.from("wama_projects").select("id").eq("id",body.projectId).eq("tenant_id",tenantId).eq("status","active").maybeSingle();if(!project)return NextResponse.json({error:"El proyecto no pertenece a tu empresa."},{status:400});
+    const{data:projectModule}=await admin.from("wama_project_modules").select("id").eq("project_id",body.projectId).eq("tenant_module_license_id",(await getOperationsContext(request)).license.id).maybeSingle();if(!projectModule)return NextResponse.json({error:"El proyecto no está habilitado para Operations Hub."},{status:400});
+    const{data:projectMember}=await admin.from("wama_project_members").select("id").eq("project_id",body.projectId).eq("profile_id",profile.id).maybeSingle();if(!projectMember)return NextResponse.json({error:"No perteneces a este proyecto."},{status:403});
     if(body.title.trim().length>140||body.description.trim().length>4000)return NextResponse.json({error:"El título o la descripción superan el máximo permitido."},{status:400});
     const [{data:location},{data:category}]=await Promise.all([
       admin.from("wama_operations_locations").select("id").eq("id",body.locationId).eq("tenant_id",tenantId).eq("status","active").maybeSingle(),
@@ -56,7 +68,7 @@ export async function POST(request:Request){
     const urgent=Boolean(body.isUrgent&&category.is_urgent_allowed);const priority=urgent?"critical":allowedPriorities.includes(body.priority||"")?body.priority:"medium";
     const dueAt=body.dueAt&&Number.isFinite(Date.parse(body.dueAt))?new Date(body.dueAt).toISOString():new Date(Date.now()+Number(category.sla_minutes||1440)*60000).toISOString();
     const caseNumber=`OPS-${new Date().getFullYear()}-${crypto.randomUUID().slice(0,6).toUpperCase()}`;
-    const{data:created,error}=await admin.from("wama_operations_cases").insert({tenant_id:tenantId,case_number:caseNumber,title:body.title.trim(),description:body.description.trim(),location_id:body.locationId,category_id:body.categoryId,team_id:teamId,reported_by:profile.id,priority,is_urgent:urgent,status:"unassigned",due_at:dueAt}).select("*").single();if(error||!created)throw error;
+    const{data:created,error}=await admin.from("wama_operations_cases").insert({tenant_id:tenantId,case_number:caseNumber,title:body.title.trim(),description:body.description.trim(),location_id:body.locationId,category_id:body.categoryId,team_id:teamId,reported_by:profile.id,project_id:body.projectId,priority,is_urgent:urgent,status:"unassigned",due_at:dueAt}).select("*").single();if(error||!created)throw error;
     await admin.from("wama_operations_events").insert({tenant_id:tenantId,case_id:created.id,event_type:"created",to_status:"unassigned",comment:"Caso reportado",metadata:{urgent,team_id:teamId},created_by:profile.id});
     const regular=await teamRecipients(admin,teamId,urgent?"urgent":"new");
     let urgentIds:string[]=[];if(urgent){const{data:urgentTeams}=await admin.from("wama_operations_teams").select("id").eq("tenant_id",tenantId).eq("receives_urgent",true).eq("status","active");urgentIds=(await Promise.all((urgentTeams||[]).map(team=>teamRecipients(admin,team.id,"urgent")))).flat();}
