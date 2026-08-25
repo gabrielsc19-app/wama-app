@@ -74,11 +74,7 @@ export async function GET(request: Request) {
       licenses: (licenses ?? [])
         .filter((item: any) => item.tenant_id === tenant.id)
         .map((item: any) => {
-          const expense = isExpenseModule(
-            item.wama_module_catalog?.module_key,
-            item.wama_module_catalog?.name,
-          );
-          const officialPrice = expense ? 20 : 10;
+          const officialPrice = 10;
           return {
             id: item.id,
             status: item.status,
@@ -89,9 +85,9 @@ export async function GET(request: Request) {
               item.included_seats +
               item.extra_seat_blocks * item.extra_block_size,
             unitPriceUsd: officialPrice,
-            extraBlockPriceUsd: officialPrice,
+            extraBlockPriceUsd: officialPrice * item.extra_block_size,
             monthlyTotalUsd:
-              officialPrice + item.extra_seat_blocks * officialPrice,
+              (item.included_seats + item.extra_seat_blocks * item.extra_block_size) * officialPrice,
             renewsAt: item.renews_at,
             moduleKey: item.wama_module_catalog?.module_key,
             moduleName: item.wama_module_catalog?.name,

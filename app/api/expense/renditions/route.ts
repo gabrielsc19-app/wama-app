@@ -1,14 +1,9 @@
 import { NextResponse } from "next/server";
-import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+import { isTenantAdmin } from "../../../../src/lib/server/wamaAdmin";
+import { requireModuleAccess } from "../../../../src/lib/server/moduleAccess";
 
 const reviewer = (role:string) => isTenantAdmin(role) || ["expense_reviewer","expense_approver","expense_manager","expense_admin","manager","approver"].includes(role);
 const finance = (role:string) => isTenantAdmin(role) || ["expense_treasurer","expense_manager","expense_admin","finance","treasury"].includes(role);
-
-async function expenseRole(admin:any,tenantId:string,profileId:string,membershipRole:string){
-  if(isTenantAdmin(membershipRole)) return "admin";
-  const {data}=await admin.from("wama_module_user_assignments").select("module_role,wama_tenant_module_licenses!inner(tenant_id,wama_module_catalog!inner(module_key))").eq("profile_id",profileId).eq("status","active").eq("wama_tenant_module_licenses.tenant_id",tenantId).eq("wama_tenant_module_licenses.wama_module_catalog.module_key","expense").maybeSingle();
-  return data?.module_role||"member";
-}
 
 function errorMessage(error:unknown, fallback="No fue posible completar la solicitud.") {
   if(error instanceof Error && error.message) return error.message;
@@ -23,8 +18,7 @@ function errorMessage(error:unknown, fallback="No fue posible completar la solic
 
 export async function GET(request:Request){
   try{
-    const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
-    const moduleRole=await expenseRole(admin,membership.tenant_id,profile.id,membership.role);
+    const {admin,profile,membership,moduleRole}=await requireModuleAccess(request,"expense");
     const {data:reports,error}=await admin.from("wama_expense_reports").select("*,wama_projects(id,name,code),wama_profiles!wama_expense_reports_submitted_by_fkey(id,full_name,email),assignee:wama_profiles!wama_expense_reports_assigned_to_fkey(id,full_name,email),wama_expense_evidence(id,file_name,mime_type,file_size,storage_path,created_at),wama_expense_payments(*),wama_expense_events(*)").eq("tenant_id",membership.tenant_id).order("created_at",{ascending:false});
     if(error) throw error;
     const [{data:projects},{data:memberships}]=await Promise.all([
@@ -46,7 +40,7 @@ export async function GET(request:Request){
 
 export async function POST(request:Request){
   try{
-    const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
+    const {admin,profile,membership}=await requireModuleAccess(request,"expense");
     const body=await request.json() as {requestType?:string;merchant?:string;expenseDate?:string;category?:string;amountClp?:number;description?:string;costCenter?:string;projectId?:string;parentFundId?:string;dueDate?:string};
     const type=body.requestType||"expense_reimbursement"; const amount=Number(body.amountClp||0);
     if(!["expense_reimbursement","fund_request","fund_rendition"].includes(type)||amount<=0)return NextResponse.json({error:"Completa el tipo y el monto de la solicitud."},{status:400});
@@ -65,8 +59,7 @@ export async function POST(request:Request){
 
 export async function PATCH(request:Request){
   try{
-    const user=await requireWamaUser(request); const {admin,profile,membership}=await getUserTenantContext(user.id);
-    const moduleRole=await expenseRole(admin,membership.tenant_id,profile.id,membership.role);
+    const {admin,profile,membership,moduleRole}=await requireModuleAccess(request,"expense");
     const body=await request.json() as {id?:string;action?:string;status?:string;comment?:string;assignedTo?:string;approvedAmount?:number;amount?:number;reference?:string;paymentType?:string;evidenceId?:string};
     if(!body.action&&body.status) body.action=body.status==="approved"?"approve":body.status==="rejected"?"reject":body.status==="observed"?"observe":undefined;
     if(!body.id||!body.action)return NextResponse.json({error:"Datos incompletos."},{status:400});

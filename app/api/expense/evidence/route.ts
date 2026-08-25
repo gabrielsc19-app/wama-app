@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { getUserTenantContext, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+import { requireModuleAccess } from "../../../../src/lib/server/moduleAccess";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
   try {
-    const user = await requireWamaUser(request);
-    const { admin, membership } = await getUserTenantContext(user.id);
+    const { admin, membership } = await requireModuleAccess(request, "expense");
     const url = new URL(request.url);
     const renditionId = url.searchParams.get("renditionId");
     if (!renditionId) return NextResponse.json({error:"Falta la rendición."},{status:400});
@@ -74,8 +73,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireWamaUser(request);
-    const { admin, profile, membership } = await getUserTenantContext(user.id);
+    const { admin, profile, membership } = await requireModuleAccess(request, "expense");
     const form = await request.formData();
     const file = form.get("file");
     const renditionId = String(form.get("renditionId") || "");

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { requireModuleAccess } from "../../../../src/lib/server/moduleAccess";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -213,6 +214,7 @@ function normalizeResult(parsed: Record<string, unknown>): ChileanOcrPayload {
 
 export async function POST(request: NextRequest) {
   try {
+    await requireModuleAccess(request, "expense");
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
