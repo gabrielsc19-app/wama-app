@@ -30,7 +30,9 @@ export async function GET(request:Request){
     if(requestedProjectId){if(!context.canAdmin&&!projectIds.includes(requestedProjectId))return NextResponse.json({error:"No tienes acceso a este proyecto."},{status:403});query=query.eq("project_id",requestedProjectId);}else if(!context.canAdmin){if(!projectIds.length)query=query.eq("project_id","00000000-0000-0000-0000-000000000000");else query=query.in("project_id",projectIds);}
     const [{data:cases,error},{data:locations},{data:categories},{data:teams},{data:setup},{data:notifications},{count:usedSeats}]=await Promise.all([
       query,
-      admin.from("wama_operations_locations").select("*").eq("tenant_id",tenantId).eq("status","active").order("name"),
+      requestedProjectId
+        ? admin.from("wama_operations_locations").select("*").eq("tenant_id",tenantId).eq("project_id",requestedProjectId).eq("status","active").order("sort_order").order("name")
+        : admin.from("wama_operations_locations").select("*").eq("tenant_id",tenantId).eq("status","active").order("sort_order").order("name"),
       admin.from("wama_operations_categories").select("*").eq("tenant_id",tenantId).eq("status","active").order("name"),
       admin.from("wama_operations_teams").select("*,members:wama_operations_team_members(profile_id,team_role,notify_new_cases,notify_updates,notify_urgent,notify_email,notify_push)").eq("tenant_id",tenantId).eq("status","active").order("name"),
       admin.from("wama_operations_setup").select("*").eq("tenant_id",tenantId).maybeSingle(),
@@ -61,7 +63,7 @@ export async function POST(request:Request){
     const{data:projectMember}=await admin.from("wama_project_members").select("id").eq("project_id",body.projectId).eq("profile_id",profile.id).maybeSingle();if(!projectMember)return NextResponse.json({error:"No perteneces a este proyecto."},{status:403});
     if(body.title.trim().length>140||body.description.trim().length>4000)return NextResponse.json({error:"El título o la descripción superan el máximo permitido."},{status:400});
     const [{data:location},{data:category}]=await Promise.all([
-      admin.from("wama_operations_locations").select("id").eq("id",body.locationId).eq("tenant_id",tenantId).eq("status","active").maybeSingle(),
+      admin.from("wama_operations_locations").select("id,project_id").eq("id",body.locationId).eq("tenant_id",tenantId).eq("project_id",body.projectId).eq("status","active").maybeSingle(),
       admin.from("wama_operations_categories").select("id,default_team_id,sla_minutes,is_urgent_allowed").eq("id",body.categoryId).eq("tenant_id",tenantId).eq("status","active").maybeSingle(),
     ]);if(!location||!category)return NextResponse.json({error:"La ubicación o categoría no pertenece a tu empresa."},{status:400});
     const teamId=body.teamId||category.default_team_id||null;if(teamId){const{data:team}=await admin.from("wama_operations_teams").select("id").eq("id",teamId).eq("tenant_id",tenantId).eq("status","active").maybeSingle();if(!team)return NextResponse.json({error:"El equipo seleccionado no es válido."},{status:400});}
