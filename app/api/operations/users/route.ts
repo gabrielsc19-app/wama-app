@@ -12,8 +12,6 @@ import {
 const fail = (error: unknown) => {
   const result = operationsError(error);
 
-  // Los errores de Supabase/PostgREST normalmente son objetos y no instancias
-  // de Error. Conservamos su mensaje real para no ocultar la causa.
   const supabaseMessage =
     error && typeof error === "object" && "message" in error
       ? String((error as { message?: unknown }).message || "")
@@ -58,18 +56,16 @@ export async function GET(request: Request) {
       );
     }
 
-    // 1) Licencias asignadas a Operations.
-    // Esta es la misma licencia validada por getOperationsContext.
+    // La tabla actual wama_module_user_assignments NO tiene created_at.
+    // Por eso consultamos solo columnas que existen realmente.
     const { data: assignments, error: assignmentsError } = await context.admin
       .from("wama_module_user_assignments")
-      .select("profile_id,module_role,status,created_at")
+      .select("profile_id,module_role,status")
       .eq("tenant_module_license_id", context.license.id)
-      .in("status", ["active", "invited", "suspended"])
-      .order("created_at");
+      .in("status", ["active", "invited", "suspended"]);
 
     if (assignmentsError) throw assignmentsError;
 
-    // 2) Perfiles correspondientes.
     const profileIds = [
       ...new Set((assignments || []).map((item) => item.profile_id)),
     ];
@@ -83,7 +79,6 @@ export async function GET(request: Request) {
 
     if (profilesError) throw profilesError;
 
-    // 3) Invitaciones. Esta tabla ya es utilizada por el portal empresarial.
     const { data: invitations, error: invitationsError } = await context.admin
       .from("wama_invitations")
       .select(
@@ -93,11 +88,6 @@ export async function GET(request: Request) {
 
     if (invitationsError) throw invitationsError;
 
-    // 4) Equipos.
-    // IMPORTANTE: no usamos el embed PostgREST:
-    // members:wama_operations_team_members(...)
-    // porque ese embed era el punto frágil que hacía caer TODO el endpoint
-    // en algunas bases con el schema cache de Supabase desactualizado.
     const { data: teamsData, error: teamsError } = await context.admin
       .from("wama_operations_teams")
       .select("id,name")
@@ -417,7 +407,6 @@ export async function PATCH(request: Request) {
           },
         });
 
-      // La auditoría no debe bloquear una operación válida.
       if (auditError) {
         console.error(
           "No se pudo registrar auditoría de equipos Operations:",
