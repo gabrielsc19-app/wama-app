@@ -219,11 +219,29 @@ export async function POST(request: Request) {
           text:invitationEmail.text,
           html:invitationEmail.html,
         });
-        await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+        await admin.from("wama_invitations").update({
+          status:"sent",
+          provider_message_id:sent.id,
+          sent_at:new Date().toISOString(),
+          last_error:null,
+          send_attempts:1,
+          email_delivery_status:"sent",
+          email_last_event_type:"email.sent",
+          email_last_event_at:new Date().toISOString(),
+          email_delivery_detail:null
+        }).eq("tenant_id",membership.tenant_id).eq("email",email);
         emailStatus="sent";
       }catch(mailError){
         const message=mailError instanceof Error?mailError.message:"El proveedor no confirmó el correo.";
-        await admin.from("wama_invitations").update({status:"failed",last_error:message,send_attempts:1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+        await admin.from("wama_invitations").update({
+          status:"failed",
+          last_error:message,
+          send_attempts:1,
+          email_delivery_status:"failed",
+          email_last_event_type:"email.failed",
+          email_last_event_at:new Date().toISOString(),
+          email_delivery_detail:message
+        }).eq("tenant_id",membership.tenant_id).eq("email",email);
         return NextResponse.json({error:`El usuario y su licencia quedaron creados, pero el correo no fue entregado: ${message}. Puedes reenviarlo desde Usuarios.`,emailStatus:"failed"},{status:502});
       }
     }
@@ -350,7 +368,21 @@ export async function PATCH(request: Request) {
       html:invitationEmail.html,
     });
     const{data:existingInvite}=await admin.from("wama_invitations").select("send_attempts").eq("tenant_id",membership.tenant_id).eq("email",email).maybeSingle();
-    await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:Number(existingInvite?.send_attempts||0)+1}).eq("tenant_id",membership.tenant_id).eq("email",email);
+    await admin.from("wama_invitations").update({
+      status:"sent",
+      provider_message_id:sent.id,
+      sent_at:new Date().toISOString(),
+      last_error:null,
+      send_attempts:Number(existingInvite?.send_attempts||0)+1,
+      email_delivery_status:"sent",
+      email_last_event_type:"email.sent",
+      email_last_event_at:new Date().toISOString(),
+      email_delivered_at:null,
+      email_bounced_at:null,
+      email_opened_at:null,
+      email_clicked_at:null,
+      email_delivery_detail:null
+    }).eq("tenant_id",membership.tenant_id).eq("email",email);
     return NextResponse.json({ok:true,email,emailStatus:"sent"});
   } catch(error) {
     return NextResponse.json({error:error instanceof Error?error.message:"Error inesperado."},{status:500});

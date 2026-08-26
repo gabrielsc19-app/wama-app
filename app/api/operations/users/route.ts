@@ -86,7 +86,7 @@ export async function GET(request: Request) {
     const { data: invitations, error: invitationsError } = await context.admin
       .from("wama_invitations")
       .select(
-        "email,status,sent_at,send_attempts,last_error,provider_message_id,expires_at",
+        "email,status,sent_at,send_attempts,last_error,provider_message_id,expires_at,email_delivery_status,email_last_event_type,email_last_event_at,email_delivered_at,email_bounced_at,email_opened_at,email_clicked_at,email_delivery_detail",
       )
       .eq("tenant_id", context.tenantId);
 

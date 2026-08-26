@@ -15,17 +15,28 @@ import {
 import { supabase } from "../../../app/lib/supabase";
 
 type Team = { id: string; name: string };
+type Project = { id: string; name: string };
 type Invitation = {
   status: string;
   sent_at?: string | null;
   send_attempts?: number;
   last_error?: string | null;
+  provider_message_id?: string | null;
+  email_delivery_status?: string | null;
+  email_last_event_type?: string | null;
+  email_last_event_at?: string | null;
+  email_delivered_at?: string | null;
+  email_bounced_at?: string | null;
+  email_opened_at?: string | null;
+  email_clicked_at?: string | null;
+  email_delivery_detail?: string | null;
 } | null;
 
 type User = {
   id: string;
   full_name: string;
   email: string;
+  profile_status: string;
   enterprise_role: string;
   module_role: string;
   license_status: string;
@@ -36,17 +47,117 @@ type User = {
 type Payload = {
   users: User[];
   teams: Team[];
+  projects: Project[];
   license: { used: number; capacity: number };
   error?: string;
 };
 
 const operationsRoles = [
-  { value: "operations_admin", label: "Administrador de Operations" },
-  { value: "operations_coordinator", label: "Coordinador" },
-  { value: "operations_operator", label: "Operativo" },
-  { value: "operations_reporter", label: "Reportante" },
-  { value: "operations_observer", label: "Observador" },
+  { value: "operations_admin", label: "Administrador de Operations", description: "Administra proyectos, equipos, usuarios y todos los casos del módulo." },
+  { value: "operations_coordinator", label: "Coordinador", description: "Supervisa los casos del equipo, asigna responsables y controla avances." },
+  { value: "operations_operator", label: "Operativo", description: "Ejecuta trabajos asignados, actualiza estados y adjunta evidencias." },
+  { value: "operations_reporter", label: "Reportante", description: "Crea casos, adjunta evidencias y sigue los casos que reportó." },
+  { value: "operations_observer", label: "Observador", description: "Consulta la información autorizada sin modificar casos ni configuración." },
 ];
+
+function formatEventDate(value?: string | null) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return new Intl.DateTimeFormat("es-CL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function invitationView(invitation: Invitation, profileStatus: string) {
+  if (profileStatus === "active" || invitation?.status === "accepted") {
+    return {
+      label: "Invitación aceptada",
+      detail: invitation?.email_delivered_at
+        ? `Correo entregado · ${formatEventDate(invitation.email_delivered_at)}`
+        : "Usuario activo en WAMA",
+      tone: "success" as const,
+    };
+  }
+
+  const state = invitation?.email_delivery_status || invitation?.status || "pending";
+  const eventAt =
+    invitation?.email_last_event_at ||
+    invitation?.sent_at ||
+    null;
+
+  if (state === "delivered") {
+    return {
+      label: "Correo entregado",
+      detail: eventAt ? formatEventDate(eventAt) : "El servidor del destinatario confirmó la entrega.",
+      tone: "success" as const,
+    };
+  }
+
+  if (state === "opened") {
+    return {
+      label: "Correo abierto",
+      detail: eventAt ? formatEventDate(eventAt) : "El destinatario abrió el correo.",
+      tone: "success" as const,
+    };
+  }
+
+  if (state === "clicked") {
+    return {
+      label: "Enlace abierto",
+      detail: eventAt ? formatEventDate(eventAt) : "El destinatario abrió un enlace del correo.",
+      tone: "success" as const,
+    };
+  }
+
+  if (state === "delayed") {
+    return {
+      label: "Entrega demorada",
+      detail:
+        invitation?.email_delivery_detail ||
+        (eventAt ? formatEventDate(eventAt) : "El servidor del destinatario está demorando la entrega."),
+      tone: "warning" as const,
+    };
+  }
+
+  if (["bounced", "failed", "suppressed", "complained"].includes(state)) {
+    return {
+      label:
+        state === "bounced"
+          ? "Correo rebotado"
+          : state === "suppressed"
+            ? "Correo suprimido"
+            : state === "complained"
+              ? "Marcado como no deseado"
+              : "Error de envío",
+      detail:
+        invitation?.email_delivery_detail ||
+        invitation?.last_error ||
+        "Revisa el correo y utiliza Reenviar.",
+      tone: "error" as const,
+    };
+  }
+
+  if (state === "sent") {
+    return {
+      label: "Enviado a Resend",
+      detail: eventAt
+        ? `${formatEventDate(eventAt)} · esperando confirmación de entrega`
+        : "Esperando confirmación de entrega.",
+      tone: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Invitación pendiente",
+    detail: eventAt ? formatEventDate(eventAt) : "Aún no existe confirmación de entrega.",
+    tone: "warning" as const,
+  };
+}
 
 async function call(url: string, init?: RequestInit) {
   const { data, error } = await supabase.auth.getSession();
@@ -79,6 +190,7 @@ export default function OperationsUsersPanel() {
     fullName: "",
     email: "",
     moduleRole: "operations_operator",
+    projectId: "",
     teamIds: [] as string[],
     coordinatorTeamIds: [] as string[],
   });
@@ -119,6 +231,7 @@ export default function OperationsUsersPanel() {
         fullName: "",
         email: "",
         moduleRole: "operations_operator",
+        projectId: "",
         teamIds: [],
         coordinatorTeamIds: [],
       });
@@ -320,21 +433,54 @@ export default function OperationsUsersPanel() {
             </label>
           </div>
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid gap-2 text-sm font-black">
+              Proyecto
+              <select
+                required
+                className="input"
+                value={form.projectId}
+                onChange={(e) => setForm({ ...form, projectId: e.target.value })}
+              >
+                <option value="">Selecciona un proyecto</option>
+                {(data?.projects || []).map((project) => (
+                  <option key={project.id} value={project.id}>{project.name}</option>
+                ))}
+              </select>
+              <span className="text-xs font-normal text-[#69717D]">La persona quedará asociada a este proyecto.</span>
+            </label>
+
+            <label className="grid gap-2 text-sm font-black">
+              Equipo
+              <select
+                required
+                className="input"
+                value={form.teamIds[0] || ""}
+                onChange={(e) => setForm({ ...form, teamIds: e.target.value ? [e.target.value] : [], coordinatorTeamIds: [] })}
+              >
+                <option value="">Selecciona un equipo</option>
+                {(data?.teams || []).map((team) => (
+                  <option key={team.id} value={team.id}>{team.name}</option>
+                ))}
+              </select>
+              <span className="text-xs font-normal text-[#69717D]">Quedará incorporado automáticamente al equipo al aceptar la invitación.</span>
+            </label>
+          </div>
+
           <label className="grid gap-2 text-sm font-black">
             Perfil
             <select
               className="input"
               value={form.moduleRole}
-              onChange={(e) =>
-                setForm({ ...form, moduleRole: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, moduleRole: e.target.value })}
             >
               {operationsRoles.map((role) => (
-                <option key={role.value} value={role.value}>
-                  {role.label}
-                </option>
+                <option key={role.value} value={role.value}>{role.label}</option>
               ))}
             </select>
+            <span className="rounded-xl bg-[#F4F8F8] px-3 py-2 text-xs font-normal text-[#52606A]">
+              {operationsRoles.find((role) => role.value === form.moduleRole)?.description}
+            </span>
           </label>
 
           <button
@@ -356,10 +502,15 @@ export default function OperationsUsersPanel() {
       <section className="overflow-hidden rounded-[2rem] border border-[#DCE1E6] bg-white">
         <div className="divide-y">
           {data?.users.map((user) => {
-            const pending = ["pending", "sent", "failed", "expired"].includes(
-              user.invitation?.status || "",
+            const invitationStatus = invitationView(
+              user.invitation,
+              user.profile_status,
             );
-            const failed = user.invitation?.status === "failed";
+            const canResend =
+              user.profile_status !== "active" &&
+              user.invitation?.status !== "accepted";
+            const failed = invitationStatus.tone === "error";
+            const pending = invitationStatus.tone === "warning";
             const isOwner = user.enterprise_role === "owner";
             const selectedValue = isOwner
               ? "owner"
@@ -450,21 +601,14 @@ export default function OperationsUsersPanel() {
                     <CheckCircle2 className="mb-1 h-4 w-4" />
                   )}
 
-                  <span className="block">
-                    {failed
-                      ? "Envío fallido"
-                      : pending
-                        ? `Invitación ${
-                            user.invitation?.status === "sent"
-                              ? "enviada"
-                              : "pendiente"
-                          }`
-                        : "Usuario activo"}
+                  <span className="block">{invitationStatus.label}</span>
+                  <span className="mt-1 block font-normal leading-5 opacity-80">
+                    {invitationStatus.detail}
                   </span>
                 </div>
 
                 <button
-                  disabled={!pending || busy === user.id}
+                  disabled={!canResend || busy === user.id}
                   onClick={() => void resend(user.id)}
                   className="inline-flex items-center justify-center gap-2 rounded-full border px-4 py-3 text-xs font-black disabled:opacity-30"
                 >
