@@ -385,7 +385,7 @@ export default function OperationsUsersPanel() {
 
                     {user.enterprise_role === "admin" && (
                       <span className="rounded-full bg-[#DFFFFA] px-2 py-1 text-xs font-black text-[#007E76]">
-                        Administrador empresarial
+                        Administrador de la empresa
                       </span>
                     )}
 
@@ -394,7 +394,7 @@ export default function OperationsUsersPanel() {
                         key={team.id}
                         className="rounded-full bg-[#EEF5F4] px-2 py-1 text-xs font-bold"
                       >
-                        {team.name} ·{" "}
+                        Equipo {team.name} ·{" "}
                         {team.role === "coordinator"
                           ? "Coordinador"
                           : "Integrante"}
@@ -418,11 +418,11 @@ export default function OperationsUsersPanel() {
                   onChange={(e) => void changeAccess(user, e.target.value)}
                   className="input text-sm"
                 >
-                  {isOwner && <option value="owner">Propietario / acceso total</option>}
+                  {isOwner && <option value="owner">Propietario de la empresa</option>}
                   {!isOwner && (
                     <>
                       <option value="enterprise_admin">
-                        Administrador empresarial · acceso total
+                        Administrador de la empresa · acceso total
                       </option>
                       {operationsRoles.map((role) => (
                         <option key={role.value} value={role.value}>
