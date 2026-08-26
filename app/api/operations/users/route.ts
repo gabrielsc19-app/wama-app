@@ -34,6 +34,7 @@ function forward(request: Request, method: string, body: unknown) {
 }
 
 type TeamRow = { id: string; name: string };
+type ProjectRow = { id: string; name: string };
 type TeamMemberRow = {
   team_id: string;
   profile_id: string;
@@ -101,6 +102,17 @@ export async function GET(request: Request) {
     if (teamsError) throw teamsError;
 
     const teams = (teamsData || []) as TeamRow[];
+
+    const { data: projectsData, error: projectsError } = await context.admin
+      .from("wama_projects")
+      .select("id,name")
+      .eq("tenant_id", context.tenantId)
+      .eq("status", "active")
+      .order("name");
+
+    if (projectsError) throw projectsError;
+    const projects = (projectsData || []) as ProjectRow[];
+
     const teamIds = teams.map((team) => team.id);
 
     let teamMembers: TeamMemberRow[] = [];
@@ -182,6 +194,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       users,
       teams,
+      projects,
       license: {
         id: context.license.id,
         used,
