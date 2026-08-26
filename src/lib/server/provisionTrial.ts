@@ -77,11 +77,29 @@ export async function provisionTrial(input: TrialProvisionInput) {
     profileId = profile.id;
   }
 
+  // Una persona y una empresa son entidades distintas.
+  // Si el usuario ya es owner de otra empresa, NO reutilizamos ese tenant
+  // automáticamente: solo reutilizamos una empresa cuyo nombre coincida con
+  // la empresa solicitada. Esto permite que WAMA sea realmente multiempresa.
   const { data: memberships, error: membershipLookupError } = await admin
-    .from("wama_tenant_memberships").select("tenant_id,role,status").eq("profile_id", profileId).eq("status", "active");
+    .from("wama_tenant_memberships")
+    .select("tenant_id,role,status,wama_tenants(id,name)")
+    .eq("profile_id", profileId)
+    .eq("role", "owner")
+    .eq("status", "active");
   if (membershipLookupError) throw new Error(membershipLookupError.message);
 
-  let tenantId = memberships?.find((membership) => membership.role === "owner")?.tenant_id as string | undefined;
+  const normalizeCompanyName = (value: string) =>
+    value.trim().toLocaleLowerCase("es").replace(/\s+/g, " ");
+  const requestedCompany = normalizeCompanyName(input.companyName);
+  const matchingMembership = (memberships ?? []).find((membership) => {
+    const tenant = Array.isArray(membership.wama_tenants)
+      ? membership.wama_tenants[0]
+      : membership.wama_tenants;
+    return tenant?.name && normalizeCompanyName(tenant.name) === requestedCompany;
+  });
+
+  let tenantId = matchingMembership?.tenant_id as string | undefined;
   let createdTenant = false;
 
   try {
@@ -111,7 +129,7 @@ export async function provisionTrial(input: TrialProvisionInput) {
     if (moduleError || !catalogModule) throw new Error(`El módulo ${moduleInfo.name} no existe en el catálogo.`);
 
     const { data: existingLicense, error: existingLicenseError } = await admin
-      .from("wama_tenant_module_licenses").select("id,status,renews_at").eq("tenant_id", tenantId).eq("module_id", catalogModule.id).maybeSingle();
+      .from("wama_tenant_module_licenses").select("id,status,renews_at").eq("tenant_id", tenantId).eq("module_id", catalogModule.id).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (existingLicenseError) throw new Error(existingLicenseError.message);
     if (existingLicense) throw new Error(`${moduleInfo.name} ya está activado para esta empresa. Ingresa a tu Portal WAMA.`);
 

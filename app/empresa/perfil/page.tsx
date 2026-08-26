@@ -65,6 +65,26 @@ async function optimizeRasterLogo(file: File) {
   return { dataUrl: await readAsDataUrl(blob), optimizedBytes: blob.size };
 }
 
+async function renderLogoFrame(source: string, zoom: number, offsetX: number, offsetY: number) {
+  const image = await loadImage(source);
+  const size = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("No pudimos preparar el encuadre del logo.");
+  context.clearRect(0, 0, size, size);
+  const contain = Math.min(size / image.naturalWidth, size / image.naturalHeight);
+  const drawWidth = image.naturalWidth * contain * zoom;
+  const drawHeight = image.naturalHeight * contain * zoom;
+  const x = (size - drawWidth) / 2 + (offsetX / 100) * size;
+  const y = (size - drawHeight) / 2 + (offsetY / 100) * size;
+  context.drawImage(image, x, y, drawWidth, drawHeight);
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/webp", 0.9));
+  if (!blob) throw new Error("No pudimos guardar el encuadre del logo.");
+  return readAsDataUrl(blob);
+}
+
 function normalizeWebsite(value: string) {
   const clean = value.trim();
   if (!clean) return null;
@@ -76,6 +96,10 @@ export default function ProfilePage() {
   const [name, setName] = useState("");
   const [website, setWebsite] = useState("");
   const [logo, setLogo] = useState("");
+  const [logoSource, setLogoSource] = useState("");
+  const [logoZoom, setLogoZoom] = useState(1);
+  const [logoOffset, setLogoOffset] = useState({ x: 0, y: 0 });
+  const dragRef = useRef<{ x: number; y: number; originX: number; originY: number } | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -89,6 +113,7 @@ export default function ProfilePage() {
       setName(portal.tenant.name);
       setWebsite(portal.tenant.website || "");
       setLogo(portal.tenant.logoUrl || "");
+      setLogoSource(portal.tenant.logoUrl || "");
     });
   }, []);
 
@@ -112,11 +137,18 @@ export default function ProfilePage() {
     try {
       if (file.type === "image/svg+xml") {
         if (file.size > TARGET_LOGO_BYTES) throw new Error("El SVG supera los 700 KB. Optimízalo antes de cargarlo.");
-        setLogo(await readAsDataUrl(file));
+        const prepared = await readAsDataUrl(file);
+        setLogo(prepared);
+        setLogoSource(prepared);
+        setLogoZoom(1);
+        setLogoOffset({ x: 0, y: 0 });
         setLogoInfo(`Imagen lista: ${formatBytes(file.size)}.`);
       } else {
         const optimized = await optimizeRasterLogo(file);
         setLogo(optimized.dataUrl);
+        setLogoSource(optimized.dataUrl);
+        setLogoZoom(1);
+        setLogoOffset({ x: 0, y: 0 });
         setLogoInfo(`Imagen optimizada: ${formatBytes(file.size)} → ${formatBytes(optimized.optimizedBytes)}.`);
       }
     } catch (optimizationError) {
@@ -135,6 +167,7 @@ export default function ProfilePage() {
     setMessage("");
     try {
       const normalizedWebsite = normalizeWebsite(website);
+      const framedLogo = logoSource ? await renderLogoFrame(logoSource, logoZoom, logoOffset.x, logoOffset.y) : null;
       const { data: authData } = await supabase.auth.getSession();
       const token = authData.session?.access_token;
       if (!token) throw new Error("Tu sesión terminó. Vuelve a ingresar.");
@@ -149,12 +182,13 @@ export default function ProfilePage() {
           tenantId: data.tenant.id,
           name,
           website: normalizedWebsite,
-          logoUrl: logo || null,
+          logoUrl: framedLogo,
         }),
       });
       const result = (await response.json().catch(() => ({}))) as { error?: string };
       if (!response.ok) throw new Error(result.error || "No fue posible guardar los cambios.");
       setWebsite(normalizedWebsite || "");
+      if (framedLogo) { setLogo(framedLogo); setLogoSource(framedLogo); setLogoZoom(1); setLogoOffset({ x: 0, y: 0 }); }
       setMessage("Datos de la empresa actualizados correctamente.");
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "No se pudo guardar.");
@@ -170,8 +204,14 @@ export default function ProfilePage() {
       ) : (
         <form onSubmit={save} className="mx-auto max-w-4xl rounded-[2rem] border border-[#DCE1E6] bg-white p-7 sm:p-9">
           <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-            <div className="flex h-36 w-36 shrink-0 items-center justify-center overflow-hidden rounded-3xl border bg-white text-3xl font-black">
-              {logo ? <img src={logo} alt="Logo de la empresa" className="h-full w-full object-cover" /> : name.slice(0, 2).toUpperCase()}
+            <div
+              className="relative flex h-36 w-36 shrink-0 touch-none select-none items-center justify-center overflow-hidden rounded-3xl border bg-white text-3xl font-black cursor-grab active:cursor-grabbing"
+              onPointerDown={(event) => { if (!logoSource) return; event.currentTarget.setPointerCapture(event.pointerId); dragRef.current = { x: event.clientX, y: event.clientY, originX: logoOffset.x, originY: logoOffset.y }; }}
+              onPointerMove={(event) => { const drag = dragRef.current; if (!drag || !logoSource) return; setLogoOffset({ x: Math.max(-50, Math.min(50, drag.originX + ((event.clientX - drag.x) / 144) * 100)), y: Math.max(-50, Math.min(50, drag.originY + ((event.clientY - drag.y) / 144) * 100)) }); }}
+              onPointerUp={() => { dragRef.current = null; }}
+              onPointerCancel={() => { dragRef.current = null; }}
+            >
+              {logoSource ? <img src={logoSource} alt="Logo de la empresa" draggable={false} className="pointer-events-none h-full w-full object-contain" style={{ transform: `translate(${logoOffset.x}%, ${logoOffset.y}%) scale(${logoZoom})` }} /> : name.slice(0, 2).toUpperCase()}
             </div>
             <div>
               <p className="text-xs font-black uppercase tracking-[.18em] text-[#008F87]">Identidad empresarial</p>
@@ -205,13 +245,14 @@ export default function ProfilePage() {
                   <button type="button" disabled={optimizing} onClick={() => fileRef.current?.click()} className="rounded-xl bg-black px-4 py-3 text-sm font-black text-white disabled:cursor-wait disabled:opacity-60">
                     {optimizing ? "Optimizando…" : logo ? "Cambiar imagen" : "Cargar imagen"}
                   </button>
-                  {logo && (
-                    <button type="button" disabled={optimizing} onClick={() => { setLogo(""); setLogoInfo(""); if (fileRef.current) fileRef.current.value = ""; }} className="rounded-xl border border-[#C9D0D5] bg-white px-4 py-3 text-sm font-black disabled:opacity-60">
+                  {logoSource && (
+                    <button type="button" disabled={optimizing} onClick={() => { setLogo(""); setLogoSource(""); setLogoZoom(1); setLogoOffset({ x: 0, y: 0 }); setLogoInfo(""); if (fileRef.current) fileRef.current.value = ""; }} className="rounded-xl border border-[#C9D0D5] bg-white px-4 py-3 text-sm font-black disabled:opacity-60">
                       Quitar logo
                     </button>
                   )}
                 </div>
               </div>
+              {logoSource && <div className="mt-5 rounded-2xl border border-[#DDE8E7] bg-white p-4"><div className="flex flex-col gap-3 sm:flex-row sm:items-center"><div className="flex-1"><p className="text-sm font-black">Ajustar encuadre</p><p className="mt-1 text-xs text-[#69717D]">Arrastra el logo directamente en la vista previa. Usa el zoom para ajustar su tamaño.</p></div><label className="flex min-w-[240px] items-center gap-3 text-xs font-bold">Zoom<input type="range" min="0.5" max="3" step="0.05" value={logoZoom} onChange={(event)=>setLogoZoom(Number(event.target.value))} className="w-full"/><span className="w-12 text-right">{Math.round(logoZoom*100)}%</span></label><button type="button" onClick={()=>{setLogoZoom(1);setLogoOffset({x:0,y:0});}} className="rounded-xl border px-3 py-2 text-xs font-black">Centrar</button></div></div>}
             </section>
 
             <div className="grid gap-4 sm:grid-cols-2">

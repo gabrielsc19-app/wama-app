@@ -15,10 +15,14 @@ export async function loadEnterprisePortalData(): Promise<EnterprisePortalData> 
   const tenant = tenants[0];
   if (!tenant) throw new Error("No hay una empresa asociada al usuario.");
 
-  const [licenses, projects] = await Promise.all([
+  const [allLicenses, projects] = await Promise.all([
     getMyLicensingSummary(),
     getTenantProjects(tenant.id),
   ]);
+
+  // Nunca mezclar licencias de otras empresas a las que el mismo usuario
+  // pueda pertenecer. El Portal Empresarial siempre representa un tenant.
+  const licenses = allLicenses.filter((license) => license.tenant_id === tenant.id);
 
   return { tenant, licenses, projects, source: "supabase" };
 }

@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     if (!context.canAdmin) return NextResponse.json({ error: "Solo el administrador puede gestionar usuarios." }, { status: 403 });
     const [{ data: assignments, error: assignmentsError }, { data: teams, error: teamsError }, { data: invitations, error: invitationsError }] = await Promise.all([
       context.admin.from("wama_module_user_assignments").select("profile_id,module_role,status,created_at").eq("tenant_module_license_id", context.license.id).in("status", ["active", "invited", "suspended"]),
-      context.admin.from("wama_operations_teams").select("id,name,members:wama_operations_team_members(profile_id,team_role)").eq("tenant_id", context.tenantId).eq("status", "active").order("name"),
+      context.admin.from("wama_operations_teams").select("id,name").eq("tenant_id", context.tenantId).eq("status", "active").order("name"),
       context.admin.from("wama_invitations").select("email,status,sent_at,send_attempts,last_error,provider_message_id,expires_at").eq("tenant_id", context.tenantId),
     ]);
     if (assignmentsError) throw assignmentsError;
@@ -32,6 +32,11 @@ export async function GET(request: Request) {
       ? await context.admin.from("wama_profiles").select("id,full_name,email,status").in("id", profileIds)
       : { data: [], error: null };
     if (profilesError) throw profilesError;
+    const teamIds = (teams || []).map((team) => team.id);
+    const { data: teamMembers, error: teamMembersError } = teamIds.length
+      ? await context.admin.from("wama_operations_team_members").select("team_id,profile_id,team_role").in("team_id", teamIds)
+      : { data: [], error: null };
+    if (teamMembersError) throw teamMembersError;
     const invitesByEmail = new Map((invitations || []).map((item) => [String(item.email).toLowerCase(), item]));
     const users = (assignments || []).map((assignment) => {
       const profile = (profiles || []).find((item) => item.id === assignment.profile_id);
@@ -44,7 +49,7 @@ export async function GET(request: Request) {
         license_status: assignment.status,
         module_role: assignment.module_role,
         invitation,
-        teams: (teams || []).filter((team) => (team.members || []).some((member: { profile_id: string }) => member.profile_id === assignment.profile_id)).map((team) => ({ id: team.id, name: team.name, role: (team.members || []).find((member: { profile_id: string }) => member.profile_id === assignment.profile_id)?.team_role })),
+        teams: (teams || []).filter((team) => (teamMembers || []).some((member) => member.team_id === team.id && member.profile_id === assignment.profile_id)).map((team) => ({ id: team.id, name: team.name, role: (teamMembers || []).find((member) => member.team_id === team.id && member.profile_id === assignment.profile_id)?.team_role })),
       };
     });
     const capacity = context.license.included_seats + context.license.extra_seat_blocks * context.license.extra_block_size;

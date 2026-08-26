@@ -200,10 +200,27 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await requireWamaUser(request);
-    const { admin, membership } = await getUserTenantContext(user.id);
+    const { admin, membership, profile } = await getUserTenantContext(user.id);
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede modificar perfiles." },{status:403});
-    const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string };
-    if (!body.profileId || !body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
+    const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string; tenantRole?:"admin"|"member" };
+    if (!body.profileId) return NextResponse.json({error:"Falta identificar al usuario."},{status:400});
+    if (body.tenantRole) {
+      const { data: targetMembership, error: targetError } = await admin.from("wama_tenant_memberships").select("id,role").eq("tenant_id", membership.tenant_id).eq("profile_id", body.profileId).maybeSingle();
+      if (targetError || !targetMembership) return NextResponse.json({error:"El usuario no pertenece a esta empresa."},{status:404});
+      if (targetMembership.role === "owner") return NextResponse.json({error:"El propietario principal conserva su rol."},{status:400});
+      const { error: roleError } = await admin.from("wama_tenant_memberships").update({ role: body.tenantRole }).eq("id", targetMembership.id);
+      if (roleError) throw roleError;
+      if (body.tenantRole === "admin") {
+        const { data: tenantLicenses, error: tenantLicensesError } = await admin.from("wama_tenant_module_licenses").select("id").eq("tenant_id", membership.tenant_id);
+        if (tenantLicensesError) throw tenantLicensesError;
+        if (tenantLicenses?.length) {
+          const { error: assignmentError } = await admin.from("wama_module_user_assignments").upsert(tenantLicenses.map((license) => ({ tenant_module_license_id: license.id, profile_id: body.profileId, assigned_by: profile.id, status: "active", module_role: "module_admin" })), { onConflict: "tenant_module_license_id,profile_id" });
+          if (assignmentError) throw assignmentError;
+        }
+      }
+      return NextResponse.json({ok:true,tenantRole:body.tenantRole});
+    }
+    if (!body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
     const validRoles:Record<string,string[]>={expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"],sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"],operations:["operations_admin","operations_coordinator","operations_operator","operations_reporter","operations_observer"]};
     const allowed=validRoles[body.moduleKey]||["member","viewer"];
     if(!allowed.includes(body.moduleRole)) return NextResponse.json({error:"El perfil seleccionado no es válido para este módulo."},{status:400});
