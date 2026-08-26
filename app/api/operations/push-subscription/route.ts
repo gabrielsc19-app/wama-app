@@ -12,7 +12,10 @@ function fail(error: unknown) {
 export async function GET(request: Request) {
   try {
     const context = await getOperationsContext(request);
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() || "";
+    const publicKey =
+      process.env.VAPID_PUBLIC_KEY?.trim() ||
+      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
+      "";
 
     const { count } = await context.admin
       .from("wama_operations_push_subscriptions")

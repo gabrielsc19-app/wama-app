@@ -117,14 +117,20 @@ export async function PATCH(request:Request){
       if(!context.canCoordinate)return NextResponse.json({error:"Solo un coordinador puede asignar casos."},{status:403});
       if(body.assignmentScope==="project"){
         if(!current.project_id)return NextResponse.json({error:"Este caso no está asociado a un proyecto."},{status:400});
+        if(current.assignment_scope==="project"&&!current.assigned_to){
+          return NextResponse.json({ok:true,unchanged:true,message:"El caso ya está asignado a todos los participantes del proyecto."});
+        }
         update.assigned_to=null;
         update.team_id=null;
         update.assignment_scope="project";
         next="assigned";
       }else if(body.assignmentScope==="team"){
         if(!body.teamId)return NextResponse.json({error:"Selecciona un equipo."},{status:400});
-        const{data:team}=await admin.from("wama_operations_teams").select("id").eq("id",body.teamId).eq("tenant_id",tenantId).eq("status","active").maybeSingle();
+        const{data:team}=await admin.from("wama_operations_teams").select("id,name").eq("id",body.teamId).eq("tenant_id",tenantId).eq("status","active").maybeSingle();
         if(!team)return NextResponse.json({error:"El equipo seleccionado no es válido."},{status:400});
+        if(current.assignment_scope==="team"&&current.team_id===body.teamId&&!current.assigned_to){
+          return NextResponse.json({ok:true,unchanged:true,message:`El caso ya está asignado al Equipo ${team.name}.`});
+        }
         update.assigned_to=null;
         update.team_id=body.teamId;
         update.assignment_scope="team";

@@ -108,8 +108,6 @@ export default function OperationsPushButton() {
     }
   }
 
-  if (!configured) return null;
-
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
       <button
@@ -129,8 +127,18 @@ export default function OperationsPushButton() {
         ) : (
           <BellRing className="h-4 w-4" />
         )}
-        {subscribed ? "Notificaciones activadas" : "Activar notificaciones"}
+        {subscribed
+          ? "Notificaciones activadas"
+          : configured
+            ? "Activar notificaciones"
+            : "Activar notificaciones"}
       </button>
+
+      {!configured && !message && (
+        <span className="max-w-xs text-xs text-[#69717D]">
+          Las notificaciones aún no están habilitadas para este entorno. Presiona el botón para comprobar la configuración.
+        </span>
+      )}
 
       {message && (
         <span className="max-w-xs text-xs text-[#69717D]">{message}</span>

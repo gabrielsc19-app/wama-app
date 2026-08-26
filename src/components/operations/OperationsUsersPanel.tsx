@@ -182,6 +182,7 @@ async function call(url: string, init?: RequestInit) {
 export default function OperationsUsersPanel() {
   const [data, setData] = useState<Payload | null>(null);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState("");
   const [open, setOpen] = useState(false);
   const [editingTeams, setEditingTeams] = useState<User | null>(null);
@@ -248,6 +249,7 @@ export default function OperationsUsersPanel() {
   async function resend(profileId: string) {
     setBusy(profileId);
     setError("");
+    setSuccess("");
 
     try {
       await call("/api/operations/users", {
@@ -255,6 +257,12 @@ export default function OperationsUsersPanel() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "resend", profileId }),
       });
+      const target = data?.users.find((item) => item.id === profileId);
+      setSuccess(
+        target
+          ? `Invitación reenviada correctamente a ${target.full_name} (${target.email}).`
+          : "Invitación reenviada correctamente.",
+      );
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : "No se pudo reenviar.");
@@ -394,6 +402,12 @@ export default function OperationsUsersPanel() {
           </div>
         </div>
       </section>
+
+      {success && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">
+          {success}
+        </div>
+      )}
 
       {error && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">
