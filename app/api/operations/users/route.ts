@@ -11,7 +11,6 @@ import {
 
 const fail = (error: unknown) => {
   const result = operationsError(error);
-
   const supabaseMessage =
     error && typeof error === "object" && "message" in error
       ? String((error as { message?: unknown }).message || "")
@@ -34,11 +33,7 @@ function forward(request: Request, method: string, body: unknown) {
   );
 }
 
-type TeamRow = {
-  id: string;
-  name: string;
-};
-
+type TeamRow = { id: string; name: string };
 type TeamMemberRow = {
   team_id: string;
   profile_id: string;
@@ -56,8 +51,6 @@ export async function GET(request: Request) {
       );
     }
 
-    // La tabla actual wama_module_user_assignments NO tiene created_at.
-    // Por eso consultamos solo columnas que existen realmente.
     const { data: assignments, error: assignmentsError } = await context.admin
       .from("wama_module_user_assignments")
       .select("profile_id,module_role,status")
@@ -78,6 +71,16 @@ export async function GET(request: Request) {
       : { data: [], error: null };
 
     if (profilesError) throw profilesError;
+
+    const { data: memberships, error: membershipsError } = profileIds.length
+      ? await context.admin
+          .from("wama_tenant_memberships")
+          .select("profile_id,role,status")
+          .eq("tenant_id", context.tenantId)
+          .in("profile_id", profileIds)
+      : { data: [], error: null };
+
+    if (membershipsError) throw membershipsError;
 
     const { data: invitations, error: invitationsError } = await context.admin
       .from("wama_invitations")
@@ -119,10 +122,15 @@ export async function GET(request: Request) {
       ]),
     );
 
+    const membershipByProfile = new Map(
+      (memberships || []).map((item) => [item.profile_id, item]),
+    );
+
     const users = (assignments || []).map((assignment) => {
       const profile = (profiles || []).find(
         (item) => item.id === assignment.profile_id,
       );
+      const membership = membershipByProfile.get(assignment.profile_id);
 
       const invitation = profile
         ? invitesByEmail.get(String(profile.email || "").toLowerCase()) || null
@@ -130,18 +138,18 @@ export async function GET(request: Request) {
 
       const userTeams = teams
         .map((team) => {
-          const membership = teamMembers.find(
+          const teamMembership = teamMembers.find(
             (member) =>
               member.team_id === team.id &&
               member.profile_id === assignment.profile_id,
           );
 
-          if (!membership) return null;
+          if (!teamMembership) return null;
 
           return {
             id: team.id,
             name: team.name,
-            role: membership.team_role,
+            role: teamMembership.team_role,
           };
         })
         .filter(Boolean);
@@ -152,9 +160,9 @@ export async function GET(request: Request) {
         email: profile?.email || "",
         profile_status: profile?.status || "invited",
         license_status: assignment.status,
+        enterprise_role: membership?.role || "member",
         module_role:
-          context.membership.role === "owner" &&
-          assignment.profile_id === context.profile.id
+          membership?.role === "owner"
             ? "module_admin"
             : assignment.module_role,
         invitation,
@@ -266,9 +274,10 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const body = (await request.json()) as {
-      action?: "resend" | "role" | "teams";
+      action?: "resend" | "role" | "enterpriseRole" | "teams";
       profileId?: string;
       moduleRole?: string;
+      enterpriseRole?: "admin" | "member";
       teamIds?: string[];
       coordinatorTeamIds?: string[];
     };
@@ -279,7 +288,121 @@ export async function PATCH(request: Request) {
       );
     }
 
+    if (body.action === "enterpriseRole") {
+      const context = await getOperationsContext(request);
+
+      if (context.membership.role !== "owner") {
+        return NextResponse.json(
+          { error: "Solo el propietario puede cambiar administradores empresariales." },
+          { status: 403 },
+        );
+      }
+
+      if (!body.profileId || !body.enterpriseRole) {
+        return NextResponse.json(
+          { error: "Faltan datos para actualizar el nivel empresarial." },
+          { status: 400 },
+        );
+      }
+
+      const { data: targetMembership, error: targetMembershipError } =
+        await context.admin
+          .from("wama_tenant_memberships")
+          .select("id,role,status")
+          .eq("tenant_id", context.tenantId)
+          .eq("profile_id", body.profileId)
+          .maybeSingle();
+
+      if (targetMembershipError) throw targetMembershipError;
+      if (!targetMembership) {
+        return NextResponse.json(
+          { error: "El usuario no pertenece a esta empresa." },
+          { status: 404 },
+        );
+      }
+
+      if (targetMembership.role === "owner") {
+        return NextResponse.json(
+          { error: "El propietario principal no puede ser modificado desde aquí." },
+          { status: 400 },
+        );
+      }
+
+      const newEnterpriseRole =
+        body.enterpriseRole === "admin" ? "admin" : "member";
+
+      const { error: membershipUpdateError } = await context.admin
+        .from("wama_tenant_memberships")
+        .update({ role: newEnterpriseRole })
+        .eq("id", targetMembership.id);
+
+      if (membershipUpdateError) throw membershipUpdateError;
+
+      // Mantener coherencia del rol de Operations.
+      const desiredModuleRole =
+        newEnterpriseRole === "admin"
+          ? "operations_admin"
+          : "operations_operator";
+
+      const { error: assignmentUpdateError } = await context.admin
+        .from("wama_module_user_assignments")
+        .update({ module_role: desiredModuleRole })
+        .eq("tenant_module_license_id", context.license.id)
+        .eq("profile_id", body.profileId);
+
+      if (assignmentUpdateError) throw assignmentUpdateError;
+
+      return NextResponse.json({
+        ok: true,
+        enterpriseRole: newEnterpriseRole,
+        moduleRole: desiredModuleRole,
+      });
+    }
+
     if (body.action === "role") {
+      const context = await getOperationsContext(request);
+
+      if (!body.profileId || !body.moduleRole) {
+        return NextResponse.json(
+          { error: "Faltan datos para actualizar el perfil." },
+          { status: 400 },
+        );
+      }
+
+      const { data: targetMembership, error: targetMembershipError } =
+        await context.admin
+          .from("wama_tenant_memberships")
+          .select("id,role")
+          .eq("tenant_id", context.tenantId)
+          .eq("profile_id", body.profileId)
+          .maybeSingle();
+
+      if (targetMembershipError) throw targetMembershipError;
+      if (!targetMembership) {
+        return NextResponse.json(
+          { error: "El usuario no pertenece a esta empresa." },
+          { status: 404 },
+        );
+      }
+
+      if (targetMembership.role === "owner") {
+        return NextResponse.json(
+          { error: "El propietario conserva acceso total." },
+          { status: 400 },
+        );
+      }
+
+      // Si era administrador empresarial y se elige un perfil operacional,
+      // se baja a member para que el selector represente el nivel real.
+      if (targetMembership.role === "admin") {
+        const { error: membershipUpdateError } = await context.admin
+          .from("wama_tenant_memberships")
+          .update({ role: "member" })
+          .eq("id", targetMembership.id);
+
+        if (membershipUpdateError) throw membershipUpdateError;
+      }
+
       return updateEnterpriseRole(
         forward(request, "PUT", {
           profileId: body.profileId,
@@ -390,28 +513,6 @@ export async function PATCH(request: Request) {
           .insert(rows);
 
         if (insertError) throw insertError;
-      }
-
-      const { error: auditError } = await context.admin
-        .from("wama_audit_logs")
-        .insert({
-          tenant_id: context.tenantId,
-          profile_id: context.profile.id,
-          module_key: "operations",
-          action: "operations_user_teams_updated",
-          entity_type: "profile",
-          entity_id: body.profileId,
-          metadata: {
-            team_ids: requestedIds,
-            coordinator_team_ids: [...coordinatorIds],
-          },
-        });
-
-      if (auditError) {
-        console.error(
-          "No se pudo registrar auditoría de equipos Operations:",
-          auditError,
-        );
       }
 
       return NextResponse.json({ ok: true });
