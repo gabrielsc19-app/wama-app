@@ -152,7 +152,11 @@ export async function POST(request: Request) {
         reusedExistingUser = true;
       } else {
         authUserId = invite.user.id;
-        invitationUrlForNewUser = invite.properties?.action_link || null;
+        const hashedToken =
+          (invite.properties as unknown as { hashed_token?: string } | null)?.hashed_token || null;
+        invitationUrlForNewUser = hashedToken
+          ? `${origin}/invitacion/aceptar?token_hash=${encodeURIComponent(hashedToken)}`
+          : invite.properties?.action_link || null;
       }
 
       const { data: createdProfile, error: profileError } = await admin
@@ -295,7 +299,11 @@ export async function PATCH(request: Request) {
       email,
       options:{redirectTo,data:{full_name:targetProfile.full_name}},
     });
-    const invitationUrl=linkData?.properties?.action_link;
+    const hashedToken =
+      (linkData?.properties as unknown as { hashed_token?: string } | null)?.hashed_token || null;
+    const invitationUrl = hashedToken
+      ? `${origin}/invitacion/aceptar?token_hash=${encodeURIComponent(hashedToken)}`
+      : linkData?.properties?.action_link;
     if(linkError||!invitationUrl) return NextResponse.json({error:linkError?.message||"No se pudo generar un nuevo enlace de invitación."},{status:400});
 
     const { data:tenant }=await admin.from("wama_tenants").select("name,logo_url").eq("id",membership.tenant_id).maybeSingle();
