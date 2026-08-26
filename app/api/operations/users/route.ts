@@ -201,7 +201,66 @@ export async function POST(request: Request) {
       moduleRole?: string;
       teamIds?: string[];
       coordinatorTeamIds?: string[];
+      projectId?: string;
     };
+
+    const inviteContext = await getOperationsContext(request);
+
+    let projectName: string | null = null;
+    if (body.projectId) {
+      const { data:project }=await inviteContext.admin
+        .from("wama_projects")
+        .select("id,name")
+        .eq("tenant_id",inviteContext.tenantId)
+        .eq("id",body.projectId)
+        .maybeSingle();
+
+      if(!project){
+        return NextResponse.json(
+          {error:"El proyecto seleccionado no pertenece a tu empresa."},
+          {status:400},
+        );
+      }
+      projectName=project.name;
+    }
+
+    let teamNames:string[]=[];
+    if(body.teamIds?.length){
+      const {data:teamRows,error:teamRowsError}=await inviteContext.admin
+        .from("wama_operations_teams")
+        .select("id,name")
+        .eq("tenant_id",inviteContext.tenantId)
+        .eq("status","active")
+        .in("id",body.teamIds);
+
+      if(teamRowsError)throw teamRowsError;
+      teamNames=(teamRows||[]).map((team)=>team.name);
+    }
+
+    const roleCopy:Record<string,{label:string;description:string}>={
+      operations_admin:{
+        label:"Administrador de Operations",
+        description:"Administra proyectos, equipos, usuarios y puede gestionar todos los casos del módulo.",
+      },
+      operations_coordinator:{
+        label:"Coordinador",
+        description:"Supervisa los casos de sus equipos, asigna responsables, controla avances y puede cerrar trabajos.",
+      },
+      operations_operator:{
+        label:"Operativo",
+        description:"Ejecuta los trabajos asignados, registra avances, actualiza estados y adjunta fotografías o evidencias.",
+      },
+      operations_reporter:{
+        label:"Reportante",
+        description:"Puede crear casos, adjuntar evidencias y seguir el avance de los casos que reportó.",
+      },
+      operations_observer:{
+        label:"Observador",
+        description:"Puede consultar la información autorizada, sin modificar casos ni configuraciones.",
+      },
+    };
+
+    const selectedRole=roleCopy[body.moduleRole||"operations_operator"]||roleCopy.operations_operator;
 
     const enterpriseResponse = await inviteEnterpriseUser(
       forward(request, "POST", {
@@ -209,6 +268,13 @@ export async function POST(request: Request) {
         email: body.email,
         moduleRoles: {
           operations: body.moduleRole || "operations_operator",
+        },
+        invitationContext:{
+          moduleName:"WAMA Operations",
+          projectName,
+          teamNames,
+          roleLabel:selectedRole.label,
+          roleDescription:selectedRole.description,
         },
       }),
     );
@@ -230,6 +296,20 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (profileError) throw profileError;
+
+    if(profile&&body.projectId){
+      const {error:projectMemberError}=await context.admin
+        .from("wama_project_members")
+        .upsert(
+          {
+            project_id:body.projectId,
+            profile_id:profile.id,
+            role:"member",
+          },
+          {onConflict:"project_id,profile_id"},
+        );
+      if(projectMemberError)throw projectMemberError;
+    }
 
     if (profile && body.teamIds?.length) {
       const { data: validTeams, error: validTeamsError } = await context.admin

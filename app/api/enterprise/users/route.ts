@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendWamaEmail } from "../../../../src/lib/server/googleGmail";
 import { getUserTenantContext, isTenantAdmin, requireWamaUser } from "../../../../src/lib/server/wamaAdmin";
+import { buildWamaInvitationEmail, getOperationsRoleCopy } from "../../../../src/lib/server/wamaInvitationEmail";
 
 function escapeHtml(value: string) {
   return value.replace(/[&<>'"]/g, (char) => ({
@@ -94,7 +95,18 @@ export async function POST(request: Request) {
     const user = await requireWamaUser(request);
     const { admin, profile, membership } = await getUserTenantContext(user.id);
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error: "Solo owner o admin puede invitar usuarios." }, { status: 403 });
-    const body = await request.json() as { email?: string; fullName?: string; moduleRoles?: Record<string,string> };
+    const body = await request.json() as {
+      email?: string;
+      fullName?: string;
+      moduleRoles?: Record<string,string>;
+      invitationContext?: {
+        moduleName?: string;
+        projectName?: string;
+        teamNames?: string[];
+        roleLabel?: string;
+        roleDescription?: string;
+      };
+    };
     const email = body.email?.trim().toLowerCase(); const fullName = body.fullName?.trim();
     if (!email || !fullName) return NextResponse.json({ error: "Nombre y correo son obligatorios." }, { status: 400 });
     const moduleRoles = body.moduleRoles || {};
@@ -180,9 +192,33 @@ export async function POST(request: Request) {
       try{
         const invitationUrl=invitationUrlForNewUser;
         if(!invitationUrl)throw new Error("No se pudo recuperar el enlace de acceso generado para la invitación.");
-        const{data:tenant}=await admin.from("wama_tenants").select("name").eq("id",membership.tenant_id).maybeSingle();
-        const safeName=escapeHtml(fullName),safeCompany=escapeHtml(tenant?.name||"tu empresa"),safeUrl=escapeHtml(invitationUrl);
-        const sent=await sendWamaEmail({to:email,subject:`${tenant?.name||"Tu empresa"} te invitó a WAMA`,text:`Hola ${fullName},\n\n${tenant?.name||"Tu empresa"} te invitó a WAMA. Activa tu acceso aquí:\n${invitationUrl}`,html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,sans-serif;color:#0B0C0E"><table width="100%" cellpadding="0" cellspacing="0" style="padding:32px 12px"><tr><td align="center"><table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:30px;text-align:center;color:#00E5D6;font-size:34px;font-weight:800;letter-spacing:4px">WAMA</td></tr><tr><td style="padding:38px 34px"><h1 style="margin:0 0 16px;font-size:24px">Tienes una invitación</h1><p style="font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te invitó a trabajar en WAMA.</p><p style="margin:26px 0;text-align:center"><a href="${safeUrl}" style="display:inline-block;border-radius:10px;background:#00E5D6;padding:15px 28px;font-weight:700;color:#0B0C0E;text-decoration:none">Activar mi acceso</a></p><p style="font-size:12px;color:#737881;word-break:break-all">${safeUrl}</p></td></tr></table></td></tr></table></body></html>`});
+        const{data:tenant}=await admin.from("wama_tenants").select("name,logo_url").eq("id",membership.tenant_id).maybeSingle();
+        const operationsRole =
+          requestedModules.includes("operations")
+            ? getOperationsRoleCopy(moduleRoles.operations)
+            : null;
+        const invitationEmail = buildWamaInvitationEmail({
+          recipientName: fullName,
+          companyName: tenant?.name || "Tu empresa",
+          companyLogoUrl: tenant?.logo_url || null,
+          invitationUrl,
+          moduleName:
+            body.invitationContext?.moduleName ||
+            (requestedModules.includes("operations") ? "WAMA Operations" : "WAMA"),
+          projectName: body.invitationContext?.projectName || null,
+          teamNames: body.invitationContext?.teamNames || [],
+          roleLabel: body.invitationContext?.roleLabel || operationsRole?.label || null,
+          roleDescription:
+            body.invitationContext?.roleDescription ||
+            operationsRole?.description ||
+            null,
+        });
+        const sent=await sendWamaEmail({
+          to:email,
+          subject:invitationEmail.subject,
+          text:invitationEmail.text,
+          html:invitationEmail.html,
+        });
         await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:1}).eq("tenant_id",membership.tenant_id).eq("email",email);
         emailStatus="sent";
       }catch(mailError){
@@ -200,27 +236,10 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const user = await requireWamaUser(request);
-    const { admin, membership, profile } = await getUserTenantContext(user.id);
+    const { admin, membership } = await getUserTenantContext(user.id);
     if (!isTenantAdmin(membership.role)) return NextResponse.json({ error:"Solo el propietario o un administrador puede modificar perfiles." },{status:403});
-    const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string; tenantRole?:"admin"|"member" };
-    if (!body.profileId) return NextResponse.json({error:"Falta identificar al usuario."},{status:400});
-    if (body.tenantRole) {
-      const { data: targetMembership, error: targetError } = await admin.from("wama_tenant_memberships").select("id,role").eq("tenant_id", membership.tenant_id).eq("profile_id", body.profileId).maybeSingle();
-      if (targetError || !targetMembership) return NextResponse.json({error:"El usuario no pertenece a esta empresa."},{status:404});
-      if (targetMembership.role === "owner") return NextResponse.json({error:"El propietario principal conserva su rol."},{status:400});
-      const { error: roleError } = await admin.from("wama_tenant_memberships").update({ role: body.tenantRole }).eq("id", targetMembership.id);
-      if (roleError) throw roleError;
-      if (body.tenantRole === "admin") {
-        const { data: tenantLicenses, error: tenantLicensesError } = await admin.from("wama_tenant_module_licenses").select("id").eq("tenant_id", membership.tenant_id);
-        if (tenantLicensesError) throw tenantLicensesError;
-        if (tenantLicenses?.length) {
-          const { error: assignmentError } = await admin.from("wama_module_user_assignments").upsert(tenantLicenses.map((license) => ({ tenant_module_license_id: license.id, profile_id: body.profileId, assigned_by: profile.id, status: "active", module_role: "module_admin" })), { onConflict: "tenant_module_license_id,profile_id" });
-          if (assignmentError) throw assignmentError;
-        }
-      }
-      return NextResponse.json({ok:true,tenantRole:body.tenantRole});
-    }
-    if (!body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
+    const body = await request.json() as { profileId?:string; moduleKey?:string; moduleRole?:string };
+    if (!body.profileId || !body.moduleKey || !body.moduleRole) return NextResponse.json({error:"Faltan datos para actualizar el perfil."},{status:400});
     const validRoles:Record<string,string[]>={expense:["expense_submitter","expense_reviewer","expense_approver","expense_treasurer","expense_manager","expense_admin","expense_auditor"],sales:["sales_executive","sales_supervisor","sales_manager","sales_financial_evaluator","sales_admin","sales_auditor"],operations:["operations_admin","operations_coordinator","operations_operator","operations_reporter","operations_observer"]};
     const allowed=validRoles[body.moduleKey]||["member","viewer"];
     if(!allowed.includes(body.moduleRole)) return NextResponse.json({error:"El perfil seleccionado no es válido para este módulo."},{status:400});
@@ -261,15 +280,74 @@ export async function PATCH(request: Request) {
     const invitationUrl=linkData?.properties?.action_link;
     if(linkError||!invitationUrl) return NextResponse.json({error:linkError?.message||"No se pudo generar un nuevo enlace de invitación."},{status:400});
 
-    const { data:tenant }=await admin.from("wama_tenants").select("name").eq("id",membership.tenant_id).maybeSingle();
-    const safeName=escapeHtml(targetProfile.full_name||"Usuario");
-    const safeCompany=escapeHtml(tenant?.name||"tu empresa");
-    const safeInvitationUrl=escapeHtml(invitationUrl);
+    const { data:tenant }=await admin.from("wama_tenants").select("name,logo_url").eq("id",membership.tenant_id).maybeSingle();
+
+    let operationsRole: ReturnType<typeof getOperationsRoleCopy> = null;
+    let projectName: string | null = null;
+    let teamNames: string[] = [];
+
+    try {
+      const { data:opsLicense }=await admin
+        .from("wama_tenant_module_licenses")
+        .select("id,wama_module_catalog!inner(module_key)")
+        .eq("tenant_id",membership.tenant_id)
+        .eq("wama_module_catalog.module_key","operations")
+        .maybeSingle();
+
+      if(opsLicense){
+        const { data:assignment }=await admin
+          .from("wama_module_user_assignments")
+          .select("module_role")
+          .eq("tenant_module_license_id",opsLicense.id)
+          .eq("profile_id",body.profileId)
+          .maybeSingle();
+
+        operationsRole=getOperationsRoleCopy(assignment?.module_role||null);
+
+        const { data:teamMemberships }=await admin
+          .from("wama_operations_team_members")
+          .select("team_id,wama_operations_teams!inner(name)")
+          .eq("profile_id",body.profileId);
+
+        teamNames=(teamMemberships||[])
+          .map((item)=>
+            (item.wama_operations_teams as unknown as {name?:string}|null)?.name||""
+          )
+          .filter(Boolean);
+
+        const { data:projectMembership }=await admin
+          .from("wama_project_members")
+          .select("wama_projects!inner(name)")
+          .eq("profile_id",body.profileId)
+          .limit(1)
+          .maybeSingle();
+
+        projectName=
+          (projectMembership?.wama_projects as unknown as {name?:string}|null)?.name||
+          null;
+      }
+    }catch{
+      // El reenvío sigue funcionando aunque no exista contexto de proyecto/equipo.
+    }
+
+    const invitationEmail=buildWamaInvitationEmail({
+      recipientName:targetProfile.full_name||"Usuario",
+      companyName:tenant?.name||"Tu empresa",
+      companyLogoUrl:tenant?.logo_url||null,
+      invitationUrl,
+      moduleName:"WAMA Operations",
+      projectName,
+      teamNames,
+      roleLabel:operationsRole?.label||null,
+      roleDescription:operationsRole?.description||null,
+      isResend:true,
+    });
+
     const sent=await sendWamaEmail({
       to:email,
-      subject:"Has sido invitado a WAMA",
-      text:`Hola ${targetProfile.full_name || ""},\n\n${tenant?.name || "Tu empresa"} te ha invitado a WAMA. Usa este enlace para aceptar la invitación y configurar tu acceso:\n\n${invitationUrl}\n\nEste enlace reemplaza al anterior.`,
-      html:`<!doctype html><html lang="es"><body style="margin:0;background:#F5F6F7;font-family:Arial,Helvetica,sans-serif;color:#0B0C0E"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="padding:32px 12px"><tr><td align="center"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;background:#fff;border:1px solid #E2E5E9;border-radius:18px;overflow:hidden"><tr><td style="background:#0B0C0E;padding:32px;text-align:center"><div style="font-size:36px;font-weight:800;letter-spacing:4px;color:#00E5D6">WAMA</div><div style="margin-top:8px;font-size:14px;color:#C4C7CC">Warn and Manage</div></td></tr><tr><td style="padding:40px 34px"><h1 style="margin:0 0 18px;font-size:25px">Has sido invitado a WAMA</h1><p style="margin:0 0 16px;font-size:16px;line-height:1.6;color:#42464D">Hola ${safeName}, <strong>${safeCompany}</strong> te ha invitado a formar parte de su portal de trabajo.</p><p style="margin:0 0 26px;font-size:16px;line-height:1.6;color:#42464D">Presiona el botón para aceptar la invitación y configurar tu acceso.</p><table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 auto 28px"><tr><td style="border-radius:10px;background:#00E5D6"><a href="${safeInvitationUrl}" style="display:inline-block;padding:15px 28px;font-size:16px;font-weight:700;color:#0B0C0E;text-decoration:none">Aceptar invitación</a></td></tr></table><p style="margin:0 0 8px;font-size:13px;color:#737881">Si el botón no funciona, copia este enlace:</p><p style="margin:0;word-break:break-all;font-size:12px;color:#737881">${safeInvitationUrl}</p></td></tr><tr><td style="padding:22px 34px;background:#F5F6F7;text-align:center;font-size:13px;color:#737881">Gestiona tu empresa módulo por módulo.</td></tr></table></td></tr></table></body></html>`,
+      subject:invitationEmail.subject,
+      text:invitationEmail.text,
+      html:invitationEmail.html,
     });
     const{data:existingInvite}=await admin.from("wama_invitations").select("send_attempts").eq("tenant_id",membership.tenant_id).eq("email",email).maybeSingle();
     await admin.from("wama_invitations").update({status:"sent",provider_message_id:sent.id,sent_at:new Date().toISOString(),last_error:null,send_attempts:Number(existingInvite?.send_attempts||0)+1}).eq("tenant_id",membership.tenant_id).eq("email",email);
