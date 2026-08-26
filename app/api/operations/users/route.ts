@@ -3,6 +3,7 @@ import { PATCH as resendEnterpriseInvite, POST as inviteEnterpriseUser, PUT as u
 import { getOperationsContext, operationsError } from "../../../../src/lib/server/operationsAccess";
 
 const fail = (error: unknown) => {
+  console.error("GET/WRITE /api/operations/users failed", error);
   const result = operationsError(error);
   return NextResponse.json({ error: result.message }, { status: result.status });
 };
