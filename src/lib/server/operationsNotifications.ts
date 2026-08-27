@@ -11,12 +11,21 @@ type Notice = {
   body: string;
 };
 
+export type OperationsNotificationSummary = {
+  inAppRecipients: number;
+  pushDevices: number;
+  pushSent: number;
+  pushFailed: number;
+};
+
 let vapidConfigured = false;
 
 function configureVapid() {
   if (vapidConfigured) return true;
 
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
+  const publicKey =
+    process.env.VAPID_PUBLIC_KEY?.trim() ||
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim();
   const privateKey = process.env.VAPID_PRIVATE_KEY?.trim();
   const subject =
     process.env.VAPID_SUBJECT?.trim() || "mailto:contacto@wamaapp.com";
@@ -31,12 +40,19 @@ function configureVapid() {
 export async function createOperationsNotifications(
   admin: SupabaseClient,
   notice: Notice,
-) {
+): Promise<OperationsNotificationSummary> {
+  const summary: OperationsNotificationSummary = {
+    inAppRecipients: 0,
+    pushDevices: 0,
+    pushSent: 0,
+    pushFailed: 0,
+  };
+
   const recipientIds = [
     ...new Set([...notice.recipientIds].filter((id): id is string => Boolean(id))),
   ].filter((id) => id !== notice.actorId);
 
-  if (!recipientIds.length) return;
+  if (!recipientIds.length) return summary;
 
   const { data: licensed } = await admin
     .from("wama_module_user_assignments")
@@ -52,7 +68,7 @@ export async function createOperationsNotifications(
     );
 
   const allowed = new Set((licensed || []).map((row) => row.profile_id));
-  if (!allowed.size) return;
+  if (!allowed.size) return summary;
 
   const rows = [...allowed].map((recipient_profile_id) => ({
     tenant_id: notice.tenantId,
@@ -63,9 +79,17 @@ export async function createOperationsNotifications(
     body: notice.body,
   }));
 
-  await admin.from("wama_operations_notifications").insert(rows);
+  const { error: notificationError } = await admin
+    .from("wama_operations_notifications")
+    .insert(rows);
 
-  if (!configureVapid()) return;
+  if (!notificationError) {
+    summary.inAppRecipients = rows.length;
+  } else {
+    console.error("No se pudieron crear avisos WAMA:", notificationError);
+  }
+
+  if (!configureVapid()) return summary;
 
   const { data: subscriptions } = await admin
     .from("wama_operations_push_subscriptions")
@@ -74,9 +98,11 @@ export async function createOperationsNotifications(
     .in("profile_id", [...allowed])
     .is("revoked_at", null);
 
-  if (!subscriptions?.length) return;
+  if (!subscriptions?.length) return summary;
 
-  await Promise.all(
+  summary.pushDevices = subscriptions.length;
+
+  const results = await Promise.all(
     subscriptions.map(async (row) => {
       try {
         await webpush.sendNotification(
@@ -94,6 +120,7 @@ export async function createOperationsNotifications(
             },
           }),
         );
+        return true;
       } catch (error) {
         const statusCode =
           error && typeof error === "object" && "statusCode" in error
@@ -108,7 +135,13 @@ export async function createOperationsNotifications(
         } else {
           console.error("No se pudo enviar push WAMA:", error);
         }
+        return false;
       }
     }),
   );
+
+  summary.pushSent = results.filter(Boolean).length;
+  summary.pushFailed = results.length - summary.pushSent;
+
+  return summary;
 }

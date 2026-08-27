@@ -95,8 +95,8 @@ export async function POST(request:Request){
     await admin.from("wama_operations_events").insert({tenant_id:tenantId,case_id:created.id,event_type:"created",to_status:initialStatus,comment:"Caso reportado",metadata:{urgent,team_id:teamId,assignment_scope:initialScope},created_by:profile.id});
     const regular=await teamRecipients(admin,teamId,urgent?"urgent":"new");
     let urgentIds:string[]=[];if(urgent){const{data:urgentTeams}=await admin.from("wama_operations_teams").select("id").eq("tenant_id",tenantId).eq("receives_urgent",true).eq("status","active");urgentIds=(await Promise.all((urgentTeams||[]).map(team=>teamRecipients(admin,team.id,"urgent")))).flat();}
-    await createOperationsNotifications(admin,{tenantId,caseId:created.id,actorId:profile.id,recipientIds:[...regular,...urgentIds],type:urgent?"urgent_case":"new_case",title:urgent?`Alerta urgente ${caseNumber}`:`Nuevo caso ${caseNumber}`,body:created.title});
-    return NextResponse.json({ok:true,case:created},{status:201});
+    const notification=await createOperationsNotifications(admin,{tenantId,caseId:created.id,actorId:profile.id,recipientIds:[...regular,...urgentIds],type:urgent?"urgent_case":"new_case",title:urgent?`Alerta urgente ${caseNumber}`:`Nuevo caso ${caseNumber}`,body:created.title});
+    return NextResponse.json({ok:true,case:created,notification},{status:201});
   }catch(error){return responseError(error)}
 }
 
@@ -183,7 +183,13 @@ export async function PATCH(request:Request){
     }
     else if(body.action==="start"){if(current.assigned_to!==profile.id&&!context.canCoordinate)return NextResponse.json({error:"Solo el responsable o coordinador puede iniciar el trabajo."},{status:403});next="in_progress";}
     else if(body.action==="resolve"){if(current.assigned_to!==profile.id&&!context.canCoordinate)return NextResponse.json({error:"Solo el responsable o coordinador puede resolver."},{status:403});if(!body.comment?.trim())return NextResponse.json({error:"Agrega un comentario de resolución."},{status:400});next="resolved";update.resolved_at=new Date().toISOString();}
-    else if(body.action==="close"){if(!context.canCoordinate&&current.reported_by!==profile.id)return NextResponse.json({error:"Solo el reportante o coordinador puede cerrar."},{status:403});next="closed";update.closed_at=new Date().toISOString();}
+    else if(body.action==="close"){
+      const canClose=context.canAdmin||context.canCoordinate||current.reported_by===profile.id||current.assigned_to===profile.id;
+      if(!canClose)return NextResponse.json({error:"Solo el responsable, reportante o coordinador puede cerrar."},{status:403});
+      if(current.status!=="resolved")return NextResponse.json({error:"Primero marca el caso como resuelto antes de cerrarlo."},{status:400});
+      if(!body.comment?.trim())return NextResponse.json({error:"Agrega un comentario final de cierre."},{status:400});
+      next="closed";update.closed_at=new Date().toISOString();
+    }
     else if(body.action==="reopen"){if(!context.canCoordinate&&current.reported_by!==profile.id)return NextResponse.json({error:"Sin permiso para reabrir."},{status:403});if(!body.comment?.trim())return NextResponse.json({error:"Indica el motivo de reapertura."},{status:400});next="reopened";update.resolved_at=null;update.closed_at=null;}
     else if(body.action==="edit"){if(!context.canCoordinate)return NextResponse.json({error:"Sin permiso para editar prioridad y plazo."},{status:403});if(body.priority&&allowedPriorities.includes(body.priority))update.priority=body.priority;if(body.dueAt&&Number.isFinite(Date.parse(body.dueAt)))update.due_at=new Date(body.dueAt).toISOString();}
     else if(body.action==="comment"&&!body.comment?.trim())return NextResponse.json({error:"Escribe un comentario."},{status:400});
@@ -198,7 +204,7 @@ export async function PATCH(request:Request){
       ?await projectRecipients(admin,current.project_id||null)
       :[];
 
-    await createOperationsNotifications(admin,{
+    const notification=await createOperationsNotifications(admin,{
       tenantId,
       caseId:current.id,
       actorId:profile.id,
@@ -207,11 +213,19 @@ export async function PATCH(request:Request){
       title:
         body.action==="assign_scope"
           ? assignmentScope==="project"
-            ? `${current.case_number} asignado a todos`
-            : `${current.case_number} asignado a equipo`
-          : `${current.case_number} actualizado`,
+            ? `${current.case_number} enviado a todos`
+            : `${current.case_number} enviado a equipo`
+          : body.action==="take"
+            ? `${current.case_number} fue tomado`
+            : body.action==="start"
+              ? `${current.case_number} en gestión`
+              : body.action==="resolve"
+                ? `${current.case_number} resuelto`
+                : body.action==="close"
+                  ? `${current.case_number} cerrado`
+                  : `${current.case_number} actualizado`,
       body:body.comment?.trim()||current.title,
     });
-    return NextResponse.json({ok:true,case:data});
+    return NextResponse.json({ok:true,case:data,notification});
   }catch(error){return responseError(error)}
 }

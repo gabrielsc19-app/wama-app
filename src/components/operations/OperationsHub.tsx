@@ -1,7 +1,7 @@
 "use client";
 import { ensurePushIfAlreadyGranted } from "./operationsPushClient";
 import {FormEvent,useEffect,useMemo,useRef,useState} from "react";
-import {ArrowLeft,ArrowRight,BarChart3,Bell,Building2,Camera,CheckCircle2,ChevronRight,Clock3,FileText,Filter,LayoutDashboard,Loader2,MapPin,Pencil,Plus,Search,Settings,ShieldAlert,Sparkles,Trash2,Users,X} from "lucide-react";
+import {ArrowLeft,ArrowRight,BarChart3,Bell,Building2,Camera,CheckCircle2,ChevronRight,CircleCheckBig,Clock3,FileText,FileType2,Filter,ImageIcon,LayoutDashboard,Loader2,MapPin,MoreHorizontal,Pencil,Plus,Search,Settings,ShieldAlert,Sparkles,Trash2,Users,X} from "lucide-react";
 import {supabase} from "../../../app/lib/supabase";
 import EnterpriseShell from "../enterprise/EnterpriseShell";
 import OperationsTeamWorkspace from "./OperationsTeamWorkspace";
@@ -13,7 +13,7 @@ type Person={id:string;full_name:string;email:string;role?:string;license_status
 type Ref={id:string;name:string;[key:string]:unknown};
 type CaseEvent={id:string;event_type:string;from_status?:string;to_status?:string;comment?:string;created_at:string;created_by:string};
 type Evidence={id:string;file_name:string;mime_type:string;created_at:string;url?:string|null};
-type Case={id:string;case_number:string;title:string;description:string;priority:string;is_urgent:boolean;status:string;due_at:string;created_at:string;resolved_at?:string|null;reported_by:string;assigned_to?:string|null;project_id?:string|null;assignment_scope?:"unassigned"|"project"|"team"|"person"|null;location?:Ref;category?:Ref;team?:Ref;reporter?:Person;assignee?:Person;events?:CaseEvent[];evidence?:Evidence[]};
+type Case={id:string;case_number:string;title:string;description:string;priority:string;is_urgent:boolean;status:string;due_at:string;created_at:string;resolved_at?:string|null;closed_at?:string|null;reported_by:string;assigned_to?:string|null;project_id?:string|null;assignment_scope?:"unassigned"|"project"|"team"|"person"|null;location?:Ref;category?:Ref;team?:Ref;reporter?:Person;assignee?:Person;events?:CaseEvent[];evidence?:Evidence[]};
 type Notice={id:string;title:string;body:string;created_at:string};
 type SetupInvite={fullName:string;email:string;role:"operations_coordinator"|"operations_operator"|"operations_reporter"|"operations_observer"};
 type Project={id:string;name:string;code:string;status:string};
@@ -24,7 +24,7 @@ const labels:Record<string,string>={all:"Todos",unassigned:"Sin asignar",assigne
 const actionNames:Record<string,string>={created:"Caso reportado",assign:"Responsable asignado",assign_scope:"Caso asignado",take:"Caso tomado",start:"Trabajo iniciado",comment:"Comentario agregado",evidence_added:"Evidencia agregada",resolve:"Marcado como resuelto",close:"Caso cerrado",reopen:"Caso reabierto",edit:"Caso actualizado",delete:"Caso archivado",restore:"Caso restaurado"};
 
 export default function OperationsHub(){
- const[data,setData]=useState<Payload|null>(null),[selectedProjectId,setSelectedProjectId]=useState(""),[view,setView]=useState("summary"),[filter,setFilter]=useState("all"),[search,setSearch]=useState(""),[error,setError]=useState(""),[success,setSuccess]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[open,setOpen]=useState(false),[selected,setSelected]=useState<Case|null>(null),[selectedTeamId,setSelectedTeamId]=useState<string|null>(null),[form,setForm]=useState(empty),[comment,setComment]=useState(""),[files,setFiles]=useState<File[]>([]),[evidence,setEvidence]=useState<Evidence[]>([]),[configOpen,setConfigOpen]=useState<"location"|"team"|"category"|null>(null),[editingId,setEditingId]=useState<string|null>(null),[deleteReason,setDeleteReason]=useState(""),[caseDeleteReason,setCaseDeleteReason]=useState(""),[config,setConfig]=useState({name:"",address:"",color:"#00B8AE",description:"",receivesUrgent:false,defaultTeamId:"",slaMinutes:"1440",memberIds:[] as string[],coordinatorIds:[] as string[]});
+ const[data,setData]=useState<Payload|null>(null),[selectedProjectId,setSelectedProjectId]=useState(""),[view,setView]=useState("summary"),[filter,setFilter]=useState("all"),[search,setSearch]=useState(""),[error,setError]=useState(""),[success,setSuccess]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[open,setOpen]=useState(false),[selected,setSelected]=useState<Case|null>(null),[selectedTeamId,setSelectedTeamId]=useState<string|null>(null),[form,setForm]=useState(empty),[comment,setComment]=useState(""),[files,setFiles]=useState<File[]>([]),[evidence,setEvidence]=useState<Evidence[]>([]),[configOpen,setConfigOpen]=useState<"location"|"team"|"category"|null>(null),[editingId,setEditingId]=useState<string|null>(null),[deleteReason,setDeleteReason]=useState(""),[caseDeleteReason,setCaseDeleteReason]=useState(""),[deletePromptOpen,setDeletePromptOpen]=useState(false),[config,setConfig]=useState({name:"",address:"",color:"#00B8AE",description:"",receivesUrgent:false,defaultTeamId:"",slaMinutes:"1440",memberIds:[] as string[],coordinatorIds:[] as string[]});
  const fileInput=useRef<HTMLInputElement>(null);
  async function token(){const{data:s}=await supabase.auth.getSession();if(!s.session)throw new Error("Sesión caducada. Vuelve a iniciar sesión.");return s.session.access_token;}
  async function api(url:string,init?:RequestInit){const access=await token();const response=await fetch(url,{...init,headers:{Authorization:`Bearer ${access}`,...init?.headers}});const json=await response.json();if(!response.ok)throw new Error(json.error||"No fue posible completar la acción.");return json;}
@@ -48,10 +48,36 @@ export default function OperationsHub(){
  },[]);
 
  const cases=data?.cases||[];const openCases=cases.filter(c=>!["closed","cancelled"].includes(c.status));
+ const withoutResponsible=openCases.filter(c=>!c.assigned_to);
  const overdue=openCases.filter(c=>c.due_at&&new Date(c.due_at)<new Date()&&!['resolved'].includes(c.status));
  const visible=useMemo(()=>cases.filter(c=>(filter==="all"||c.status===filter)&&(`${c.case_number} ${c.title} ${c.description} ${c.location?.name||""}`).toLowerCase().includes(search.toLowerCase())),[cases,filter,search]);
  async function create(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const result=await api("/api/operations/cases",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,projectId:form.projectId||selectedProjectId})});for(const file of files){const fd=new FormData();fd.append("caseId",result.case.id);fd.append("file",file);await api("/api/operations/evidence",{method:"POST",body:fd});}setOpen(false);setForm(empty);setFiles([]);await load();}catch(e){setError(e instanceof Error?e.message:"No se pudo reportar el caso.");}finally{setBusy(false)}}
- async function act(action:string,extra:Record<string,unknown>={}){if(!selected)return;setBusy(true);setError("");try{await api("/api/operations/cases",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action,comment,...extra})});if(files[0]){const fd=new FormData();fd.append("caseId",selected.id);fd.append("file",files[0]);await api("/api/operations/evidence",{method:"POST",body:fd});}setComment("");setFiles([]);await load();try{const[detail,evidencePayload]=await Promise.all([loadCaseDetail(selected.id),api(`/api/operations/evidence?caseId=${selected.id}`)]);setSelected(detail);setEvidence(evidencePayload.evidence||[])}catch{await loadEvidence(selected.id)};}catch(e){setError(e instanceof Error?e.message:"No fue posible actualizar el caso.");}finally{setBusy(false)}}
+ async function act(action:string,extra:Record<string,unknown>={}){
+  if(!selected)return null;
+  setBusy(true);setError("");setSuccess("");
+  try{
+   const result=await api("/api/operations/cases",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action,comment,...extra})});
+   if(files[0]){
+    const fd=new FormData();fd.append("caseId",selected.id);fd.append("file",files[0]);
+    await api("/api/operations/evidence",{method:"POST",body:fd});
+   }
+   const notice=result?.notification as {inAppRecipients?:number;pushDevices?:number;pushSent?:number;pushFailed?:number}|undefined;
+   const noticeText=notice?` · ${notice.inAppRecipients||0} aviso(s) WAMA · ${notice.pushSent||0} push enviados`:"";
+   if(action==="take")setSuccess(`Caso tomado correctamente${noticeText}.`);
+   if(action==="start")setSuccess(`Gestión iniciada${noticeText}.`);
+   if(action==="resolve")setSuccess(`Caso marcado como resuelto. Queda pendiente de cierre${noticeText}.`);
+   if(action==="close")setSuccess(`Caso cerrado correctamente${noticeText}.`);
+   if(action==="reopen")setSuccess(`Caso reabierto${noticeText}.`);
+   setComment("");setFiles([]);
+   await load();
+   try{
+    const[detail,evidencePayload]=await Promise.all([loadCaseDetail(selected.id),api(`/api/operations/evidence?caseId=${selected.id}`)]);
+    setSelected(detail);setEvidence(evidencePayload.evidence||[]);
+   }catch{await loadEvidence(selected.id)}
+   return result;
+  }catch(e){setError(e instanceof Error?e.message:"No fue posible actualizar el caso.");return null;}
+  finally{setBusy(false)}
+ }
  async function deleteCase(){
   if(!selected||!data?.canAdmin)return;
   const reason=caseDeleteReason.trim();
@@ -60,7 +86,7 @@ export default function OperationsHub(){
   setBusy(true);setError("");setSuccess("");
   try{
    await api("/api/operations/cases",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action:"delete",comment:reason})});
-   setSelected(null);setEvidence([]);setCaseDeleteReason("");
+   setSelected(null);setEvidence([]);setCaseDeleteReason("");setDeletePromptOpen(false);
    setSuccess("Caso eliminado y archivado correctamente. La trazabilidad se conserva.");
    await load();
   }catch(e){setError(e instanceof Error?e.message:"No fue posible eliminar el caso.");}
@@ -70,22 +96,17 @@ export default function OperationsHub(){
   if(!selected||!value)return;
   setSuccess("");
   if(value==="project"){
-    await act("assign_scope",{
-      assignmentScope:"project",
-      comment:"Asignado a todos los participantes del proyecto",
-    });
-    setSuccess("Caso asignado a todos los participantes del proyecto. Se generaron los avisos correspondientes.");
+    const result=await act("assign_scope",{assignmentScope:"project",comment:"Enviado a todos los participantes del proyecto"});
+    const n=result?.notification;
+    if(result)setSuccess(`Caso enviado a todos los participantes · ${n?.inAppRecipients||0} aviso(s) WAMA · ${n?.pushSent||0} push enviados.`);
     return;
   }
   if(value.startsWith("team:")){
     const teamId=value.slice(5);
     const teamName=String(data?.teams.find(team=>team.id===teamId)?.name||"equipo");
-    await act("assign_scope",{
-      assignmentScope:"team",
-      teamId,
-      comment:`Asignado al Equipo ${teamName}`,
-    });
-    setSuccess(`Caso asignado al Equipo ${teamName}. Los integrantes del equipo recibirán un aviso.`);
+    const result=await act("assign_scope",{assignmentScope:"team",teamId,comment:`Enviado al Equipo ${teamName}`});
+    const n=result?.notification;
+    if(result)setSuccess(`Caso enviado al Equipo ${teamName} · ${n?.inAppRecipients||0} aviso(s) WAMA · ${n?.pushSent||0} push enviados.`);
   }
  }
  async function loadEvidence(id:string){try{setEvidence((await api(`/api/operations/evidence?caseId=${id}`)).evidence||[])}catch{setEvidence([])}}
@@ -111,7 +132,7 @@ export default function OperationsHub(){
    {error&&<div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-700">{error}</div>}
    {success&&<div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-bold text-emerald-700">{success}</div>}
    {loading?<div className="grid h-64 place-items-center rounded-[2rem] bg-white"><Loader2 className="animate-spin text-[#008F87]"/></div>:<>
-    {view==="summary"&&<><div className="grid grid-cols-3 gap-3 xl:grid-cols-6"><Kpi label="Abiertos" value={openCases.length} detail="Pendientes de cierre"/><div className="hidden xl:block"><Kpi label="Sin asignar" value={cases.filter(c=>c.status==="unassigned").length} detail="Requieren atención" warn/></div><div className="hidden xl:block"><Kpi label="En proceso" value={cases.filter(c=>["taken","in_progress"].includes(c.status)).length} detail="Trabajo activo"/></div><Kpi label="Urgentes" value={openCases.filter(c=>c.is_urgent).length} detail="Prioridad inmediata" urgent/><Kpi label="Vencidos" value={overdue.length} detail="Fuera de plazo" warn/><div className="hidden xl:block"><Kpi label="Cerrados hoy" value={cases.filter(c=>c.status==="closed"&&new Date(c.created_at).toDateString()===new Date().toDateString()).length} detail="Gestión terminada"/></div></div><CaseTable items={cases.slice(0,8)} openCase={openCase} title="Casos recientes"/></>}
+    {view==="summary"&&<><div className="grid grid-cols-3 gap-3 xl:grid-cols-6"><Kpi label="Abiertos" value={openCases.length} detail="Pendientes de cierre"/><div className="hidden xl:block"><Kpi label="Sin responsable" value={withoutResponsible.length} detail="Aún nadie tomó el caso" warn/></div><div className="hidden xl:block"><Kpi label="En proceso" value={cases.filter(c=>["taken","in_progress"].includes(c.status)).length} detail="Trabajo activo"/></div><Kpi label="Urgentes" value={openCases.filter(c=>c.is_urgent).length} detail="Prioridad inmediata" urgent/><Kpi label="Vencidos" value={overdue.length} detail="Fuera de plazo" warn/><div className="hidden xl:block"><Kpi label="Cerrados hoy" value={cases.filter(c=>c.status==="closed"&&c.closed_at&&new Date(c.closed_at).toDateString()===new Date().toDateString()).length} detail="Gestión terminada"/></div></div><CaseTable items={cases.slice(0,8)} openCase={openCase} title="Casos recientes"/></>}
     {view==="projects"&&<OperationsProjectsPanel selectedProjectId={selectedProjectId} selectProject={setSelectedProjectId}/>}
     {view==="cases"&&<><section className="grid gap-3 rounded-[2rem] border border-[#DCE1E6] bg-white p-4 sm:grid-cols-[1fr_auto]"><label className="flex items-center gap-2 rounded-2xl bg-[#F4F6F7] px-4"><Search className="h-4 w-4"/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar por número, título o ubicación" className="w-full bg-transparent py-3 outline-none"/></label><div className="flex items-center gap-2 overflow-x-auto"><Filter className="h-4 w-4"/>{statuses.map(s=><button key={s} onClick={()=>setFilter(s)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${filter===s?"bg-[#00E5D6] text-black":"bg-[#EEF2F3]"}`}>{labels[s]}</button>)}</div></section><CaseTable items={visible} openCase={openCase} title={`${visible.length} casos`}/></>}
     {view==="alerts"&&<CaseTable items={cases.filter(c=>c.is_urgent)} openCase={openCase} title="Alertas urgentes" empty="No hay alertas urgentes registradas."/>}
@@ -123,12 +144,177 @@ export default function OperationsHub(){
    </>}
   </div>
   {open&&<Modal title="Reportar un caso" close={()=>setOpen(false)}><form onSubmit={create} className="grid gap-4"><Field label="Proyecto"><select required value={form.projectId||selectedProjectId} onChange={e=>setForm({...form,projectId:e.target.value})} className="input"><option value="">Selecciona</option>{data?.projects.map(project=><option key={project.id} value={project.id}>{project.name}</option>)}</select></Field><Field label="Título"><input required value={form.title} onChange={e=>setForm({...form,title:e.target.value})} className="input" placeholder="Ej. Falla de iluminación en acceso"/></Field><Field label="Descripción"><textarea required value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className="input min-h-28" placeholder="Describe qué ocurrió y qué se necesita resolver"/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Ubicación"><select required value={form.locationId} onChange={e=>setForm({...form,locationId:e.target.value})} className="input"><option value="">Selecciona</option>{data?.locations.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></Field><Field label="Categoría"><select required value={form.categoryId} onChange={e=>{const c=data?.categories.find(x=>x.id===e.target.value);setForm({...form,categoryId:e.target.value,teamId:String(c?.default_team_id||"")})}} className="input"><option value="">Selecciona</option>{data?.categories.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></Field><Field label="Equipo destinado"><select value={form.teamId} onChange={e=>setForm({...form,teamId:e.target.value})} className="input"><option value="">Asignación automática</option>{data?.teams.map(x=><option key={x.id} value={x.id}>{x.name} · {Array.isArray(x.members)?x.members.length:0} integrante(s)</option>)}</select><p className="-mt-2 text-xs text-[#69717D]">El equipo seleccionado recibirá el caso y sus integrantes con notificaciones habilitadas serán avisados.</p></Field><Field label="Prioridad"><select value={form.priority} disabled={form.isUrgent} onChange={e=>setForm({...form,priority:e.target.value})} className="input"><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="critical">Crítica</option></select></Field></div><label className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-4 ${form.isUrgent?"border-red-300 bg-red-50":"border-[#DCE1E6]"}`}><input type="checkbox" checked={form.isUrgent} onChange={e=>setForm({...form,isUrgent:e.target.checked})}/><span><strong className="block">Alerta urgente</strong><span className="text-xs text-[#69717D]">Notificará inmediatamente a los grupos configurados.</span></span></label><label className="flex cursor-pointer items-center gap-3 rounded-2xl border-2 border-dashed border-[#A8DCD7] bg-[#F6FCFB] p-4"><Camera className="text-[#008F87]"/><span className="flex-1 text-sm font-black">{files.length?`${files.length} archivo(s) seleccionado(s)`:"Agregar fotos o PDF (máximo 12 MB cada uno)"}</span><input ref={fileInput} type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={e=>setFiles([...e.target.files||[]].slice(0,5))}/></label><button disabled={busy} className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00E5D6] px-5 py-4 font-black disabled:opacity-60">{busy?<Loader2 className="animate-spin"/>:<Plus/>}{busy?"Enviando caso…":"Reportar caso"}</button></form></Modal>}
-  {selected&&<Modal title={`${selected.case_number} · ${selected.title}`} close={()=>setSelected(null)} wide><div className="grid gap-6 lg:grid-cols-[1fr_.8fr]"><section><div className="flex flex-wrap gap-2"><Pill text={labels[selected.status]||selected.status}/><Pill text={labels[selected.priority]||selected.priority} urgent={selected.priority==="critical"}/>{selected.is_urgent&&<Pill text="Alerta urgente" urgent/>}</div><p className="mt-5 leading-7 text-[#4F5964]">{selected.description}</p><dl className="mt-6 grid gap-4 rounded-2xl bg-[#F4F6F7] p-5 sm:grid-cols-2"><Detail label="Ubicación" value={String(selected.location?.name||"Sin ubicación")}/><Detail label="Destino" value={selected.assignment_scope==="project"?"Todos los participantes":selected.team?.name?`Equipo ${selected.team.name}`:"Sin asignar"}/><Detail label="Reportado por" value={selected.reporter?.full_name||"Usuario"}/><Detail label="Responsable individual" value={selected.assignee?.full_name||"Sin asignar"}/><Detail label="Fecha límite" value={new Date(selected.due_at).toLocaleString("es-CL")}/><Detail label="Creado" value={new Date(selected.created_at).toLocaleString("es-CL")}/></dl><div className="mt-6"><h3 className="font-black">Evidencias</h3><div className="mt-3 grid gap-2 sm:grid-cols-2">{evidence.map(x=><a key={x.id} href={x.url||"#"} target="_blank" rel="noreferrer" className="rounded-2xl border p-3 text-sm font-bold">{x.file_name}</a>)}{!evidence.length&&<p className="text-sm text-[#69717D]">Aún no hay evidencias.</p>}</div></div></section><section><h3 className="font-black">Historial completo</h3><div className="mt-4 max-h-72 space-y-3 overflow-y-auto">{[...(selected.events||[])].sort((a,b)=>a.created_at.localeCompare(b.created_at)).map(e=><div key={e.id} className="border-l-2 border-[#00B8AE] pl-4"><strong className="text-sm">{actionNames[e.event_type]||e.event_type}</strong>{e.comment&&<p className="mt-1 text-sm text-[#4F5964]">{e.comment}</p>}<p className="mt-1 text-xs text-[#7A838D]">{new Date(e.created_at).toLocaleString("es-CL")}</p></div>)}</div><div className="mt-6 grid gap-3 border-t pt-5"><textarea value={comment} onChange={e=>setComment(e.target.value)} className="input min-h-20" placeholder="Comentario o detalle de la gestión"/><label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed p-3 text-sm font-black"><Camera className="h-4 w-4"/>{files[0]?.name||"Adjuntar evidencia"}<input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={e=>setFiles(e.target.files?.[0]?[e.target.files[0]]:[])}/></label><button disabled={busy||(!comment.trim()&&!files[0])} onClick={()=>act("comment")} className="rounded-full bg-[#EEF2F3] px-4 py-3 text-sm font-black disabled:opacity-50">Agregar comentario o evidencia</button>{data?.canCoordinate&&["unassigned","assigned","reopened"].includes(selected.status)&&<div className="grid gap-2"><label className="text-xs font-black uppercase tracking-[.12em] text-[#7A838D]">Asignar caso a</label><select defaultValue="" onChange={e=>{const value=e.target.value;e.currentTarget.value="";value&&void assignScope(value)}} className="input"><option value="">Selecciona destino…</option><option value="project">Todos los participantes del proyecto</option>{data.teams.map(team=><option key={team.id} value={`team:${team.id}`}>Equipo {team.name}</option>)}</select><p className="text-xs leading-5 text-[#69717D]">El equipo o todos los participantes recibirán un aviso. Luego una persona puede usar <strong>Tomar caso</strong> y quedar como responsable individual.</p></div>}{["unassigned","assigned","reopened"].includes(selected.status)&&<button onClick={()=>act("take")} disabled={busy} className="rounded-full bg-[#00E5D6] px-4 py-3 text-sm font-black">Tomar caso</button>}{selected.status==="taken"&&<button onClick={()=>act("start")} disabled={busy} className="rounded-full bg-[#0B0C0E] px-4 py-3 text-sm font-black text-white">Iniciar trabajo</button>}{["taken","in_progress"].includes(selected.status)&&<button onClick={()=>act("resolve")} disabled={busy||!comment.trim()} className="rounded-full bg-[#00E5D6] px-4 py-3 text-sm font-black">Marcar como resuelto</button>}{selected.status==="resolved"&&<button onClick={()=>act("close")} disabled={busy} className="rounded-full bg-[#0B0C0E] px-4 py-3 text-sm font-black text-white">Cerrar caso</button>}{["resolved","closed"].includes(selected.status)&&<button onClick={()=>act("reopen")} disabled={busy||!comment.trim()} className="rounded-full border px-4 py-3 text-sm font-black">Reabrir con motivo</button>}{data?.canAdmin&&<div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-4"><p className="text-sm font-black text-red-700">Administración del caso</p><p className="mt-1 text-xs leading-5 text-red-700/80">Solo administradores. El caso se archiva, no se destruye: conserva historial, evidencias, autor, fecha y motivo.</p><input value={caseDeleteReason} onChange={e=>setCaseDeleteReason(e.target.value)} className="input mt-3 bg-white" placeholder="Motivo de eliminación (obligatorio)"/><button type="button" onClick={deleteCase} disabled={busy||caseDeleteReason.trim().length<5} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40"><Trash2 className="h-4 w-4"/>Eliminar caso</button></div>}</div></section></div></Modal>}
-  {configOpen&&<Modal title={`${editingId?"Editar":"Agregar"} ${configOpen==="location"?"ubicación":configOpen==="team"?"equipo":"categoría"}`} close={closeConfig}><form onSubmit={saveConfig} className="grid gap-4"><Field label="Nombre"><input required value={config.name} onChange={e=>setConfig({...config,name:e.target.value})} className="input"/></Field>{configOpen==="location"&&<Field label="Dirección"><input value={config.address} onChange={e=>setConfig({...config,address:e.target.value})} className="input"/></Field>}{configOpen==="team"&&<><Field label="Descripción"><textarea value={config.description} onChange={e=>setConfig({...config,description:e.target.value})} className="input min-h-20" placeholder="Qué atiende este equipo"/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Color"><input type="color" value={config.color} onChange={e=>setConfig({...config,color:e.target.value})} className="h-14 w-full rounded-2xl border p-2"/></Field><Field label="Plazo de respuesta"><select value={config.slaMinutes} onChange={e=>setConfig({...config,slaMinutes:e.target.value})} className="input"><option value="240">4 horas</option><option value="480">8 horas</option><option value="1440">24 horas</option><option value="2880">48 horas</option></select></Field></div><label className="flex gap-3 rounded-2xl bg-red-50 p-4"><input type="checkbox" checked={config.receivesUrgent} onChange={e=>setConfig({...config,receivesUrgent:e.target.checked})}/><strong>Recibe alertas urgentes</strong></label><div><p className="mb-2 text-sm font-black">Integrantes licenciados</p><div className="grid max-h-56 gap-2 overflow-y-auto rounded-2xl border p-3">{data?.members.map(member=><label key={member.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-[#F4F8F8]"><input type="checkbox" checked={config.memberIds.includes(member.id)} onChange={e=>setConfig({...config,memberIds:e.target.checked?[...new Set([...config.memberIds,member.id])]:config.memberIds.filter(id=>id!==member.id),coordinatorIds:e.target.checked?config.coordinatorIds:config.coordinatorIds.filter(id=>id!==member.id)})}/><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{member.full_name}</strong><span className="block truncate text-xs text-[#69717D]">{member.email}</span></span>{config.memberIds.includes(member.id)&&<select value={config.coordinatorIds.includes(member.id)?"coordinator":"operator"} onChange={e=>setConfig({...config,coordinatorIds:e.target.value==="coordinator"?[...new Set([...config.coordinatorIds,member.id])]:config.coordinatorIds.filter(id=>id!==member.id)})} className="rounded-xl border px-2 py-1 text-xs"><option value="operator">Operativo</option><option value="coordinator">Coordinador</option></select>}</label>)}</div></div></>}{configOpen==="category"&&<><Field label="Equipo predeterminado"><select value={config.defaultTeamId} onChange={e=>setConfig({...config,defaultTeamId:e.target.value})} className="input"><option value="">Sin equipo</option>{data?.teams.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></Field><Field label="Plazo máximo en minutos"><input type="number" min="1" value={config.slaMinutes} onChange={e=>setConfig({...config,slaMinutes:e.target.value})} className="input"/></Field></>}<button disabled={busy} className="rounded-full bg-[#00E5D6] px-5 py-4 font-black">{busy?"Guardando…":"Guardar cambios"}</button>{editingId&&configOpen==="team"&&<div className="mt-2 border-t pt-5"><p className="text-sm font-black text-red-700">Eliminar equipo</p><p className="mt-1 text-xs text-[#69717D]">La eliminación es lógica y auditada. Los casos históricos se conservan.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={deleteReason} onChange={e=>setDeleteReason(e.target.value)} className="input flex-1" placeholder="Motivo obligatorio"/><button type="button" onClick={deleteTeam} disabled={busy||deleteReason.trim().length<5} className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40"><Trash2 className="h-4 w-4"/>Eliminar</button></div></div>}</form></Modal>}
+  {selected&&<Modal title={`${selected.case_number} · ${selected.title}`} close={()=>{setSelected(null);setDeletePromptOpen(false);setCaseDeleteReason("")}} wide>
+ <div className="grid gap-6 lg:grid-cols-[1fr_.8fr]">
+  <section>
+   <div className="flex flex-wrap gap-2">
+    <Pill text={caseStatusLabel(selected)}/>
+    <Pill text={labels[selected.priority]||selected.priority} urgent={selected.priority==="critical"}/>
+    {selected.is_urgent&&<Pill text="Alerta urgente" urgent/>}
+   </div>
+   <p className="mt-5 leading-7 text-[#4F5964]">{selected.description}</p>
+   <dl className="mt-6 grid gap-4 rounded-2xl bg-[#F4F6F7] p-5 sm:grid-cols-2">
+    <Detail label="Ubicación" value={String(selected.location?.name||"Sin ubicación")}/>
+    <Detail label="Destino" value={selected.assignment_scope==="project"?"Todos los participantes":selected.team?.name?`Equipo ${selected.team.name}`:"Sin asignar"}/>
+    <Detail label="Reportado por" value={selected.reporter?.full_name||"Usuario"}/>
+    <Detail label="Responsable individual" value={selected.assignee?.full_name||"Sin asignar"}/>
+    <Detail label="Fecha límite" value={new Date(selected.due_at).toLocaleString("es-CL")}/>
+    <Detail label="Creado" value={new Date(selected.created_at).toLocaleString("es-CL")}/>
+   </dl>
+
+   <WorkflowCard current={selected.status} assignee={selected.assignee?.full_name||null} team={selected.team?.name||null}/>
+
+   <div className="mt-6">
+    <div className="flex items-center justify-between gap-3">
+     <h3 className="font-black">Evidencias</h3>
+     <span className="text-xs font-bold text-[#7A838D]">{evidence.length} archivo(s)</span>
+    </div>
+    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+     {evidence.map(x=><EvidenceCard key={x.id} item={x}/>)}
+     {!evidence.length&&<p className="text-sm text-[#69717D]">Aún no hay evidencias.</p>}
+    </div>
+   </div>
+  </section>
+
+  <section>
+   <h3 className="font-black">Historial completo</h3>
+   <div className="mt-4 max-h-72 space-y-3 overflow-y-auto">
+    {[...(selected.events||[])].sort((a,b)=>a.created_at.localeCompare(b.created_at)).map(e=>
+     <div key={e.id} className="border-l-2 border-[#00B8AE] pl-4">
+      <strong className="text-sm">{actionNames[e.event_type]||"Actualización del caso"}</strong>
+      {e.comment&&<p className="mt-1 text-sm text-[#4F5964]">{e.comment}</p>}
+      <p className="mt-1 text-xs text-[#7A838D]">{new Date(e.created_at).toLocaleString("es-CL")}</p>
+     </div>)}
+   </div>
+
+   <div className="mt-6 grid gap-3 border-t pt-5">
+    <textarea value={comment} onChange={e=>setComment(e.target.value)} className="input min-h-20" placeholder={selected.status==="resolved"?"Comentario final de cierre (obligatorio)":"Comentario o detalle de la gestión"}/>
+    <label className="flex cursor-pointer items-center gap-2 rounded-2xl border border-dashed p-3 text-sm font-black">
+     <Camera className="h-4 w-4"/>{files[0]?.name||"Adjuntar evidencia"}
+     <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" onChange={e=>setFiles(e.target.files?.[0]?[e.target.files[0]]:[])}/>
+    </label>
+    <button disabled={busy||(!comment.trim()&&!files[0])} onClick={()=>act("comment")} className="rounded-full bg-[#EEF2F3] px-4 py-3 text-sm font-black disabled:opacity-50">Agregar comentario o evidencia</button>
+
+    {data?.canCoordinate&&["unassigned","assigned","reopened"].includes(selected.status)&&
+     <div className="grid gap-2">
+      <label className="text-xs font-black uppercase tracking-[.12em] text-[#7A838D]">Enviar caso a</label>
+      <select defaultValue="" onChange={e=>{const value=e.target.value;e.currentTarget.value="";value&&void assignScope(value)}} className="input">
+       <option value="">Selecciona destino…</option>
+       <option value="project">Todos los participantes del proyecto</option>
+       {data.teams.map(team=><option key={team.id} value={`team:${team.id}`}>Equipo {team.name}</option>)}
+      </select>
+      <p className="text-xs leading-5 text-[#69717D]">El equipo recibe el aviso. Después un integrante autorizado puede usar <strong>Tomar caso</strong> y quedar como responsable individual.</p>
+     </div>}
+
+    {["unassigned","assigned","reopened"].includes(selected.status)&&
+     <button onClick={()=>act("take")} disabled={busy} className="rounded-full bg-[#00E5D6] px-4 py-3 text-sm font-black">
+      Tomar caso
+     </button>}
+
+    {selected.status==="taken"&&
+     <button onClick={()=>act("start")} disabled={busy} className="rounded-full bg-[#0B0C0E] px-4 py-3 text-sm font-black text-white">
+      Iniciar gestión
+     </button>}
+
+    {["taken","in_progress"].includes(selected.status)&&
+     <button onClick={()=>act("resolve")} disabled={busy||!comment.trim()} className="rounded-full bg-[#00E5D6] px-4 py-3 text-sm font-black disabled:opacity-50">
+      Marcar como resuelto
+     </button>}
+
+    {selected.status==="resolved"&&
+     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+      <div className="flex gap-3">
+       <CircleCheckBig className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700"/>
+       <div>
+        <p className="text-sm font-black text-emerald-800">Listo para cerrar</p>
+        <p className="mt-1 text-xs leading-5 text-emerald-700">Agrega un comentario final de cierre. Puedes adjuntar una última evidencia si corresponde.</p>
+       </div>
+      </div>
+      <button onClick={()=>act("close")} disabled={busy||!comment.trim()} className="mt-3 w-full rounded-full bg-[#0B0C0E] px-4 py-3 text-sm font-black text-white disabled:opacity-40">
+       Cerrar caso
+      </button>
+     </div>}
+
+    {selected.status==="closed"&&
+     <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-black text-emerald-800">
+      Caso cerrado {selected.closed_at?`· ${new Date(selected.closed_at).toLocaleString("es-CL")}`:""}
+     </div>}
+
+    {["resolved","closed"].includes(selected.status)&&
+     <button onClick={()=>act("reopen")} disabled={busy||!comment.trim()} className="rounded-full border px-4 py-3 text-sm font-black disabled:opacity-40">
+      Reabrir con motivo
+     </button>}
+
+    {data?.canAdmin&&
+     <div className="mt-2 border-t pt-4">
+      {!deletePromptOpen?
+       <button type="button" onClick={()=>setDeletePromptOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[#DCE1E6] px-4 py-2 text-xs font-black text-[#59616B]">
+        <MoreHorizontal className="h-4 w-4"/>Más acciones
+       </button>
+       :
+       <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
+        <div className="flex items-start justify-between gap-3">
+         <div>
+          <p className="text-sm font-black text-red-700">Eliminar caso</p>
+          <p className="mt-1 text-xs leading-5 text-red-700/80">Solo administradores. Se archiva sin destruir historial ni evidencias.</p>
+         </div>
+         <button type="button" onClick={()=>{setDeletePromptOpen(false);setCaseDeleteReason("")}} className="text-red-700"><X className="h-4 w-4"/></button>
+        </div>
+        <input value={caseDeleteReason} onChange={e=>setCaseDeleteReason(e.target.value)} className="input mt-3 bg-white" placeholder="Motivo de eliminación (obligatorio)"/>
+        <button type="button" onClick={deleteCase} disabled={busy||caseDeleteReason.trim().length<5} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full bg-red-600 px-4 py-3 text-sm font-black text-white disabled:opacity-40">
+         <Trash2 className="h-4 w-4"/>Eliminar caso
+        </button>
+       </div>}
+     </div>}
+   </div>
+  </section>
+ </div>
+</Modal>}
+{configOpen&&<Modal title={`${editingId?"Editar":"Agregar"} ${configOpen==="location"?"ubicación":configOpen==="team"?"equipo":"categoría"}`} close={closeConfig}><form onSubmit={saveConfig} className="grid gap-4"><Field label="Nombre"><input required value={config.name} onChange={e=>setConfig({...config,name:e.target.value})} className="input"/></Field>{configOpen==="location"&&<Field label="Dirección"><input value={config.address} onChange={e=>setConfig({...config,address:e.target.value})} className="input"/></Field>}{configOpen==="team"&&<><Field label="Descripción"><textarea value={config.description} onChange={e=>setConfig({...config,description:e.target.value})} className="input min-h-20" placeholder="Qué atiende este equipo"/></Field><div className="grid gap-4 sm:grid-cols-2"><Field label="Color"><input type="color" value={config.color} onChange={e=>setConfig({...config,color:e.target.value})} className="h-14 w-full rounded-2xl border p-2"/></Field><Field label="Plazo de respuesta"><select value={config.slaMinutes} onChange={e=>setConfig({...config,slaMinutes:e.target.value})} className="input"><option value="240">4 horas</option><option value="480">8 horas</option><option value="1440">24 horas</option><option value="2880">48 horas</option></select></Field></div><label className="flex gap-3 rounded-2xl bg-red-50 p-4"><input type="checkbox" checked={config.receivesUrgent} onChange={e=>setConfig({...config,receivesUrgent:e.target.checked})}/><strong>Recibe alertas urgentes</strong></label><div><p className="mb-2 text-sm font-black">Integrantes licenciados</p><div className="grid max-h-56 gap-2 overflow-y-auto rounded-2xl border p-3">{data?.members.map(member=><label key={member.id} className="flex items-center gap-3 rounded-xl p-2 hover:bg-[#F4F8F8]"><input type="checkbox" checked={config.memberIds.includes(member.id)} onChange={e=>setConfig({...config,memberIds:e.target.checked?[...new Set([...config.memberIds,member.id])]:config.memberIds.filter(id=>id!==member.id),coordinatorIds:e.target.checked?config.coordinatorIds:config.coordinatorIds.filter(id=>id!==member.id)})}/><span className="min-w-0 flex-1"><strong className="block truncate text-sm">{member.full_name}</strong><span className="block truncate text-xs text-[#69717D]">{member.email}</span></span>{config.memberIds.includes(member.id)&&<select value={config.coordinatorIds.includes(member.id)?"coordinator":"operator"} onChange={e=>setConfig({...config,coordinatorIds:e.target.value==="coordinator"?[...new Set([...config.coordinatorIds,member.id])]:config.coordinatorIds.filter(id=>id!==member.id)})} className="rounded-xl border px-2 py-1 text-xs"><option value="operator">Operativo</option><option value="coordinator">Coordinador</option></select>}</label>)}</div></div></>}{configOpen==="category"&&<><Field label="Equipo predeterminado"><select value={config.defaultTeamId} onChange={e=>setConfig({...config,defaultTeamId:e.target.value})} className="input"><option value="">Sin equipo</option>{data?.teams.map(x=><option key={x.id} value={x.id}>{x.name}</option>)}</select></Field><Field label="Plazo máximo en minutos"><input type="number" min="1" value={config.slaMinutes} onChange={e=>setConfig({...config,slaMinutes:e.target.value})} className="input"/></Field></>}<button disabled={busy} className="rounded-full bg-[#00E5D6] px-5 py-4 font-black">{busy?"Guardando…":"Guardar cambios"}</button>{editingId&&configOpen==="team"&&<div className="mt-2 border-t pt-5"><p className="text-sm font-black text-red-700">Eliminar equipo</p><p className="mt-1 text-xs text-[#69717D]">La eliminación es lógica y auditada. Los casos históricos se conservan.</p><div className="mt-3 flex flex-col gap-2 sm:flex-row"><input value={deleteReason} onChange={e=>setDeleteReason(e.target.value)} className="input flex-1" placeholder="Motivo obligatorio"/><button type="button" onClick={deleteTeam} disabled={busy||deleteReason.trim().length<5} className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-3 text-sm font-black text-white disabled:opacity-40"><Trash2 className="h-4 w-4"/>Eliminar</button></div></div>}</form></Modal>}
  </EnterpriseShell>
 }
+
+function caseStatusLabel(item:Case){
+ if(item.status==="assigned"&&!item.assigned_to){
+  if(item.assignment_scope==="project")return "Enviado a todos";
+  if(item.team?.name)return `Enviado a ${item.team.name}`;
+  return "Pendiente de responsable";
+ }
+ if(item.status==="taken")return "Tomado";
+ if(item.status==="in_progress")return "En gestión";
+ if(item.status==="resolved")return "Resuelto · pendiente cierre";
+ return labels[item.status]||"Actualizado";
+}
+function WorkflowCard({current,assignee,team}:{current:string;assignee:string|null;team:string|null}){
+ const steps=[
+  {key:"reported",label:"Reportado",done:true},
+  {key:"sent",label:team?`Enviado a ${team}`:"Destino definido",done:["assigned","taken","in_progress","resolved","closed"].includes(current)},
+  {key:"taken",label:assignee?`Tomado por ${assignee}`:"Responsable",done:["taken","in_progress","resolved","closed"].includes(current)},
+  {key:"work",label:"En gestión",done:["in_progress","resolved","closed"].includes(current)},
+  {key:"resolved",label:"Resuelto",done:["resolved","closed"].includes(current)},
+  {key:"closed",label:"Cerrado",done:current==="closed"},
+ ];
+ return <div className="mt-6 rounded-2xl border border-[#DCE1E6] bg-white p-4">
+  <p className="text-xs font-black uppercase tracking-[.12em] text-[#7A838D]">Flujo del caso</p>
+  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+   {steps.map(step=><div key={step.key} className={`rounded-xl px-3 py-2 text-xs font-black ${step.done?"bg-[#E7F8F6] text-[#08766F]":"bg-[#F4F6F7] text-[#8A929A]"}`}>
+    {step.done?"✓ ":""}{step.label}
+   </div>)}
+  </div>
+ </div>
+}
+function EvidenceCard({item}:{item:Evidence}){
+ const isImage=item.mime_type?.startsWith("image/");
+ return <a href={item.url||"#"} target="_blank" rel="noreferrer" className="group overflow-hidden rounded-2xl border border-[#DCE1E6] bg-white transition hover:border-[#00B8AE]">
+  {isImage&&item.url?
+   <div className="aspect-[4/3] overflow-hidden bg-[#EEF2F3]"><img src={item.url} alt={item.file_name} className="h-full w-full object-cover transition group-hover:scale-[1.02]"/></div>
+   :
+   <div className="grid aspect-[4/3] place-items-center bg-[#F4F6F7] text-[#69717D]">{item.mime_type==="application/pdf"?<FileType2 className="h-9 w-9"/>:<ImageIcon className="h-9 w-9"/>}</div>}
+  <div className="p-3"><p className="line-clamp-2 text-xs font-black">{item.file_name}</p><p className="mt-1 text-[10px] font-bold uppercase text-[#8A929A]">{item.mime_type==="application/pdf"?"PDF":"Imagen"} · Abrir</p></div>
+ </a>
+}
 function Kpi({label,value,detail,warn,urgent}:{label:string;value:number;detail:string;warn?:boolean;urgent?:boolean}){return <article className={`rounded-3xl border bg-white p-5 ${urgent?"border-red-200":warn?"border-amber-200":"border-[#DCE1E6]"}`}><p className="text-xs font-black uppercase tracking-[.14em] text-[#69717D]">{label}</p><strong className={`mt-3 block text-4xl ${urgent?"text-red-600":warn?"text-amber-600":""}`}>{value}</strong><p className="mt-2 text-xs text-[#69717D]">{detail}</p></article>}
-function CaseTable({items,openCase,title,empty="Aún no hay casos."}:{items:Case[];openCase:(c:Case)=>void;title:string;empty?:string}){return <section className="overflow-hidden rounded-[1.5rem] border border-[#DCE1E6] bg-white xl:rounded-[2rem]"><div className="border-b p-5 sm:p-6"><h2 className="text-xl font-black">{title}</h2></div><div className="divide-y">{items.map(c=><button key={c.id} onClick={()=>openCase(c)} className="grid w-full gap-3 p-5 text-left transition hover:bg-[#F8FAFA] sm:grid-cols-[1fr_auto] sm:items-center"><div className="flex gap-4"><span className={`mt-1 h-10 w-1 shrink-0 rounded-full ${c.is_urgent?"bg-red-500":c.priority==="high"?"bg-amber-500":"bg-[#00B8AE]"}`}/><div><p className="text-xs font-black text-[#008F87]">{c.case_number} · {c.category?.name||"Sin categoría"}</p><h3 className="mt-1 font-black">{c.title}</h3><p className="mt-1 text-xs text-[#69717D]">{c.location?.name||"Sin ubicación"} · {c.team?.name||"Sin equipo"} · {c.assignee?.full_name||"Sin responsable"}</p></div></div><div className="flex items-center justify-between gap-3 sm:justify-end"><Pill text={labels[c.status]||c.status}/><span className="inline-flex items-center gap-1 text-xs font-black text-[#008F87]">Ver caso <ChevronRight className="h-4 w-4"/></span></div></button>)}{!items.length&&<p className="p-10 text-center text-sm text-[#69717D]">{empty}</p>}</div></section>}
+function CaseTable({items,openCase,title,empty="Aún no hay casos."}:{items:Case[];openCase:(c:Case)=>void;title:string;empty?:string}){return <section className="overflow-hidden rounded-[1.5rem] border border-[#DCE1E6] bg-white xl:rounded-[2rem]"><div className="border-b p-5 sm:p-6"><h2 className="text-xl font-black">{title}</h2></div><div className="divide-y">{items.map(c=><button key={c.id} onClick={()=>openCase(c)} className="grid w-full gap-3 p-5 text-left transition hover:bg-[#F8FAFA] sm:grid-cols-[1fr_auto] sm:items-center"><div className="flex gap-4"><span className={`mt-1 h-10 w-1 shrink-0 rounded-full ${c.is_urgent?"bg-red-500":c.priority==="high"?"bg-amber-500":"bg-[#00B8AE]"}`}/><div><p className="text-xs font-black text-[#008F87]">{c.case_number} · {c.category?.name||"Sin categoría"}</p><h3 className="mt-1 font-black">{c.title}</h3><p className="mt-1 text-xs text-[#69717D]">{c.location?.name||"Sin ubicación"} · {c.team?.name||"Sin equipo"} · {c.assignee?.full_name||"Sin responsable"}</p></div></div><div className="flex items-center justify-between gap-3 sm:justify-end"><Pill text={caseStatusLabel(c)}/><span className="inline-flex items-center gap-1 text-xs font-black text-[#008F87]">Ver caso <ChevronRight className="h-4 w-4"/></span></div></button>)}{!items.length&&<p className="p-10 text-center text-sm text-[#69717D]">{empty}</p>}</div></section>}
 function Reports({cases,teams}:{cases:Case[];teams:Ref[]}){const closed=cases.filter(c=>c.status==="closed");const resolved=cases.filter(c=>c.resolved_at);const avg=resolved.length?Math.round(resolved.reduce((n,c)=>n+(new Date(String(c.resolved_at)).getTime()-new Date(c.created_at).getTime())/3600000,0)/resolved.length):0;return <div className="grid gap-5"><div className="grid gap-4 sm:grid-cols-3"><Kpi label="Total de casos" value={cases.length} detail="Histórico del módulo"/><Kpi label="Casos cerrados" value={closed.length} detail={`${cases.length?Math.round(closed.length/cases.length*100):0}% del total`}/><Kpi label="Tiempo promedio" value={avg} detail="Horas hasta resolución"/></div><section className="rounded-[2rem] border bg-white p-6"><h2 className="text-xl font-black">Carga por equipo</h2><div className="mt-5 space-y-4">{teams.map(t=>{const total=cases.filter(c=>c.team?.id===t.id).length;return <div key={t.id}><div className="flex justify-between text-sm"><strong>{t.name}</strong><span>{total} casos</span></div><div className="mt-2 h-2 rounded-full bg-[#EDF1F2]"><div className="h-2 rounded-full bg-[#00B8AE]" style={{width:`${Math.min(100,cases.length?total/cases.length*100:0)}%`}}/></div></div>})}</div></section></div>}
 function SettingsView({canAdmin,data,onAdd,onEdit}:{canAdmin:boolean;data:Payload;onAdd:(x:"location"|"team"|"category")=>void;onEdit:(type:"location"|"team"|"category",item:Ref)=>void}){if(!canAdmin)return <div className="rounded-[2rem] bg-white p-8 text-center"><Settings className="mx-auto text-[#008F87]"/><h2 className="mt-4 text-xl font-black">Configuración protegida</h2><p className="mt-2 text-sm text-[#69717D]">Solo el owner o administrador puede cambiar equipos, ubicaciones y categorías.</p></div>;return <div className="grid gap-5 lg:grid-cols-3"><Config type="location" title="Ubicaciones" icon={<MapPin/>} items={data.locations} add={()=>onAdd("location")} edit={onEdit}/><Config type="team" title="Equipos" icon={<Users/>} items={data.teams} add={()=>onAdd("team")} edit={onEdit}/><Config type="category" title="Categorías y SLA" icon={<Clock3/>} items={data.categories} add={()=>onAdd("category")} edit={onEdit}/></div>}
 function Config({type,title,icon,items,add,edit}:{type:"location"|"team"|"category";title:string;icon:React.ReactNode;items:Ref[];add:()=>void;edit:(type:"location"|"team"|"category",item:Ref)=>void}){return <section className="rounded-[2rem] border bg-white p-6"><div className="flex items-center justify-between"><span className="flex items-center gap-2 font-black">{icon}{title}</span><button onClick={add} aria-label={`Agregar ${title}`} className="rounded-full bg-[#DFFFFA] p-2 text-[#008F87]"><Plus/></button></div><div className="mt-5 divide-y">{items.map(x=><button type="button" key={x.id} onClick={()=>edit(type,x)} className="flex w-full items-center justify-between gap-3 py-3 text-left text-sm font-bold hover:text-[#008F87]"><span>{x.name}</span><span className="inline-flex items-center gap-1 text-xs"><Pencil className="h-4 w-4"/>Editar</span></button>)}</div></section>}
