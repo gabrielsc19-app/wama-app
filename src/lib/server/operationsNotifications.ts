@@ -87,10 +87,10 @@ export async function createOperationsNotifications(
             icon: "/wama-icon-192.png",
             badge: "/wama-icon-192.png",
             tag: `wama-case-${notice.caseId}`,
-            url: "/operations-hub",
+            url: `/operations-hub?case=${encodeURIComponent(notice.caseId)}`,
             data: {
               caseId: notice.caseId,
-              url: "/operations-hub",
+              url: `/operations-hub?case=${encodeURIComponent(notice.caseId)}`,
             },
           }),
         );

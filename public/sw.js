@@ -1,47 +1,76 @@
-const WAMA_SW_VERSION = "wama-pwa-v2";
+const WAMA_SW_VERSION = "wama-pwa-v4";
 
 self.addEventListener("install", () => self.skipWaiting());
+
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     Promise.all([
       self.clients.claim(),
-      caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))),
+      caches.keys().then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key !== WAMA_SW_VERSION)
+            .map((key) => caches.delete(key)),
+        ),
+      ),
     ]),
   );
 });
 
 self.addEventListener("push", (event) => {
   let data = {};
+
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: "WAMA", body: event.data ? event.data.text() : "Nueva notificación" };
+    data = {
+      title: "WAMA",
+      body: event.data ? event.data.text() : "Tienes un nuevo aviso",
+    };
   }
 
   const options = {
-    body: data.body || "Nueva notificación",
+    body: data.body || "Tienes un nuevo aviso en WAMA",
     icon: data.icon || "/wama-icon-192.png",
     badge: data.badge || "/wama-icon-192.png",
-    tag: data.tag || WAMA_SW_VERSION,
-    data: { url: data.url || data.data?.url || "/app", ...(data.data || {}) },
+    tag: data.tag || `wama-${Date.now()}`,
+    renotify: true,
+    data: {
+      url: data.url || data.data?.url || "/operations-hub",
+      caseId: data.data?.caseId || null,
+      ...(data.data || {}),
+    },
   };
 
-  event.waitUntil(self.registration.showNotification(data.title || "WAMA", options));
+  event.waitUntil(
+    self.registration.showNotification(data.title || "WAMA", options),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = event.notification.data?.url || "/app";
+  const targetUrl = event.notification.data?.url || "/operations-hub";
+
   event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      for (const client of clientList) {
-        if ("focus" in client) {
-          client.focus();
-          if ("navigate" in client) return client.navigate(url);
-          return;
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then(async (clientList) => {
+        for (const client of clientList) {
+          try {
+            const clientUrl = new URL(client.url);
+            const target = new URL(targetUrl, self.location.origin);
+
+            if (clientUrl.origin === target.origin && "focus" in client) {
+              await client.focus();
+              if ("navigate" in client) await client.navigate(target.href);
+              return;
+            }
+          } catch {}
         }
-      }
-      return clients.openWindow ? clients.openWindow(url) : undefined;
-    }),
+
+        if (self.clients.openWindow) {
+          return self.clients.openWindow(targetUrl);
+        }
+      }),
   );
 });

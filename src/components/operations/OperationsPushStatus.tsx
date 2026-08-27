@@ -47,7 +47,11 @@ function formatDate(value?: string | null) {
   }).format(date);
 }
 
-export default function OperationsPushStatus() {
+export default function OperationsPushStatus({
+  compact = false,
+}: {
+  compact?: boolean;
+}) {
   const [status, setStatus] = useState<Status>("checking");
   const [info, setInfo] = useState<PushInfo | null>(null);
   const [busy, setBusy] = useState(false);
@@ -165,6 +169,25 @@ export default function OperationsPushStatus() {
   }[status];
 
   const Icon = view.Icon;
+
+  if (compact) {
+    return (
+      <div className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 ${view.className}`}>
+        <div className="flex min-w-0 items-center gap-2">
+          <Icon className={`h-4 w-4 shrink-0 ${status === "checking" ? "animate-spin" : ""}`} />
+          <div className="min-w-0">
+            <p className="truncate text-[11px] font-black">{view.label}</p>
+            {status !== "active" && (
+              <p className="mt-0.5 line-clamp-1 text-[10px] opacity-75">{view.detail}</p>
+            )}
+          </div>
+        </div>
+        <button type="button" onClick={() => void check()} disabled={busy} aria-label="Comprobar notificaciones" className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-current/20">
+          <RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div

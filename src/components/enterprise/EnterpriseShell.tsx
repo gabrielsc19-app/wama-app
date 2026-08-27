@@ -36,10 +36,14 @@ export default function EnterpriseShell({
   children,
   title,
   subtitle,
+  hideMobileNav = false,
+  compactMobileHeader = false,
 }: {
   children: React.ReactNode;
   title: string;
   subtitle: string;
+  hideMobileNav?: boolean;
+  compactMobileHeader?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -63,7 +67,11 @@ export default function EnterpriseShell({
   const isActive = (href: string) => href === "/empresa" ? pathname === href : !href.includes("#") && pathname.startsWith(href);
 
   return (
-    <main className="min-h-screen bg-[#F5F6F7] pb-[calc(5.4rem+env(safe-area-inset-bottom))] text-[#0B0C0E] lg:pb-0">
+    <main className={`min-h-screen bg-[#F5F6F7] text-[#0B0C0E] lg:pb-0 ${
+      hideMobileNav
+        ? "pb-[calc(5.8rem+env(safe-area-inset-bottom))]"
+        : "pb-[calc(5.4rem+env(safe-area-inset-bottom))]"
+    }`}>
       <aside className={`fixed inset-y-0 left-0 z-50 flex w-[min(286px,88vw)] flex-col overflow-hidden border-r border-[#DCE1E6] bg-[#0B0C0E] text-white transition-transform xl:w-[286px] xl:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
         <div className="flex min-h-24 items-center justify-between border-b border-white/10 px-5 py-3">
           <Link href="/empresa" className="flex items-center gap-3">
@@ -97,20 +105,22 @@ export default function EnterpriseShell({
 
       <section className="xl:pl-[286px]">
         <header className="sticky top-0 z-30 border-b border-[#DCE1E6] bg-white/95 backdrop-blur-xl">
-          <div className="flex min-h-20 items-center gap-4 px-5 sm:px-8">
+          <div className={`flex items-center gap-3 px-4 sm:min-h-20 sm:px-8 ${
+            compactMobileHeader ? "min-h-[68px]" : "min-h-20"
+          }`}>
             <button onClick={() => setOpen(true)} className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#DCE1E6] xl:hidden" aria-label="Abrir menú"><Menu className="h-5 w-5" /></button>
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#008F87]">Centro de administración</p>
-              <h1 className="truncate text-2xl font-black tracking-[-0.04em]">{title}</h1>
+              <p className={`${compactMobileHeader ? "hidden sm:block" : ""} text-[10px] font-black uppercase tracking-[0.2em] text-[#008F87]`}>Centro de administración</p>
+              <h1 className={`${compactMobileHeader ? "text-xl sm:text-2xl" : "text-2xl"} truncate font-black tracking-[-0.04em]`}>{title}</h1>
               <p className="hidden text-sm text-[#69717D] sm:block">{subtitle}</p>
             </div>
             <Link href="/empresa/ia" className="hidden items-center gap-2 rounded-full border border-[#DCE1E6] bg-white px-5 py-3 text-sm font-black sm:inline-flex"><Sparkles className="h-4 w-4 text-[#00AFA5]" /> WAMA AI</Link>
           </div>
         </header>
-        <div className="mx-auto max-w-[1500px] p-4 sm:p-8">{children}</div>
+        <div className={`mx-auto max-w-[1500px] ${compactMobileHeader ? "p-3 sm:p-8" : "p-4 sm:p-8"}`}>{children}</div>
       </section>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-[#DCE1E6] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl xl:hidden">
+      <nav className={`${hideMobileNav ? "hidden" : "grid"} fixed inset-x-0 bottom-0 z-40 grid-cols-5 border-t border-[#DCE1E6] bg-white/95 px-1 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl xl:hidden`}>
         {mobileItems.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} className={`flex min-h-[68px] flex-col items-center justify-center gap-1 px-1 text-[10px] font-black ${isActive(href) ? "text-[#008F87]" : "text-[#69717D]"}`}>
             <Icon className={`h-5 w-5 ${isActive(href) ? "stroke-[2.6]" : ""}`} />
