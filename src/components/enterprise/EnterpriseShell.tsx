@@ -24,7 +24,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../../app/lib/supabase";
-import { loadEnterprisePortalData } from "../../core/portal/portalData";
+import { getMyTenants } from "../../core/tenant";
 import { subscribeCurrentDevice } from "../operations/operationsPushClient";
 
 const desktopItems = [
@@ -106,13 +106,11 @@ export default function EnterpriseShell({
 
   useEffect(() => {
     let active = true;
-    void loadEnterprisePortalData()
-      .then((portal) => {
-        if (active) {
-          setCompany({
-            name: portal.tenant.name,
-            logoUrl: portal.tenant.logoUrl,
-          });
+    void getMyTenants()
+      .then((tenants) => {
+        const tenant = tenants[0];
+        if (active && tenant) {
+          setCompany({ name: tenant.name, logoUrl: tenant.logoUrl });
         }
       })
       .catch(() => undefined);

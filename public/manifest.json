@@ -3,7 +3,7 @@
   "name": "WAMA | Warn and Manage",
   "short_name": "WAMA",
   "description": "Gestiona ventas, gastos y operación desde una plataforma modular.",
-  "start_url": "/app?source=pwa",
+  "start_url": "/empresa?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": [
@@ -45,6 +45,17 @@
       "name": "Abrir WAMA",
       "short_name": "WAMA",
       "url": "/app",
+      "icons": [
+        {
+          "src": "/wama-icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Operations Hub",
+      "short_name": "Operations",
+      "url": "/operations-hub",
       "icons": [
         {
           "src": "/wama-icon-192.png",

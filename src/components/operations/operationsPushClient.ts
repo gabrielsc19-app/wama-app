@@ -41,6 +41,19 @@ export async function getPushConfiguration() {
   }>;
 }
 
+export function isIOSDevice() {
+  if (typeof window === "undefined") return false;
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+export function isStandaloneApp() {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
 export async function subscribeCurrentDevice({
   requestPermission,
 }: {
@@ -55,13 +68,14 @@ export async function subscribeCurrentDevice({
     return { ok: false, reason: "unsupported" as const };
   }
 
-  const config = await getPushConfiguration();
-  if (!config?.configured || !config.publicKey) {
-    return { ok: false, reason: "not_configured" as const };
+  if (isIOSDevice() && !isStandaloneApp()) {
+    return { ok: false, reason: "ios_not_installed" as const };
   }
 
   let permission = Notification.permission;
 
+  // iOS/Safari exige que el permiso se solicite directamente desde el gesto
+  // del usuario. No debe existir ningún fetch/await antes de esta llamada.
   if (permission === "default" && requestPermission) {
     permission = await Notification.requestPermission();
   }
@@ -70,11 +84,15 @@ export async function subscribeCurrentDevice({
     return { ok: false, reason: permission as "default" | "denied" };
   }
 
+  const config = await getPushConfiguration();
+  if (!config?.configured || !config.publicKey) {
+    return { ok: false, reason: "not_configured" as const };
+  }
+
   const registration = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
 
   let subscription = await registration.pushManager.getSubscription();
-
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
@@ -83,9 +101,7 @@ export async function subscribeCurrentDevice({
   }
 
   const accessToken = await getAccessToken();
-  if (!accessToken) {
-    return { ok: false, reason: "no_session" as const };
-  }
+  if (!accessToken) return { ok: false, reason: "no_session" as const };
 
   const response = await fetch("/api/operations/push-subscription", {
     method: "POST",
@@ -99,10 +115,7 @@ export async function subscribeCurrentDevice({
     }),
   });
 
-  if (!response.ok) {
-    return { ok: false, reason: "save_failed" as const };
-  }
-
+  if (!response.ok) return { ok: false, reason: "save_failed" as const };
   return { ok: true as const };
 }
 

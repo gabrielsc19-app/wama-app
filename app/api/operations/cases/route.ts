@@ -31,7 +31,14 @@ export async function GET(request:Request){
     const params=new URL(request.url).searchParams;
     const includeArchived=params.get("archived")==="true"&&context.canAdmin;
     const requestedProjectId=params.get("projectId")||"";
-    let query=admin.from("wama_operations_cases").select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email),events:wama_operations_events(*),evidence:wama_operations_evidence(id,file_name,mime_type,file_size,created_at)").eq("tenant_id",tenantId).order("created_at",{ascending:false});
+    const requestedCaseId=params.get("caseId")||"";
+    if(requestedCaseId){
+      const{data:detail,error:detailError}=await admin.from("wama_operations_cases").select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email),events:wama_operations_events(*)").eq("tenant_id",tenantId).eq("id",requestedCaseId).maybeSingle();
+      if(detailError)throw detailError;if(!detail)return NextResponse.json({error:"Caso no encontrado."},{status:404});
+      if(!context.canAdmin&&detail.project_id){const{data:membership}=await admin.from("wama_project_members").select("id").eq("project_id",detail.project_id).eq("profile_id",profile.id).maybeSingle();if(!membership)return NextResponse.json({error:"No tienes acceso a este caso."},{status:403});}
+      return NextResponse.json({case:detail});
+    }
+    let query=admin.from("wama_operations_cases").select("id,tenant_id,case_number,title,description,priority,is_urgent,status,due_at,created_at,resolved_at,reported_by,assigned_to,project_id,assignment_scope,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email)").eq("tenant_id",tenantId).order("created_at",{ascending:false});
     query=includeArchived?query.not("deleted_at","is",null):query.is("deleted_at",null);
     const {data:projectMemberships,error:projectMembershipError}=await admin.from("wama_project_members").select("project_id,role,wama_projects!inner(id,name,code,status,tenant_id,wama_project_modules!inner(tenant_module_license_id))").eq("profile_id",profile.id).eq("wama_projects.tenant_id",tenantId).eq("wama_projects.status","active").eq("wama_projects.wama_project_modules.tenant_module_license_id",context.license.id);
     if(projectMembershipError)throw projectMembershipError;
@@ -48,7 +55,7 @@ export async function GET(request:Request){
       admin.from("wama_operations_categories").select("*").eq("tenant_id",tenantId).eq("status","active").order("name"),
       admin.from("wama_operations_teams").select("*,members:wama_operations_team_members(profile_id,team_role,notify_new_cases,notify_updates,notify_urgent,notify_email,notify_push)").eq("tenant_id",tenantId).eq("status","active").order("name"),
       admin.from("wama_operations_setup").select("*").eq("tenant_id",tenantId).maybeSingle(),
-      admin.from("wama_operations_notifications").select("*").eq("tenant_id",tenantId).eq("recipient_profile_id",profile.id).is("read_at",null).order("created_at",{ascending:false}).limit(30),
+      admin.from("wama_operations_notifications").select("*").eq("tenant_id",tenantId).eq("recipient_profile_id",profile.id).is("read_at",null).order("created_at",{ascending:false}).limit(15),
       admin.from("wama_module_user_assignments").select("id",{count:"exact",head:true}).eq("tenant_module_license_id",context.license.id).in("status",["active","invited"]),
     ]);if(error)throw error;
     const {data:assignments,error:assignmentsError}=await admin.from("wama_module_user_assignments").select("profile_id,module_role,status").eq("tenant_module_license_id",context.license.id).in("status",["active","invited"]);

@@ -12,6 +12,8 @@ import {
 import {
   ensurePushIfAlreadyGranted,
   getPushConfiguration,
+  isIOSDevice,
+  isStandaloneApp,
 } from "./operationsPushClient";
 
 type Status =
@@ -20,7 +22,8 @@ type Status =
   | "pending"
   | "blocked"
   | "not_configured"
-  | "unsupported";
+  | "unsupported"
+  | "ios_install_required";
 
 type PushInfo = {
   configured: boolean;
@@ -63,6 +66,11 @@ export default function OperationsPushStatus() {
         !("PushManager" in window)
       ) {
         setStatus("unsupported");
+        return;
+      }
+
+      if (isIOSDevice() && !isStandaloneApp()) {
+        setStatus("ios_install_required");
         return;
       }
 
@@ -165,6 +173,13 @@ export default function OperationsPushStatus() {
       className: "border-[#DCE1E6] bg-[#F5F6F7] text-[#59616B]",
       Icon: BellOff,
     },
+    ios_install_required: {
+      label: "Abre WAMA como aplicación",
+      detail:
+        "En iPhone las notificaciones funcionan al abrir WAMA desde el icono agregado a Pantalla de inicio.",
+      className: "border-amber-200 bg-amber-50 text-amber-700",
+      Icon: BellRing,
+    },
   }[status];
 
   const Icon = view.Icon;
@@ -181,7 +196,7 @@ export default function OperationsPushStatus() {
         />
         <div>
           <p className="text-sm font-black">{view.label}</p>
-          <p className="mt-1 line-clamp-2 max-w-sm text-[11px] leading-4 opacity-80 lg:text-xs lg:leading-5">
+          <p className={`mt-1 line-clamp-2 max-w-sm text-[11px] leading-4 opacity-80 lg:text-xs lg:leading-5 ${status==="active"?"hidden sm:block":""}`}>
             {view.detail}
           </p>
         </div>
