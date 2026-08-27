@@ -43,65 +43,121 @@ export async function getPushConfiguration() {
 
 export function isIOSDevice() {
   if (typeof window === "undefined") return false;
-  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+
+  const ua = window.navigator.userAgent;
+  const platform = window.navigator.platform;
+  const maxTouchPoints = window.navigator.maxTouchPoints || 0;
+
+  return (
+    /iphone|ipad|ipod/i.test(ua) ||
+    (platform === "MacIntel" && maxTouchPoints > 1)
+  );
 }
 
 export function isStandaloneApp() {
   if (typeof window === "undefined") return false;
+
   return (
     window.matchMedia("(display-mode: standalone)").matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true
   );
 }
 
+export type PushActivationResult =
+  | { ok: true; reason: "subscribed" }
+  | {
+      ok: false;
+      reason:
+        | "unsupported"
+        | "ios_not_installed"
+        | "denied"
+        | "default"
+        | "not_configured"
+        | "no_session"
+        | "save_failed"
+        | "service_worker_failed"
+        | "subscribe_failed";
+      detail?: string;
+    };
+
 export async function subscribeCurrentDevice({
   requestPermission,
 }: {
   requestPermission: boolean;
-}) {
+}): Promise<PushActivationResult> {
   if (
     typeof window === "undefined" ||
     !("serviceWorker" in navigator) ||
     !("PushManager" in window) ||
     !("Notification" in window)
   ) {
-    return { ok: false, reason: "unsupported" as const };
+    return { ok: false, reason: "unsupported" };
   }
 
   if (isIOSDevice() && !isStandaloneApp()) {
-    return { ok: false, reason: "ios_not_installed" as const };
+    return { ok: false, reason: "ios_not_installed" };
   }
 
   let permission = Notification.permission;
 
-  // iOS/Safari exige que el permiso se solicite directamente desde el gesto
-  // del usuario. No debe existir ningún fetch/await antes de esta llamada.
+  // CLAVE PARA iPhone/iPad:
+  // si el permiso está en "default", esta llamada debe ocurrir directamente
+  // como consecuencia del toque del usuario, antes de hacer fetch/await externo.
   if (permission === "default" && requestPermission) {
     permission = await Notification.requestPermission();
   }
 
+  if (permission === "denied") {
+    return { ok: false, reason: "denied" };
+  }
+
   if (permission !== "granted") {
-    return { ok: false, reason: permission as "default" | "denied" };
+    return { ok: false, reason: "default" };
   }
 
   const config = await getPushConfiguration();
+
   if (!config?.configured || !config.publicKey) {
-    return { ok: false, reason: "not_configured" as const };
+    return { ok: false, reason: "not_configured" };
   }
 
-  const registration = await navigator.serviceWorker.register("/sw.js");
-  await navigator.serviceWorker.ready;
+  let registration: ServiceWorkerRegistration;
+
+  try {
+    registration = await navigator.serviceWorker.register("/sw.js", {
+      scope: "/",
+    });
+    await navigator.serviceWorker.ready;
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "service_worker_failed",
+      detail: error instanceof Error ? error.message : String(error),
+    };
+  }
 
   let subscription = await registration.pushManager.getSubscription();
+
   if (!subscription) {
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(config.publicKey),
-    });
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(config.publicKey),
+      });
+    } catch (error) {
+      return {
+        ok: false,
+        reason: "subscribe_failed",
+        detail: error instanceof Error ? error.message : String(error),
+      };
+    }
   }
 
   const accessToken = await getAccessToken();
-  if (!accessToken) return { ok: false, reason: "no_session" as const };
+
+  if (!accessToken) {
+    return { ok: false, reason: "no_session" };
+  }
 
   const response = await fetch("/api/operations/push-subscription", {
     method: "POST",
@@ -115,8 +171,16 @@ export async function subscribeCurrentDevice({
     }),
   });
 
-  if (!response.ok) return { ok: false, reason: "save_failed" as const };
-  return { ok: true as const };
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    return {
+      ok: false,
+      reason: "save_failed",
+      detail: payload?.error || `HTTP ${response.status}`,
+    };
+  }
+
+  return { ok: true, reason: "subscribed" };
 }
 
 export async function ensurePushIfAlreadyGranted() {

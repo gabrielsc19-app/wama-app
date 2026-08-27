@@ -1,4 +1,4 @@
-const WAMA_SW_VERSION = "wama-pwa-v5";
+const WAMA_SW_VERSION = "wama-pwa-v6";
 
 self.addEventListener("install", () => self.skipWaiting());
 
