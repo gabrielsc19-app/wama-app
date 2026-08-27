@@ -31,6 +31,13 @@ export async function getPushConfiguration() {
     configured: boolean;
     publicKey: string;
     subscribed: boolean;
+    subscriptions?: Array<{
+      id: string;
+      endpoint: string;
+      user_agent?: string | null;
+      last_seen_at?: string | null;
+      created_at?: string | null;
+    }>;
   }>;
 }
 

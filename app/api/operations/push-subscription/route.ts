@@ -17,17 +17,22 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY?.trim() ||
       "";
 
-    const { count } = await context.admin
+    const { data:subscriptions, count } = await context.admin
       .from("wama_operations_push_subscriptions")
-      .select("id", { count: "exact", head: true })
+      .select(
+        "id,endpoint,user_agent,last_seen_at,created_at,revoked_at",
+        { count: "exact" },
+      )
       .eq("tenant_id", context.tenantId)
       .eq("profile_id", context.profile.id)
-      .is("revoked_at", null);
+      .is("revoked_at", null)
+      .order("last_seen_at", { ascending: false });
 
     return NextResponse.json({
       configured: Boolean(publicKey && process.env.VAPID_PRIVATE_KEY),
       publicKey,
       subscribed: Boolean(count),
+      subscriptions: subscriptions || [],
     });
   } catch (error) {
     return fail(error);
