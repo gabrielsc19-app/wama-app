@@ -58,6 +58,20 @@ export default function PilotExpenseHub() {
     setItems(d.renditions||[]); setProjects(d.projects||[]); setRole(d.role||""); setLoading(false);
   }
   useEffect(()=>{ void load(); },[]);
+  useEffect(()=>{
+    const viewHandler=(event:Event)=>{
+      const detail=(event as CustomEvent<string>).detail as "home"|"mine"|"funds"|"approvals"|"treasury";
+      if(detail)setView(detail);
+    };
+    const newHandler=()=>setOpen(true);
+    window.addEventListener("wama:expense:view",viewHandler);
+    window.addEventListener("wama:expense:new",newHandler);
+    return()=>{
+      window.removeEventListener("wama:expense:view",viewHandler);
+      window.removeEventListener("wama:expense:new",newHandler);
+    };
+  },[]);
+
   useEffect(()=>()=>{ if(preview) URL.revokeObjectURL(preview); },[preview]);
 
   function chooseFile(selected?:File) {

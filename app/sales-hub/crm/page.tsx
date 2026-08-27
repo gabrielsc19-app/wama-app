@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BarChart3, Home, Menu, Plus, Search, Users } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { profileFor, profileLabel } from "../../../src/lib/moduleProfiles";
@@ -35,29 +36,29 @@ export default function SalesHubCrmPage(){
  if(loading)return <main className="grid min-h-screen place-items-center bg-[#F5F6F7] font-black">Cargando Sales Hub…</main>;
  if(!settings||!settings.industry)return <Setup industry={configIndustry} setIndustry={setConfigIndustry} currency={configCurrency} setCurrency={setConfigCurrency} productText={productText} setProductText={setProductText} saving={saving} error={error} onSubmit={saveSettings}/>;
  return <main className="min-h-screen bg-[#F4F7F8] text-[#162027]">
-  <header className="sticky top-0 z-40 bg-white/90 shadow-[0_1px_0_rgba(37,57,68,.08)] backdrop-blur-xl">
-<div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-5 py-4 lg:flex-row lg:items-center lg:justify-between">
+  <header className="mobile-app-header sticky top-0 z-40 bg-white/95 shadow-[0_1px_0_rgba(37,57,68,.08)] backdrop-blur-xl">
+<div className="mx-auto flex max-w-[1800px] items-center justify-between gap-3 px-4 py-3 lg:px-5 lg:py-4">
 <div>
-<p className="text-xs font-black uppercase tracking-[.24em] text-[#00AFA4]">Sales Hub · {settings.currency}</p>
-<h1 className="text-3xl font-black">CRM comercial</h1>
-<p className="text-sm text-[#63708A]">Deals persistentes, productos configurados y documentos privados.</p>
+<p className="hidden text-xs font-black uppercase tracking-[.24em] text-[#00AFA4] lg:block">Sales Hub · {settings.currency}</p>
+<h1 className="text-[22px] font-black tracking-[-.04em] lg:text-3xl">Sales Hub</h1>
+<p className="hidden text-sm text-[#63708A] lg:block">Deals persistentes, productos configurados y documentos privados.</p>
 </div>
-<div className="flex flex-wrap gap-2">
-<Link href="/empresa" className="rounded-full border px-5 py-3 text-sm font-black">Volver a módulos</Link>
-<Link href="/empresa/usuarios" className="rounded-full border px-5 py-3 text-sm font-black">Usuarios y licencias</Link>
-<button onClick={()=>{setConfigCurrency(settings.currency);setProductText(settings.products.join("\n"));setSettings(null)}} className="rounded-full border px-5 py-3 text-sm font-black">Configurar ventas</button>
-<button onClick={()=>setShowNew(true)} className="rounded-full bg-[#00E5D6] px-6 py-3 text-sm font-black">+ Nuevo deal</button>
+<div className="flex items-center gap-2">
+<Link href="/empresa" className="hidden rounded-full border px-5 py-3 text-sm font-black lg:inline-flex">Volver a módulos</Link>
+<Link href="/empresa/usuarios" className="hidden rounded-full border px-5 py-3 text-sm font-black lg:inline-flex">Usuarios y licencias</Link>
+<button onClick={()=>{setConfigCurrency(settings.currency);setProductText(settings.products.join("\n"));setSettings(null)}} className="hidden rounded-full border px-5 py-3 text-sm font-black lg:inline-flex">Configurar ventas</button>
+<button onClick={()=>setShowNew(true)} className="inline-flex h-11 items-center gap-2 rounded-full bg-[#00E5D6] px-4 text-sm font-black lg:px-6"><Plus className="h-4 w-4"/> <span className="hidden sm:inline">Nuevo deal</span></button>
 </div>
 </div>
 </header>
   <section className="mx-auto max-w-[1800px] p-5">
-<section className="mb-5 rounded-3xl bg-gradient-to-r from-[#102228] to-[#1D3940] p-6 text-white shadow-xl">
+<section className="mb-5 hidden rounded-3xl bg-gradient-to-r from-[#102228] to-[#1D3940] p-6 text-white shadow-xl lg:block">
 <p className="text-xs font-black uppercase tracking-[.2em] text-[#00E5D6]">Perfil activo · Sales Hub</p>
 <h2 className="mt-2 text-2xl font-black">{profileLabel("sales",moduleRole)}</h2>
 <p className="mt-2 text-sm text-white/70">{profileFor("sales",moduleRole)?.description||"Acceso integral a la gestión comercial."}</p>
 <div className="mt-4 flex flex-wrap gap-2">{profileFor("sales",moduleRole)?.activities.map(activity=><span key={activity} className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold">{activity}</span>)}</div>
 </section>
-<div className="mb-5 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+<div className="mb-4 grid grid-cols-3 gap-2 lg:mb-5 lg:gap-3 xl:grid-cols-6">
 <Metric label="Abiertos" value={String(metrics.open)}/>
 <Metric label="Ganados" value={String(metrics.won)}/>
 <Metric label="Perdidos" value={String(metrics.lost)}/>
@@ -69,7 +70,28 @@ export default function SalesHubCrmPage(){
    <div className="mb-5 rounded-3xl bg-white p-4 shadow-[0_10px_35px_rgba(25,45,55,.06)]">
 <input className="input" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar empresa, contacto, producto o necesidad…"/>
 </div>
-   <div className="overflow-x-auto pb-6">
+   <section className="grid gap-3 pb-24 lg:hidden">
+    <div className="flex gap-2 overflow-x-auto pb-1">
+      {stages.map(stage=><button key={stage} type="button" className="shrink-0 rounded-full bg-white px-4 py-2 text-xs font-black text-[#59616B] shadow-sm">{stage}</button>)}
+    </div>
+    {filtered.map(deal=><button key={deal.id} type="button" onClick={()=>setSelected(deal)} className="rounded-2xl border border-[#DCE1E6] bg-white p-4 text-left shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="truncate text-base font-black">{deal.company}</p>
+          <p className="mt-1 truncate text-xs font-bold text-[#69717D]">{deal.product||"Sin producto"}</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-[#E6FFFC] px-3 py-1 text-[10px] font-black text-[#008F87]">{deal.stage}</span>
+      </div>
+      <p className="mt-3 line-clamp-2 text-sm leading-5 text-[#59616B]">{deal.need||deal.comment||"Sin comentario registrado"}</p>
+      <div className="mt-4 flex items-end justify-between border-t pt-3">
+        <span className="text-xs font-bold text-[#69717D]">{deal.owner||"Sin responsable"}</span>
+        <strong className="text-sm">{money(Number(deal.amount),deal.currency)}</strong>
+      </div>
+    </button>)}
+    {!filtered.length&&<div className="rounded-2xl border bg-white p-8 text-center text-sm text-[#69717D]">No hay oportunidades.</div>}
+   </section>
+
+   <div className="hidden overflow-x-auto pb-6 lg:block">
 <div className="grid min-w-[1680px] grid-cols-6 gap-4">{stages.map(stage=>{const list=filtered.filter(d=>d.stage===stage);return <section key={stage} onDragOver={e=>e.preventDefault()} onDrop={()=>{if(dragged)void move(dragged,stage);setDragged(null)}} className="min-h-[540px] rounded-3xl bg-[#EAF0F2] p-3 shadow-[inset_0_0_0_1px_rgba(91,113,123,.08)]">
 <div className="mb-3 border-t-4 border-[#00E5D6] px-1 pt-3">
 <div className="flex justify-between gap-2">
@@ -230,6 +252,13 @@ export default function SalesHubCrmPage(){
 </div>
 </div>
 </Modal>}
+  <nav className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-[70] grid grid-cols-5 border-t border-[#DCE1E6] bg-white/95 px-1 backdrop-blur-xl lg:hidden">
+    <Link href="/empresa" className="flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black text-[#69717D]"><Home className="h-5 w-5"/>Inicio</Link>
+    <button type="button" className="flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black text-[#008F87]"><BarChart3 className="h-5 w-5"/>Pipeline</button>
+    <button type="button" onClick={()=>setShowNew(true)} className="flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black text-[#0B0C0E]"><span className="-mt-7 grid h-14 w-14 place-items-center rounded-full bg-[#00E5D6] shadow-lg"><Plus className="h-7 w-7"/></span><span className="-mt-1">Nuevo</span></button>
+    <Link href="/empresa/usuarios" className="flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black text-[#69717D]"><Users className="h-5 w-5"/>Usuarios</Link>
+    <Link href="/empresa" className="flex min-h-[68px] flex-col items-center justify-center gap-1 text-[10px] font-black text-[#69717D]"><Menu className="h-5 w-5"/>Más</Link>
+  </nav>
   <style jsx global>{`.input{width:100%;border:1px solid #d7dbe0;border-radius:1rem;background:white;padding:.85rem 1rem;font-size:.9rem;font-weight:700;outline:none}.input:focus{border-color:#00afa4}button,a,select,input[type=file],article[draggable=true]{cursor:pointer}button:disabled{cursor:not-allowed}`}</style>
  </main>
 }
@@ -267,6 +296,7 @@ function Setup(p:{industry:string;setIndustry:(v:string)=>void;currency:Currency
 <button disabled={p.saving} className="mt-6 w-full cursor-pointer rounded-full bg-[#00E5D6] px-7 py-4 font-black text-[#0B0C0E] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50">{p.saving?"Guardando…":"Guardar configuración y abrir CRM"}</button>
 </form>
 </div>
+
 </main>}
 function Modal({title,close,children}:{title:string;close:()=>void;children:React.ReactNode}){return <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-black/65 p-4">
 <div className="my-6 w-full max-w-4xl rounded-[2rem] bg-white shadow-2xl">
