@@ -4,6 +4,7 @@ import { FormEvent, Suspense, useEffect, useState } from "react";
 import { Eye, EyeOff, Loader2, ShieldCheck } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "../../lib/supabase";
+import { subscribeCurrentDevice } from "../../../src/components/operations/operationsPushClient";
 
 function AcceptInviteContent() {
   const router = useRouter();
@@ -86,6 +87,16 @@ function AcceptInviteContent() {
 
     setLoading(true);
 
+    // La activación de cuenta es la única acción dentro de WAMA.
+    // Desde ese mismo click solicitamos el permiso nativo del navegador/SO.
+    let pushPermissionPromise: Promise<unknown> | null = null;
+
+    if (typeof window !== "undefined" && "Notification" in window) {
+      pushPermissionPromise = subscribeCurrentDevice({
+        requestPermission: true,
+      }).catch(() => null);
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({ password });
     if (updateError) {
       setError(updateError.message);
@@ -113,6 +124,12 @@ function AcceptInviteContent() {
       setError(data.error || "No se pudo terminar de activar tu acceso.");
       setLoading(false);
       return;
+    }
+
+    // Si el usuario aceptó el permiso del sistema, el dispositivo queda
+    // registrado. Si lo negó, la cuenta igualmente termina de activarse.
+    if (pushPermissionPromise) {
+      await pushPermissionPromise;
     }
 
     router.replace("/empresa");
