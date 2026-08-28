@@ -30,6 +30,7 @@ export async function GET(request:Request){
     const context=await getOperationsContext(request);const{admin,profile,tenantId}=context;
     const params=new URL(request.url).searchParams;
     const includeArchived=params.get("archived")==="true"&&context.canAdmin;
+    const compact=params.get("compact")==="1";
     const requestedProjectId=params.get("projectId")||"";
     const requestedCaseId=params.get("caseId")||"";
     if(requestedCaseId){
@@ -43,10 +44,32 @@ export async function GET(request:Request){
     const {data:projectMemberships,error:projectMembershipError}=await admin.from("wama_project_members").select("project_id,role,wama_projects!inner(id,name,code,status,tenant_id,wama_project_modules!inner(tenant_module_license_id))").eq("profile_id",profile.id).eq("wama_projects.tenant_id",tenantId).eq("wama_projects.status","active").eq("wama_projects.wama_project_modules.tenant_module_license_id",context.license.id);
     if(projectMembershipError)throw projectMembershipError;
     const projectIds=(projectMemberships||[]).map(item=>item.project_id);
+    if(requestedProjectId){
+      if(!context.canAdmin&&!projectIds.includes(requestedProjectId))return NextResponse.json({error:"No tienes acceso a este proyecto."},{status:403});
+      if(context.canAdmin){
+        const{data:linked}=await admin.from("wama_project_modules").select("id,wama_projects!inner(tenant_id,status)").eq("project_id",requestedProjectId).eq("tenant_module_license_id",context.license.id).eq("wama_projects.tenant_id",tenantId).eq("wama_projects.status","active").maybeSingle();
+        if(!linked)return NextResponse.json({error:"El proyecto no está habilitado para Operations Hub."},{status:403});
+      }
+      query=query.eq("project_id",requestedProjectId);
+    }else if(!context.canAdmin){
+      if(!projectIds.length)query=query.eq("project_id","00000000-0000-0000-0000-000000000000");else query=query.in("project_id",projectIds);
+    }
+
+    if(compact){
+      const[{data:cases,error},{data:locations},{data:notifications}]=await Promise.all([
+        query,
+        requestedProjectId
+          ?admin.from("wama_operations_locations").select("id,name,address,project_id,status,sort_order").eq("tenant_id",tenantId).eq("project_id",requestedProjectId).eq("status","active").order("sort_order").order("name")
+          :admin.from("wama_operations_locations").select("id,name,address,project_id,status,sort_order").eq("tenant_id",tenantId).eq("status","active").order("sort_order").order("name"),
+        admin.from("wama_operations_notifications").select("id,title,body,created_at").eq("tenant_id",tenantId).eq("recipient_profile_id",profile.id).is("read_at",null).order("created_at",{ascending:false}).limit(10),
+      ]);
+      if(error)throw error;
+      return NextResponse.json({compact:true,cases:cases||[],locations:locations||[],notifications:notifications||[]});
+    }
+
     const {data:allProjects,error:projectsError}=context.canAdmin?await admin.from("wama_projects").select("id,name,code,status").eq("tenant_id",tenantId).eq("status","active").in("id",(await admin.from("wama_project_modules").select("project_id").eq("tenant_module_license_id",context.license.id)).data?.map(x=>x.project_id)||[]):{data:(projectMemberships||[]).map((item:any)=>item.wama_projects),error:null};
     if(projectsError)throw projectsError;
     const projects=(allProjects||[]).filter(Boolean);
-    if(requestedProjectId){if(!context.canAdmin&&!projectIds.includes(requestedProjectId))return NextResponse.json({error:"No tienes acceso a este proyecto."},{status:403});query=query.eq("project_id",requestedProjectId);}else if(!context.canAdmin){if(!projectIds.length)query=query.eq("project_id","00000000-0000-0000-0000-000000000000");else query=query.in("project_id",projectIds);}
     const [{data:cases,error},{data:locations},{data:categories},{data:teams},{data:setup},{data:notifications},{count:usedSeats}]=await Promise.all([
       query,
       requestedProjectId

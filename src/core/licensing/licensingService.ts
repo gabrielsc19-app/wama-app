@@ -27,10 +27,20 @@ export async function provisionTenant(
     throw new Error("Supabase no devolvió el identificador de la empresa.");
   }
 
+  clearLicensingCache();
   return data;
 }
 
-export async function getMyLicensingSummary(): Promise<LicensingSummaryRow[]> {
+const LICENSING_CACHE_TTL_MS = 45_000;
+let licensingCache: { expiresAt: number; value: LicensingSummaryRow[] } | null = null;
+let licensingPromise: Promise<LicensingSummaryRow[]> | null = null;
+
+export function clearLicensingCache() {
+  licensingCache = null;
+  licensingPromise = null;
+}
+
+async function fetchMyLicensingSummary(): Promise<LicensingSummaryRow[]> {
   const { data, error } = await supabase.rpc("wama_my_licensing_summary");
 
   if (error) {
@@ -57,6 +67,23 @@ export async function getMyLicensingSummary(): Promise<LicensingSummaryRow[]> {
   }));
 }
 
+export async function getMyLicensingSummary(): Promise<LicensingSummaryRow[]> {
+  const now = Date.now();
+  if (licensingCache && licensingCache.expiresAt > now) return licensingCache.value;
+  if (licensingPromise) return licensingPromise;
+
+  licensingPromise = fetchMyLicensingSummary()
+    .then((value) => {
+      licensingCache = { value, expiresAt: Date.now() + LICENSING_CACHE_TTL_MS };
+      return value;
+    })
+    .finally(() => {
+      licensingPromise = null;
+    });
+
+  return licensingPromise;
+}
+
 export async function assignUserToModule(
   licenseId: string,
   profileId: string,
@@ -74,6 +101,7 @@ export async function assignUserToModule(
     throw new Error("No se recibió el identificador de la asignación.");
   }
 
+  clearLicensingCache();
   return data;
 }
 
@@ -89,4 +117,6 @@ export async function removeUserFromModule(
   if (error) {
     throw new Error(error.message || "No fue posible quitar el usuario.");
   }
+
+  clearLicensingCache();
 }

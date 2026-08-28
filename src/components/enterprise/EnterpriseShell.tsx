@@ -255,6 +255,7 @@ export default function EnterpriseShell({
             <Link
               key={href}
               href={href}
+              prefetch={false}
               onClick={() => setOpen(false)}
               className={`flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-black transition ${
                 isActive(href)
@@ -413,6 +414,7 @@ export default function EnterpriseShell({
                   <Link
                     key={item.label}
                     href={item.href}
+                    prefetch={false}
                     onClick={() => setMobileMore(false)}
                     className="flex min-h-14 items-center justify-between rounded-2xl bg-[#F5F7F8] px-4 text-sm font-black"
                   >

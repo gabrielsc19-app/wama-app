@@ -102,7 +102,16 @@ async function getCurrentProfileId(): Promise<string> {
   return data;
 }
 
-export async function getMyTenants(): Promise<TenantWithMembership[]> {
+const TENANT_CACHE_TTL_MS = 60_000;
+let tenantCache: { expiresAt: number; value: TenantWithMembership[] } | null = null;
+let tenantPromise: Promise<TenantWithMembership[]> | null = null;
+
+export function clearTenantCache() {
+  tenantCache = null;
+  tenantPromise = null;
+}
+
+async function fetchMyTenants(): Promise<TenantWithMembership[]> {
   const profileId = await getCurrentProfileId();
 
   const { data, error } = await supabase
@@ -154,6 +163,23 @@ export async function getMyTenants(): Promise<TenantWithMembership[]> {
       },
     ];
   });
+}
+
+export async function getMyTenants(): Promise<TenantWithMembership[]> {
+  const now = Date.now();
+  if (tenantCache && tenantCache.expiresAt > now) return tenantCache.value;
+  if (tenantPromise) return tenantPromise;
+
+  tenantPromise = fetchMyTenants()
+    .then((value) => {
+      tenantCache = { value, expiresAt: Date.now() + TENANT_CACHE_TTL_MS };
+      return value;
+    })
+    .finally(() => {
+      tenantPromise = null;
+    });
+
+  return tenantPromise;
 }
 
 export async function getTenantById(tenantId: string): Promise<Tenant> {

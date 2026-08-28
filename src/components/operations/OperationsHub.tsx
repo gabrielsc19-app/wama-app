@@ -1,12 +1,13 @@
 "use client";
 import { ensurePushIfAlreadyGranted } from "./operationsPushClient";
-import {FormEvent,useEffect,useMemo,useRef,useState} from "react";
+import {FormEvent,useCallback,useEffect,useMemo,useRef,useState} from "react";
+import dynamic from "next/dynamic";
 import {ArrowLeft,ArrowRight,BarChart3,Bell,Building2,Camera,CheckCircle2,ChevronRight,CircleCheckBig,Clock3,FileText,FileType2,Filter,ImageIcon,LayoutDashboard,Loader2,MapPin,MoreHorizontal,Pencil,Plus,Search,Settings,ShieldAlert,Sparkles,Trash2,Users,X} from "lucide-react";
 import {supabase} from "../../../app/lib/supabase";
 import EnterpriseShell from "../enterprise/EnterpriseShell";
-import OperationsTeamWorkspace from "./OperationsTeamWorkspace";
-import OperationsUsersPanel from "./OperationsUsersPanel";
-import OperationsProjectsPanel from "./OperationsProjectsPanel";
+const OperationsTeamWorkspace=dynamic(()=>import("./OperationsTeamWorkspace"),{loading:()=> <div className="h-40 animate-pulse rounded-3xl bg-white"/>});
+const OperationsUsersPanel=dynamic(()=>import("./OperationsUsersPanel"),{loading:()=> <div className="h-40 animate-pulse rounded-3xl bg-white"/>});
+const OperationsProjectsPanel=dynamic(()=>import("./OperationsProjectsPanel"),{loading:()=> <div className="h-40 animate-pulse rounded-3xl bg-white"/>});
 import OperationsPushStatus from "./OperationsPushStatus";
 
 type Person={id:string;full_name:string;email:string;role?:string;license_status?:"active"|"invited"};
@@ -28,10 +29,26 @@ export default function OperationsHub(){
  const fileInput=useRef<HTMLInputElement>(null);
  async function token(){const{data:s}=await supabase.auth.getSession();if(!s.session)throw new Error("Sesión caducada. Vuelve a iniciar sesión.");return s.session.access_token;}
  async function api(url:string,init?:RequestInit){const access=await token();const response=await fetch(url,{...init,headers:{Authorization:`Bearer ${access}`,...init?.headers}});const json=await response.json();if(!response.ok)throw new Error(json.error||"No fue posible completar la acción.");return json;}
- async function load(){setLoading(true);setError("");try{const payload=await api(`/api/operations/cases${selectedProjectId?`?projectId=${selectedProjectId}`:""}`) as Payload;setData(payload);if(!selectedProjectId&&payload.projects?.length===1)setSelectedProjectId(payload.projects[0].id);}catch(e){setError(e instanceof Error?e.message:"No fue posible cargar Operations Hub.");}finally{setLoading(false);}}
+ const load=useCallback(async(compact=false)=>{
+  if(!compact)setLoading(true);
+  setError("");
+  try{
+   const params=new URLSearchParams();
+   if(selectedProjectId)params.set("projectId",selectedProjectId);
+   if(compact&&data)params.set("compact","1");
+   const payload=await api(`/api/operations/cases${params.size?`?${params.toString()}`:""}`) as Payload&{compact?:boolean};
+   if(payload.compact&&data){
+    setData(current=>current?{...current,cases:payload.cases||[],locations:payload.locations||current.locations,notifications:payload.notifications||current.notifications}:current);
+   }else{
+    setData(payload);
+    if(!selectedProjectId&&payload.projects?.length===1)setSelectedProjectId(payload.projects[0].id);
+   }
+  }catch(e){setError(e instanceof Error?e.message:"No fue posible cargar Operations Hub.");}
+  finally{if(!compact)setLoading(false);}
+ },[selectedProjectId,data]);
  // La carga inicial sincroniza el componente con el portal autenticado.
  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
- useEffect(()=>{void load()},[selectedProjectId]);
+ useEffect(()=>{void load(Boolean(data))},[selectedProjectId]); // eslint-disable-line react-hooks/exhaustive-deps
  useEffect(()=>{void ensurePushIfAlreadyGranted()},[]);
  useEffect(()=>{
   const viewHandler=(event:Event)=>{
@@ -51,7 +68,7 @@ export default function OperationsHub(){
  const withoutResponsible=openCases.filter(c=>!c.assigned_to);
  const overdue=openCases.filter(c=>c.due_at&&new Date(c.due_at)<new Date()&&!['resolved'].includes(c.status));
  const visible=useMemo(()=>cases.filter(c=>(filter==="all"||c.status===filter)&&(`${c.case_number} ${c.title} ${c.description} ${c.location?.name||""}`).toLowerCase().includes(search.toLowerCase())),[cases,filter,search]);
- async function create(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const result=await api("/api/operations/cases",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,projectId:form.projectId||selectedProjectId})});for(const file of files){const fd=new FormData();fd.append("caseId",result.case.id);fd.append("file",file);await api("/api/operations/evidence",{method:"POST",body:fd});}setOpen(false);setForm(empty);setFiles([]);await load();}catch(e){setError(e instanceof Error?e.message:"No se pudo reportar el caso.");}finally{setBusy(false)}}
+ async function create(e:FormEvent){e.preventDefault();setBusy(true);setError("");try{const result=await api("/api/operations/cases",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...form,projectId:form.projectId||selectedProjectId})});for(const file of files){const fd=new FormData();fd.append("caseId",result.case.id);fd.append("file",file);await api("/api/operations/evidence",{method:"POST",body:fd});}setOpen(false);setForm(empty);setFiles([]);await load(true);}catch(e){setError(e instanceof Error?e.message:"No se pudo reportar el caso.");}finally{setBusy(false)}}
  async function act(action:string,extra:Record<string,unknown>={}){
   if(!selected)return null;
   setBusy(true);setError("");setSuccess("");
@@ -69,10 +86,14 @@ export default function OperationsHub(){
    if(action==="close")setSuccess(`Caso cerrado correctamente${noticeText}.`);
    if(action==="reopen")setSuccess(`Caso reabierto${noticeText}.`);
    setComment("");setFiles([]);
-   await load();
+   if(result?.case){
+    setData(current=>current?{...current,cases:current.cases.map(item=>item.id===selected.id?{...item,...result.case}:item)}:current);
+    setSelected(current=>current?{...current,...result.case}:current);
+   }
    try{
     const[detail,evidencePayload]=await Promise.all([loadCaseDetail(selected.id),api(`/api/operations/evidence?caseId=${selected.id}`)]);
     setSelected(detail);setEvidence(evidencePayload.evidence||[]);
+    setData(current=>current?{...current,cases:current.cases.map(item=>item.id===detail.id?{...item,...detail,events:undefined}:item)}:current);
    }catch{await loadEvidence(selected.id)}
    return result;
   }catch(e){setError(e instanceof Error?e.message:"No fue posible actualizar el caso.");return null;}
@@ -88,7 +109,7 @@ export default function OperationsHub(){
    await api("/api/operations/cases",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action:"delete",comment:reason})});
    setSelected(null);setEvidence([]);setCaseDeleteReason("");setDeletePromptOpen(false);
    setSuccess("Caso eliminado y archivado correctamente. La trazabilidad se conserva.");
-   await load();
+   setData(current=>current?{...current,cases:current.cases.filter(item=>item.id!==selected.id)}:current);
   }catch(e){setError(e instanceof Error?e.message:"No fue posible eliminar el caso.");}
   finally{setBusy(false)}
  }
@@ -114,14 +135,14 @@ export default function OperationsHub(){
  async function openCase(item:Case){setSelected(item);setComment("");setFiles([]);try{const[detail,evidencePayload]=await Promise.all([loadCaseDetail(item.id),api(`/api/operations/evidence?caseId=${item.id}`)]);setSelected(detail);setEvidence(evidencePayload.evidence||[])}catch{setSelected(item);await loadEvidence(item.id)}}
  function closeConfig(){setConfigOpen(null);setEditingId(null);setDeleteReason("");setConfig({name:"",address:"",color:"#00B8AE",description:"",receivesUrgent:false,defaultTeamId:"",slaMinutes:"1440",memberIds:[],coordinatorIds:[]});}
  function editConfig(type:"location"|"team"|"category",item:Ref){const teamMembers=(item.members as {profile_id:string;team_role:string}[]|undefined)||[];setConfigOpen(type);setEditingId(item.id);setDeleteReason("");setConfig({name:item.name,address:String(item.address||""),color:String(item.color||"#00B8AE"),description:String(item.description||""),receivesUrgent:Boolean(item.receives_urgent),defaultTeamId:String(item.default_team_id||""),slaMinutes:String(item.response_sla_minutes||item.sla_minutes||1440),memberIds:teamMembers.map(x=>x.profile_id),coordinatorIds:teamMembers.filter(x=>x.team_role==="coordinator").map(x=>x.profile_id)});}
- async function saveConfig(e:FormEvent){e.preventDefault();if(!configOpen)return;setBusy(true);setError("");try{await api("/api/operations/config",{method:editingId?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:configOpen,id:editingId,...config,slaMinutes:Number(config.slaMinutes)})});closeConfig();await load();}catch(e){setError(e instanceof Error?e.message:"No fue posible guardar.")}finally{setBusy(false)}}
- async function deleteTeam(){if(!editingId||configOpen!=="team")return;setBusy(true);setError("");try{await api("/api/operations/config",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"team",id:editingId,reason:deleteReason})});closeConfig();await load();}catch(e){setError(e instanceof Error?e.message:"No fue posible eliminar el equipo.")}finally{setBusy(false)}}
+ async function saveConfig(e:FormEvent){e.preventDefault();if(!configOpen)return;setBusy(true);setError("");try{await api("/api/operations/config",{method:editingId?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:configOpen,id:editingId,...config,slaMinutes:Number(config.slaMinutes)})});closeConfig();await load(false);}catch(e){setError(e instanceof Error?e.message:"No fue posible guardar.")}finally{setBusy(false)}}
+ async function deleteTeam(){if(!editingId||configOpen!=="team")return;setBusy(true);setError("");try{await api("/api/operations/config",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:"team",id:editingId,reason:deleteReason})});closeConfig();await load(false);}catch(e){setError(e instanceof Error?e.message:"No fue posible eliminar el equipo.")}finally{setBusy(false)}}
  const canAdmin=Boolean(data?.canAdmin);
  async function finishSetup(items:{location:string;team:string;category:string;receivesUrgent:boolean;slaMinutes:number;memberIds:string[];invites:SetupInvite[]}){if(!data)return;setBusy(true);setError("");try{
   const licensedEmails=new Set(data.members.map(member=>member.email.trim().toLowerCase()));
   for(const invite of items.invites){if(!licensedEmails.has(invite.email.trim().toLowerCase()))await api("/api/enterprise/users",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({fullName:invite.fullName.trim(),email:invite.email.trim().toLowerCase(),moduleRoles:{operations:invite.role}})});}
   await api("/api/operations/config",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({completeSetup:true,location:items.location.trim(),team:items.team.trim(),category:items.category.trim(),color:"#00B8AE",receivesUrgent:items.receivesUrgent,slaMinutes:items.slaMinutes,memberIds:[...new Set([data.profile.id,...items.memberIds])],memberEmails:items.invites.map(item=>item.email.trim().toLowerCase()),coordinatorIds:[data.profile.id]})});
-  await load();
+  await load(false);
  }catch(e){setError(e instanceof Error?e.message:"No fue posible crear el módulo.");}finally{setBusy(false)}}
  if(!loading&&data&&canAdmin&&!data.setup?.completed_at)return <EnterpriseShell title="Operations Hub" subtitle="Configura tu espacio operacional paso a paso."><SetupWizard profile={data.profile} members={data.members} license={data.license} busy={busy} error={error} finish={finishSetup}/></EnterpriseShell>;
  return <EnterpriseShell title="Operations Hub" subtitle="Reporta, asigna y controla cada incidente operacional desde un solo lugar.">
