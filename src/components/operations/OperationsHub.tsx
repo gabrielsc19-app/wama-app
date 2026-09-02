@@ -22,11 +22,11 @@ type Payload={cases:Case[];projects:Project[];locations:Ref[];categories:Ref[];t
 const empty={title:"",description:"",locationId:"",categoryId:"",teamId:"",assignedTo:"",priority:"medium",isUrgent:false,dueAt:"",projectId:""};
 const statuses=["all","unassigned","assigned","taken","in_progress","resolved","closed"];
 const labels:Record<string,string>={all:"Todos",unassigned:"Sin asignar",assigned:"Asignado",taken:"Tomado",in_progress:"En proceso",resolved:"Resuelto",closed:"Cerrado",reopened:"Reabierto",low:"Baja",medium:"Media",high:"Alta",critical:"Crítica"};
-const actionNames:Record<string,string>={created:"Caso reportado",assign:"Responsable asignado",assign_scope:"Caso asignado",take:"Caso tomado",start:"Trabajo iniciado",comment:"Comentario agregado",evidence_added:"Evidencia agregada",resolve:"Marcado como resuelto",close:"Caso cerrado",reopen:"Caso reabierto",edit:"Caso actualizado",delete:"Caso archivado",restore:"Caso restaurado"};
+const actionNames:Record<string,string>={created:"Caso reportado",assign:"Responsable asignado",assign_scope:"Caso enviado",take:"Caso tomado",start:"Trabajo iniciado",comment:"Comentario agregado",evidence_added:"Evidencia agregada",resolve:"Marcado como resuelto",close:"Caso cerrado",force_close:"Cierre excepcional administrativo",reopen:"Caso reabierto",edit:"Caso actualizado",delete:"Caso archivado",restore:"Caso restaurado"};
 
 export default function OperationsHub(){
  const[data,setData]=useState<Payload|null>(null),[selectedProjectId,setSelectedProjectId]=useState(""),[view,setView]=useState("summary"),[filter,setFilter]=useState("all"),[search,setSearch]=useState(""),[error,setError]=useState(""),[success,setSuccess]=useState(""),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[open,setOpen]=useState(false),[selected,setSelected]=useState<Case|null>(null),[selectedTeamId,setSelectedTeamId]=useState<string|null>(null),[form,setForm]=useState(empty),[comment,setComment]=useState(""),[files,setFiles]=useState<File[]>([]),[evidence,setEvidence]=useState<Evidence[]>([]),[configOpen,setConfigOpen]=useState<"location"|"team"|"category"|null>(null),[editingId,setEditingId]=useState<string|null>(null),[deleteReason,setDeleteReason]=useState(""),[caseDeleteReason,setCaseDeleteReason]=useState(""),[deletePromptOpen,setDeletePromptOpen]=useState(false),[config,setConfig]=useState({name:"",address:"",color:"#00B8AE",description:"",receivesUrgent:false,defaultTeamId:"",slaMinutes:"1440",memberIds:[] as string[],coordinatorIds:[] as string[]});
- const fileInput=useRef<HTMLInputElement>(null);
+ const fileInput=useRef<HTMLInputElement>(null),loadSequence=useRef(0),loadInFlight=useRef<Map<string,Promise<Payload&{compact?:boolean}>>>(new Map());
  async function token(){const{data:s}=await supabase.auth.getSession();if(!s.session)throw new Error("Sesión caducada. Vuelve a iniciar sesión.");return s.session.access_token;}
  async function api(url:string,init?:RequestInit){const access=await token();const response=await fetch(url,{...init,headers:{Authorization:`Bearer ${access}`,...init?.headers}});const json=await response.json();if(!response.ok)throw new Error(json.error||"No fue posible completar la acción.");return json;}
  const load=useCallback(async(compact=false)=>{
@@ -36,7 +36,12 @@ export default function OperationsHub(){
    const params=new URLSearchParams();
    if(selectedProjectId)params.set("projectId",selectedProjectId);
    if(compact&&data)params.set("compact","1");
-   const payload=await api(`/api/operations/cases${params.size?`?${params.toString()}`:""}`) as Payload&{compact?:boolean};
+   const url=`/api/operations/cases${params.size?`?${params.toString()}`:""}`;
+   const sequence=++loadSequence.current;
+   let request=loadInFlight.current.get(url);
+   if(!request){request=api(url) as Promise<Payload&{compact?:boolean}>;loadInFlight.current.set(url,request);void request.then(()=>loadInFlight.current.delete(url),()=>loadInFlight.current.delete(url));}
+   const payload=await request;
+   if(sequence!==loadSequence.current)return;
    if(payload.compact&&data){
     setData(current=>current?{...current,cases:payload.cases||[],locations:payload.locations||current.locations,notifications:payload.notifications||current.notifications}:current);
    }else{
@@ -74,9 +79,10 @@ export default function OperationsHub(){
   setBusy(true);setError("");setSuccess("");
   try{
    const result=await api("/api/operations/cases",{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:selected.id,action,comment,...extra})});
+   let uploaded:null|{evidence?:Evidence;event?:CaseEvent}=null;
    if(files[0]){
     const fd=new FormData();fd.append("caseId",selected.id);fd.append("file",files[0]);
-    await api("/api/operations/evidence",{method:"POST",body:fd});
+    uploaded=await api("/api/operations/evidence",{method:"POST",body:fd});
    }
    const notice=result?.notification as {inAppRecipients?:number;pushDevices?:number;pushSent?:number;pushFailed?:number}|undefined;
    const noticeText=notice?` · ${notice.inAppRecipients||0} aviso(s) WAMA · ${notice.pushSent||0} push enviados`:"";
@@ -84,17 +90,14 @@ export default function OperationsHub(){
    if(action==="start")setSuccess(`Gestión iniciada${noticeText}.`);
    if(action==="resolve")setSuccess(`Caso marcado como resuelto. Queda pendiente de cierre${noticeText}.`);
    if(action==="close")setSuccess(`Caso cerrado correctamente${noticeText}.`);
+   if(action==="force_close")setSuccess(`Caso cerrado excepcionalmente por administración${noticeText}.`);
    if(action==="reopen")setSuccess(`Caso reabierto${noticeText}.`);
    setComment("");setFiles([]);
    if(result?.case){
     setData(current=>current?{...current,cases:current.cases.map(item=>item.id===selected.id?{...item,...result.case}:item)}:current);
-    setSelected(current=>current?{...current,...result.case}:current);
+    setSelected(current=>current?{...current,...result.case,events:[...(current.events||[]),...(result.event?[result.event]:[]),...(uploaded?.event?[uploaded.event]:[])]}:current);
    }
-   try{
-    const[detail,evidencePayload]=await Promise.all([loadCaseDetail(selected.id),api(`/api/operations/evidence?caseId=${selected.id}`)]);
-    setSelected(detail);setEvidence(evidencePayload.evidence||[]);
-    setData(current=>current?{...current,cases:current.cases.map(item=>item.id===detail.id?{...item,...detail,events:undefined}:item)}:current);
-   }catch{await loadEvidence(selected.id)}
+   if(uploaded?.evidence)setEvidence(current=>[uploaded!.evidence!,...current]);
    return result;
   }catch(e){setError(e instanceof Error?e.message:"No fue posible actualizar el caso.");return null;}
   finally{setBusy(false)}
@@ -130,9 +133,7 @@ export default function OperationsHub(){
     if(result)setSuccess(`Caso enviado al Equipo ${teamName} · ${n?.inAppRecipients||0} aviso(s) WAMA · ${n?.pushSent||0} push enviados.`);
   }
  }
- async function loadEvidence(id:string){try{setEvidence((await api(`/api/operations/evidence?caseId=${id}`)).evidence||[])}catch{setEvidence([])}}
- async function loadCaseDetail(id:string){const result=await api(`/api/operations/cases?caseId=${id}`);return result.case as Case}
- async function openCase(item:Case){setSelected(item);setComment("");setFiles([]);try{const[detail,evidencePayload]=await Promise.all([loadCaseDetail(item.id),api(`/api/operations/evidence?caseId=${item.id}`)]);setSelected(detail);setEvidence(evidencePayload.evidence||[])}catch{setSelected(item);await loadEvidence(item.id)}}
+ async function openCase(item:Case){setSelected(item);setComment("");setFiles([]);setEvidence([]);try{const result=await api(`/api/operations/cases?caseId=${item.id}`);setSelected(result.case as Case);setEvidence(result.evidence||[])}catch{setSelected(item);setEvidence([])}}
  function closeConfig(){setConfigOpen(null);setEditingId(null);setDeleteReason("");setConfig({name:"",address:"",color:"#00B8AE",description:"",receivesUrgent:false,defaultTeamId:"",slaMinutes:"1440",memberIds:[],coordinatorIds:[]});}
  function editConfig(type:"location"|"team"|"category",item:Ref){const teamMembers=(item.members as {profile_id:string;team_role:string}[]|undefined)||[];setConfigOpen(type);setEditingId(item.id);setDeleteReason("");setConfig({name:item.name,address:String(item.address||""),color:String(item.color||"#00B8AE"),description:String(item.description||""),receivesUrgent:Boolean(item.receives_urgent),defaultTeamId:String(item.default_team_id||""),slaMinutes:String(item.response_sla_minutes||item.sla_minutes||1440),memberIds:teamMembers.map(x=>x.profile_id),coordinatorIds:teamMembers.filter(x=>x.team_role==="coordinator").map(x=>x.profile_id)});}
  async function saveConfig(e:FormEvent){e.preventDefault();if(!configOpen)return;setBusy(true);setError("");try{await api("/api/operations/config",{method:editingId?"PATCH":"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({type:configOpen,id:editingId,...config,slaMinutes:Number(config.slaMinutes)})});closeConfig();await load(false);}catch(e){setError(e instanceof Error?e.message:"No fue posible guardar.")}finally{setBusy(false)}}
@@ -219,7 +220,7 @@ export default function OperationsHub(){
     {data?.canCoordinate&&["unassigned","assigned","reopened"].includes(selected.status)&&
      <div className="grid gap-2">
       <label className="text-xs font-black uppercase tracking-[.12em] text-[#7A838D]">Enviar caso a</label>
-      <select defaultValue="" onChange={e=>{const value=e.target.value;e.currentTarget.value="";value&&void assignScope(value)}} className="input">
+      <select defaultValue="" onChange={e=>{const value=e.target.value;e.currentTarget.value="";if(value)void assignScope(value)}} className="input">
        <option value="">Selecciona destino…</option>
        <option value="project">Todos los participantes del proyecto</option>
        {data.teams.map(team=><option key={team.id} value={`team:${team.id}`}>Equipo {team.name}</option>)}
@@ -254,6 +255,13 @@ export default function OperationsHub(){
       <button onClick={()=>act("close")} disabled={busy||!comment.trim()} className="mt-3 w-full rounded-full bg-[#0B0C0E] px-4 py-3 text-sm font-black text-white disabled:opacity-40">
        Cerrar caso
       </button>
+     </div>}
+
+    {data?.canAdmin&&!['resolved','closed'].includes(selected.status)&&
+     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
+      <p className="text-sm font-black text-amber-900">Cerrar caso bloqueado</p>
+      <p className="mt-1 text-xs leading-5 text-amber-800">Falta marcarlo como resuelto. Como administrador puedes realizar un cierre excepcional, pero debes escribir el motivo.</p>
+      <button onClick={()=>act("force_close")} disabled={busy||comment.trim().length<5} className="mt-3 w-full rounded-full border border-amber-400 bg-white px-4 py-3 text-sm font-black text-amber-900 disabled:opacity-40">Cierre excepcional administrativo</button>
      </div>}
 
     {selected.status==="closed"&&

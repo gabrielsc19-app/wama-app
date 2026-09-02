@@ -3,7 +3,7 @@ import { createOperationsNotifications } from "../../../../src/lib/server/operat
 import { getOperationsContext, operationsError } from "../../../../src/lib/server/operationsAccess";
 
 const allowedPriorities=["low","medium","high","critical"];
-const allowedActions=["assign","assign_scope","take","start","comment","resolve","close","reopen","edit","delete","restore"];
+const allowedActions=["assign","assign_scope","take","start","comment","resolve","close","force_close","reopen","edit","delete","restore"];
 const responseError=(error:unknown)=>{const value=operationsError(error);return NextResponse.json({error:value.message},{status:value.status});};
 
 async function teamRecipients(admin:Awaited<ReturnType<typeof getOperationsContext>>["admin"],teamId:string|null,kind:"new"|"update"|"urgent"){
@@ -34,10 +34,15 @@ export async function GET(request:Request){
     const requestedProjectId=params.get("projectId")||"";
     const requestedCaseId=params.get("caseId")||"";
     if(requestedCaseId){
-      const{data:detail,error:detailError}=await admin.from("wama_operations_cases").select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email),events:wama_operations_events(*)").eq("tenant_id",tenantId).eq("id",requestedCaseId).maybeSingle();
+      const[{data:detail,error:detailError},{data:evidenceRows,error:evidenceError}]=await Promise.all([
+        admin.from("wama_operations_cases").select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email),events:wama_operations_events(*)").eq("tenant_id",tenantId).eq("id",requestedCaseId).maybeSingle(),
+        admin.from("wama_operations_evidence").select("*").eq("tenant_id",tenantId).eq("case_id",requestedCaseId).order("created_at",{ascending:false}),
+      ]);
       if(detailError)throw detailError;if(!detail)return NextResponse.json({error:"Caso no encontrado."},{status:404});
+      if(evidenceError)throw evidenceError;
       if(!context.canAdmin&&detail.project_id){const{data:membership}=await admin.from("wama_project_members").select("id").eq("project_id",detail.project_id).eq("profile_id",profile.id).maybeSingle();if(!membership)return NextResponse.json({error:"No tienes acceso a este caso."},{status:403});}
-      return NextResponse.json({case:detail});
+      const evidence=await Promise.all((evidenceRows||[]).map(async item=>{const{data:signed}=await admin.storage.from("operations-evidence").createSignedUrl(item.storage_path,900);return{...item,url:signed?.signedUrl||null}}));
+      return NextResponse.json({case:detail,evidence});
     }
     let query=admin.from("wama_operations_cases").select("id,tenant_id,case_number,title,description,priority,is_urgent,status,due_at,created_at,resolved_at,reported_by,assigned_to,project_id,assignment_scope,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email)").eq("tenant_id",tenantId).order("created_at",{ascending:false});
     query=includeArchived?query.not("deleted_at","is",null):query.is("deleted_at",null);
@@ -67,7 +72,8 @@ export async function GET(request:Request){
       return NextResponse.json({compact:true,cases:cases||[],locations:locations||[],notifications:notifications||[]});
     }
 
-    const {data:allProjects,error:projectsError}=context.canAdmin?await admin.from("wama_projects").select("id,name,code,status").eq("tenant_id",tenantId).eq("status","active").in("id",(await admin.from("wama_project_modules").select("project_id").eq("tenant_module_license_id",context.license.id)).data?.map(x=>x.project_id)||[]):{data:(projectMemberships||[]).map((item:any)=>item.wama_projects),error:null};
+    const memberProjects=(projectMemberships||[]).flatMap(item=>{const project=Array.isArray(item.wama_projects)?item.wama_projects[0]:item.wama_projects;return project?[project]:[]});
+    const {data:allProjects,error:projectsError}=context.canAdmin?await admin.from("wama_projects").select("id,name,code,status").eq("tenant_id",tenantId).eq("status","active").in("id",(await admin.from("wama_project_modules").select("project_id").eq("tenant_module_license_id",context.license.id)).data?.map(x=>x.project_id)||[]):{data:memberProjects,error:null};
     if(projectsError)throw projectsError;
     const projects=(allProjects||[]).filter(Boolean);
     const [{data:cases,error},{data:locations},{data:categories},{data:teams},{data:setup},{data:notifications},{count:usedSeats}]=await Promise.all([
@@ -97,11 +103,11 @@ export async function GET(request:Request){
 
 export async function POST(request:Request){
   try{
-    const{admin,profile,tenantId}=await getOperationsContext(request);
+    const context=await getOperationsContext(request);const{admin,profile,tenantId}=context;
     const body=await request.json() as {title?:string;description?:string;locationId?:string;categoryId?:string;teamId?:string;priority?:string;isUrgent?:boolean;dueAt?:string;projectId?:string};
     if(!body.title?.trim()||!body.description?.trim()||!body.locationId||!body.categoryId||!body.projectId)return NextResponse.json({error:"Completa proyecto, título, descripción, ubicación y categoría."},{status:400});
     const{data:project}=await admin.from("wama_projects").select("id").eq("id",body.projectId).eq("tenant_id",tenantId).eq("status","active").maybeSingle();if(!project)return NextResponse.json({error:"El proyecto no pertenece a tu empresa."},{status:400});
-    const{data:projectModule}=await admin.from("wama_project_modules").select("id").eq("project_id",body.projectId).eq("tenant_module_license_id",(await getOperationsContext(request)).license.id).maybeSingle();if(!projectModule)return NextResponse.json({error:"El proyecto no está habilitado para Operations Hub."},{status:400});
+    const{data:projectModule}=await admin.from("wama_project_modules").select("id").eq("project_id",body.projectId).eq("tenant_module_license_id",context.license.id).maybeSingle();if(!projectModule)return NextResponse.json({error:"El proyecto no está habilitado para Operations Hub."},{status:400});
     const{data:projectMember}=await admin.from("wama_project_members").select("id").eq("project_id",body.projectId).eq("profile_id",profile.id).maybeSingle();if(!projectMember)return NextResponse.json({error:"No perteneces a este proyecto."},{status:403});
     if(body.title.trim().length>140||body.description.trim().length>4000)return NextResponse.json({error:"El título o la descripción superan el máximo permitido."},{status:400});
     const [{data:location},{data:category}]=await Promise.all([
@@ -213,11 +219,17 @@ export async function PATCH(request:Request){
       if(!body.comment?.trim())return NextResponse.json({error:"Agrega un comentario final de cierre."},{status:400});
       next="closed";update.closed_at=new Date().toISOString();
     }
+    else if(body.action==="force_close"){
+      if(!context.canAdmin)return NextResponse.json({error:"Solo un administrador puede realizar un cierre excepcional."},{status:403});
+      if(current.status==="closed")return NextResponse.json({error:"El caso ya está cerrado."},{status:400});
+      if(!body.comment?.trim()||body.comment.trim().length<5)return NextResponse.json({error:"Explica el motivo del cierre excepcional (mínimo 5 caracteres)."},{status:400});
+      next="closed";update.closed_at=new Date().toISOString();
+    }
     else if(body.action==="reopen"){if(!context.canCoordinate&&current.reported_by!==profile.id)return NextResponse.json({error:"Sin permiso para reabrir."},{status:403});if(!body.comment?.trim())return NextResponse.json({error:"Indica el motivo de reapertura."},{status:400});next="reopened";update.resolved_at=null;update.closed_at=null;}
     else if(body.action==="edit"){if(!context.canCoordinate)return NextResponse.json({error:"Sin permiso para editar prioridad y plazo."},{status:403});if(body.priority&&allowedPriorities.includes(body.priority))update.priority=body.priority;if(body.dueAt&&Number.isFinite(Date.parse(body.dueAt)))update.due_at=new Date(body.dueAt).toISOString();}
     else if(body.action==="comment"&&!body.comment?.trim())return NextResponse.json({error:"Escribe un comentario."},{status:400});
-    update.status=next;const{data,error}=await admin.from("wama_operations_cases").update(update).eq("id",current.id).eq("tenant_id",tenantId).select("*").single();if(error)throw error;
-    await admin.from("wama_operations_events").insert({tenant_id:tenantId,case_id:current.id,event_type:body.action,from_status:current.status,to_status:next,comment:body.comment?.trim()||null,metadata:{assigned_to:body.assignedTo||null,team_id:body.teamId||null,assignment_scope:body.assignmentScope||null},created_by:profile.id});
+    update.status=next;const{data,error}=await admin.from("wama_operations_cases").update(update).eq("id",current.id).eq("tenant_id",tenantId).select("*,location:wama_operations_locations(id,name,address),category:wama_operations_categories(id,name,sla_minutes),team:wama_operations_teams(id,name,color),reporter:wama_profiles!wama_operations_cases_reported_by_fkey(id,full_name,email),assignee:wama_profiles!wama_operations_cases_assigned_to_fkey(id,full_name,email)").single();if(error)throw error;
+    const{data:event,error:eventError}=await admin.from("wama_operations_events").insert({tenant_id:tenantId,case_id:current.id,event_type:body.action,from_status:current.status,to_status:next,comment:body.comment?.trim()||null,metadata:{assigned_to:body.assignedTo||null,team_id:body.teamId||null,assignment_scope:body.assignmentScope||null},created_by:profile.id}).select("*").single();if(eventError)throw eventError;
     const effectiveTeamId=String(update.team_id||current.team_id||"");
     const assignmentScope=String(update.assignment_scope||current.assignment_scope||"");
     const teamIds=assignmentScope==="team"
@@ -246,9 +258,11 @@ export async function PATCH(request:Request){
                 ? `${current.case_number} resuelto`
                 : body.action==="close"
                   ? `${current.case_number} cerrado`
+                  : body.action==="force_close"
+                    ? `${current.case_number} cerrado excepcionalmente`
                   : `${current.case_number} actualizado`,
       body:body.comment?.trim()||current.title,
     });
-    return NextResponse.json({ok:true,case:data,notification});
+    return NextResponse.json({ok:true,case:data,event,notification});
   }catch(error){return responseError(error)}
 }
